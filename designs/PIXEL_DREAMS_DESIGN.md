@@ -679,6 +679,42 @@ guessing. What matters: the suite caught it, which is the point of the real-tree
 
 ---
 
+### 10.6 Addition after the phases — Next / Prev mode (DONE, 2026-10-15)
+
+Asked for after Phase 5, and outside its scope: the request was to drive the rotation by hand rather
+than relying on `--auto`.
+
+- **Under Display status** on `/`: `◀ Prev` and `Next ▶`, one press per mode, with a hint line
+  saying where we are and what is either side. The hint and the enabled state are updated by the
+  existing status poll, in place — the buttons are never rebuilt under the cursor.
+- **It is the keyboard path, not a second implementation.** The loop publishes its step handler as
+  `step_mode`, which does exactly what a LEFT/RIGHT key press does: advance the playlist, request the
+  switch, reset the mode timer. Every consequence of the keyboard behaviour is therefore inherited
+  rather than re-derived — most importantly that **a press during a fade is queued, not dropped**, so
+  a burst of clicks all land. The queued application now also republishes `pending_steps`, so the
+  panel can show `N step(s) queued (mid-fade)` instead of looking stuck.
+- **A manual step restarts the `--auto` interval**, so the mode you chose gets a full interval. This
+  was written as a claim in the docs and then MEASURED, because it is the kind of claim that is easy
+  to assert and wrong: with `--auto 6` and a step taken 3s into an interval, the next automatic change
+  came ~6s later (an un-reset timer would have fired at ~3s). The first version of that test "passed"
+  by measuring the switch completing, not the timer — the assertion is now on the gap.
+- **Two cases disable the buttons and say why**: `--play N` (one mode, no rotation to step through —
+  the loop refuses the command too, and says so in `last_step`, so the panel is not the only guard)
+  and `--panel-only` (no display to step). Two new status fields make that knowable: `single_mode`
+  (published from the first frame) and `pending_steps`.
+- **`POST /api/step`** for scripts, token-gated like the rest. It reports `{"ok": true, "queued": 1}`
+  and deliberately NOT the resulting mode: the loop applies the step on its next frame, so any
+  `mode_index` read at request time is the position before the step — a number a script would act on
+  wrongly. 400 for a delta that is not ±1, 409 for a locked app.
+- **Verified**: 10 new process-level and in-process tests (`tests/test_transport.py`) — including the
+  burst, the wrap in both directions, the auto-timer gap, the refusal, and the gate — plus a live run
+  against the real 34-mode rotation over the LAN (next, next, prev, and a double-press that queued and
+  wrapped 0→33). Left no trace, and this time the full suite ran AFTER the live check as an
+  independent gate.
+- **Not done, deliberately**: it does not pause the rotation, and it does not add a "jump to mode N"
+  box. Both are easy to add on this plumbing; the request was two buttons.
+
+
 ## 11. Risks and non-goals
 
 Risks:

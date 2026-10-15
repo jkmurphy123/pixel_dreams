@@ -248,6 +248,10 @@ def main(argv=None):
         # Present from the first frame so a consumer never has to guess a default
         applies_count=0,
         refresh_count=0,
+        pending_steps=0,
+        # Whether this app is locked to one mode (--play N): the panel needs it to explain why the
+        # Next/Prev controls are unavailable, rather than offering buttons that do nothing.
+        single_mode=single_mode_lock,
     )
 
     # ---------------- hardware input (optional) ----------------
@@ -372,7 +376,44 @@ def main(argv=None):
         nonlocal pending_refresh
         pending_refresh = True
 
-    handlers = {"ping": _panel_ping, "apply_config": _apply_config, "refresh_mode": _refresh_mode}
+    def _step_mode(cmd) -> None:
+        """
+        Next/Prev from the panel: exactly the path a LEFT/RIGHT key press takes.
+
+        Reusing that path is the point — a step that arrives during a fade is QUEUED rather than
+        dropped (the keyboard already does this with `queued_delta`), so clicking Next twice quickly
+        advances twice instead of losing the second click. A manual step also resets the auto-cycle
+        timer, so with `--auto` running you get the mode you asked for and a full interval on it.
+
+        Refused when `--play N` locked the app to a single mode: there is no rotation to step
+        through, and the panel says so instead of offering buttons that do nothing.
+        """
+        nonlocal queued_delta, elapsed_in_mode
+        if single_mode_lock:
+            bus.update_status(last_step="refused: this app was started with --play (single mode)")
+            return
+        try:
+            delta = int(cmd.get("delta", 1))
+        except (TypeError, ValueError):
+            delta = 1
+        delta = 1 if delta > 0 else -1
+
+        if manager.is_transitioning():
+            queued_delta += delta
+            bus.update_status(last_step=f"queued {'next' if delta > 0 else 'prev'} (mid-fade)",
+                              pending_steps=queued_delta)
+            print(f"[Panel] step queued ({delta:+d}); {queued_delta} pending")
+            return
+
+        playlist.advance(delta)
+        manager.request_switch(playlist.current)
+        elapsed_in_mode = 0.0
+        bus.update_status(last_step=f"stepped {'next' if delta > 0 else 'prev'}",
+                          pending_steps=queued_delta)
+        print(f"[Panel] step {'next' if delta > 0 else 'prev'} -> mode {playlist.current}")
+
+    handlers = {"ping": _panel_ping, "apply_config": _apply_config, "refresh_mode": _refresh_mode,
+                "step_mode": _step_mode}
 
     if args.auto:
         print(f"[Controller] Auto-cycle every {args.auto:.1f}s. ESC quits.")
@@ -438,6 +479,9 @@ def main(argv=None):
                 playlist.advance(step)
                 manager.request_switch(playlist.current)
                 elapsed_in_mode = 0.0
+                # Keep the panel's view of pending steps honest: it shows "N queued" while a burst
+                # is working through, and a stale count would make the buttons look stuck.
+                bus.update_status(pending_steps=queued_delta, mode_index=manager.mode_index)
 
             # Auto-cycle
             if (args.auto is not None and not single_mode_lock

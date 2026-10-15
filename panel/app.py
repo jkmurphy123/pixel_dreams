@@ -277,6 +277,70 @@ def _render_backups(container, ctx: PageContext, state: dict, after) -> None:
                         .mark(f"restore-{backup['stamp']}")
 
 
+def _transport_text(snap: dict) -> str:
+    """
+    What the Next/Prev buttons will do, said plainly: where we are, what is either side, and
+    anything still queued. The loop owns the rotation, so this reads it rather than guessing.
+    """
+    if snap.get("single_mode"):
+        return ("this app was started with --play (single mode), so there is no rotation to step "
+                "through")
+    if snap.get("display") == "off":
+        return "no display is attached to this panel, so a step would have nothing to show"
+    rotation = snap.get("applied_rotation") or []
+    if not rotation:
+        return "starting up"
+    index = snap.get("mode_index")
+    try:
+        position = rotation.index(index)
+    except ValueError:
+        return f"showing mode {index}, which is not in the rotation the app reported"
+    nxt = rotation[(position + 1) % len(rotation)]
+    prev = rotation[(position - 1) % len(rotation)]
+    text = (f"showing mode {index} — {position + 1} of {len(rotation)} in the rotation · "
+            f"next {nxt}, prev {prev}")
+    pending = snap.get("pending_steps") or 0
+    if pending:
+        text += f" · {pending} step(s) queued (mid-fade)"
+    if snap.get("last_step"):
+        text += f" · last: {snap['last_step']}"
+    return text
+
+
+def _transport_controls(ctx: PageContext, labels: dict) -> None:
+    """
+    Next/Prev, directly under the display status: the buttons for when the kiosk is across the room.
+
+    They post one step to the render loop, which is the same thing LEFT/RIGHT already do on the
+    keyboard — including the part where a press during a fade is QUEUED instead of dropped, so
+    clicking Next twice quickly advances twice. `--auto` is unaffected while it runs; a manual step
+    just resets its timer, so you get a full interval on the mode you picked.
+
+    The hint line and the enabled state are driven by the status poll (see _refresh_status), so the
+    buttons are never rebuilt under the cursor and their state follows the running app — including
+    the single-mode case, where they are disabled rather than silently doing nothing.
+    """
+    state = {"enabled": None}
+
+    def post_step(delta: int) -> None:
+        ctx.bus.post({"cmd": "step_mode", "delta": delta})
+        labels["transport"].set_text("stepping…" if delta > 0 else "stepping back…")
+
+    with ui.card().classes("w-full mt-3 gap-2"):
+        ui.label("Mode control").classes("text-base font-semibold")
+        with ui.row().classes("items-center gap-2"):
+            labels["transport_prev"] = ui.button("◀ Prev", on_click=lambda: post_step(-1)) \
+                .props("outline").mark("prev-mode")
+            labels["transport_next"] = ui.button("Next ▶", on_click=lambda: post_step(1)) \
+                .props("color=primary").mark("next-mode")
+            labels["transport"] = ui.label("—").classes("text-xs opacity-70 ml-2") \
+                .mark("transport-hint")
+        ui.label("One press, one step — no auto-cycling needed. Presses during a fade queue up "
+                 "instead of being dropped, and with --auto running a manual step restarts that "
+                 "timer.").classes("text-xs opacity-50").mark("transport-help")
+    labels["transport_state"] = state
+
+
 def _commands_text(snap: dict) -> str:
     text = f"{snap.get('commands_applied', 0)} applied"
     if snap.get("last_command"):
@@ -450,6 +514,46 @@ def register_pages(ctx: PageContext) -> None:
         ctx.bus.post({"cmd": "refresh_mode"})
         return {"ok": True, "queued": True, "pending": ctx.bus.pending()}
 
+    @app.post("/api/step")
+    async def api_step(request: Request):
+        """
+        Step the rotation one mode forward ({"delta": 1}, the default) or back ({"delta": -1}).
+
+        The same thing the Next/Prev buttons post, for scripts and the acceptance runs. A step that
+        lands mid-fade is QUEUED by the render loop rather than dropped — which is why this answers
+        200 even when a transition is in flight: `mode_index` in /api/status is what actually moved.
+        Refused by the loop (and reported in `last_step`) when the app was started with `--play N`.
+        """
+        if not _authorised(ctx, request):
+            return PlainTextResponse("token required", status_code=403)
+        body = {}
+        raw = await request.body()
+        if raw:
+            try:
+                body = json.loads(raw)
+            except ValueError:
+                return JSONResponse({"ok": False, "reason": "body must be JSON"}, status_code=400)
+            if not isinstance(body, dict):
+                return JSONResponse({"ok": False, "reason": "body must be a JSON object"},
+                                    status_code=400)
+        try:
+            delta = 1 if int(body.get("delta", 1)) > 0 else -1
+        except (TypeError, ValueError):
+            return JSONResponse({"ok": False, "reason": "delta must be 1 (next) or -1 (prev)"},
+                                status_code=400)
+
+        ctx.bus.post({"cmd": "step_mode", "delta": delta})
+        snap = ctx.bus.snapshot()
+        if snap.get("single_mode"):
+            return JSONResponse(
+                {"ok": False, "queued": False,
+                 "reason": "this app was started with --play (single mode): there is no rotation to "
+                           "step through"}, status_code=409)
+        # Deliberately no mode_index here: the loop applies the step on its next frame, so anything
+        # read now would be the position BEFORE the step and a script would act on a stale number.
+        # Poll /api/status for the real position (`mode_index`, and `last_step` to confirm).
+        return {"ok": True, "queued": delta}
+
     @app.post("/api/profile")
     async def api_profile(request: Request):
         """
@@ -523,6 +627,7 @@ def register_pages(ctx: PageContext) -> None:
 
         _chrome("Live tuning for the kiosk display — pick a profile, then a mode's parameters.")
         labels = _status_card(ctx, active_path, active_source)
+        _transport_controls(ctx, labels)
 
         with ui.card().classes("w-full mt-4"):
             ui.label("Profiles").classes("text-base font-semibold")
@@ -857,6 +962,30 @@ def _refresh_status(ctx: PageContext, labels: dict) -> None:
     # Re-resolved every poll, so a profile switch (from this page or another) shows up here.
     active_path, source = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
     labels["profile"].set_text(f"{os.path.relpath(active_path, ctx.base_dir)} (via {source})")
+    _refresh_transport(labels, snap)
+
+
+def _refresh_transport(labels: dict, snap: dict) -> None:
+    """
+    Update the Next/Prev hint and their enabled state in place (no rebuild: the buttons must not
+    move under the cursor mid-click). Guarded so a poll only pushes a change when something
+    actually changed.
+    """
+    hint = labels.get("transport")
+    if hint is None:
+        return
+    text = _transport_text(snap)
+    if labels.get("transport_text") != text:
+        labels["transport_text"] = text
+        hint.set_text(text)
+
+    usable = not snap.get("single_mode") and snap.get("display") != "off"
+    state = labels.get("transport_state")
+    if state is not None and state.get("enabled") != usable:
+        state["enabled"] = usable
+        for key in ("transport_prev", "transport_next"):
+            if labels.get(key) is not None:
+                labels[key].set_enabled(usable)
 
 
 # ---------------------------------------------------------------- data for pages

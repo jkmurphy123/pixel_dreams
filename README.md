@@ -98,17 +98,39 @@ registry but absent from the file — editing it adds the key, `unset` removes o
 If the file changed underneath you (another tab, an ssh edit), Save is refused and the page says
 what changed, until you press `Reload from disk`. Nothing is written that you did not see.
 
+### Changing modes by hand
+
+Under **Display status** there are two buttons: **◀ Prev** and **Next ▶**, one press per mode. Use
+them when you want to drive the rotation yourself instead of leaving it to `--auto`; the line beside
+them says where you are and what is either side (`showing mode 7 — 8 of 34 in the rotation · next 8,
+prev 6`).
+
+A press is exactly what LEFT/RIGHT already does on the keyboard, including the useful part: if a
+transition is in flight the step is **queued rather than dropped**, so clicking Next three times
+quickly advances three modes. With `--auto` running, a manual step restarts its timer, so the mode
+you picked gets a full interval rather than the remains of the old one.
+
+The buttons disable themselves and say why in two cases: an app started with `--play N` has a single
+mode and no rotation to step through, and `--panel-only` has no display to step.
+
 Scripted equivalents, all token-gated and (except the profile record) read-only on disk:
 
 ```bash
 curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/status
 curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/profiles
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/refresh
+curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/step -d '{"delta": 1}'   # or -1
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/apply \
      -H 'Content-Type: application/json' -d '{"profile": "configs/modes_config_portrait.json", "refresh": true}'
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/profile \
      -H 'Content-Type: application/json' -d '{"profile": "configs/modes_config_portrait.json"}'
 ```
+
+`/api/step` answers `{"ok": true, "queued": 1}` and deliberately does NOT report the new mode: the
+loop applies the step on its next frame, so a `mode_index` read at request time would be the position
+*before* the step. Poll `/api/status` for `mode_index` (and `last_step` to confirm), which is what the
+acceptance runs and the tests do. It answers 400 for a delta that is not ±1 and 409 for an app locked
+to a single mode.
 
 `/api/apply` re-reads a profile from disk and applies it (the same path the button takes, minus the
 write) — handy after editing a file by hand or pulling a commit. `/api/profile` is the switch: it
