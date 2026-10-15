@@ -24,6 +24,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from .config import NON_PARAM_KEYS
+
 #: Widget names the panel knows how to draw. A schema naming anything else is reported and
 #: ignored rather than trusted (an unknown widget must not blank a field).
 WIDGETS = (
@@ -429,7 +431,7 @@ def coverage(instance_params: dict, spec: dict) -> dict:
     """
     params, _ = resolve_params(instance_params, spec)
     rendered = {p.key for p in params}
-    present = {k for k in (instance_params or {}) if k not in ("type", "name", "title")}
+    present = {k for k in (instance_params or {}) if k not in NON_PARAM_KEYS}
     spec = spec or {}
     declared = set(spec.get("required", [])) | set(spec.get("optional", []))
     return {

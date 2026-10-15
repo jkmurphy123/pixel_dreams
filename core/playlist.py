@@ -7,22 +7,34 @@ import random
 
 
 class Playlist:
-    def __init__(self, max_modes: int, shuffle: bool = False, start_index: int = 0):
+    def __init__(self, max_modes: int, shuffle: bool = False, start_index: int = 0,
+                 allowed=None):
+        """`allowed` restricts the rotation to those mode indices (disabled modes stay out)."""
         self.shuffle = shuffle
-        self.entries = self._build(max_modes, start_index)
+        self.allowed = None if allowed is None else sorted(int(i) for i in allowed)
+        self.entries = self._build(max_modes, start_index, self.allowed)
         self.pos = 0
 
-    def _build(self, max_modes: int, start_index: int) -> list:
-        playlist = list(range(max_modes))
+    def _build(self, max_modes: int, start_index: int, allowed=None) -> list:
+        order = list(range(max_modes)) if allowed is None else sorted(int(i) for i in allowed)
+        if not order:
+            # Defensive: a rotation with no candidates would IndexError on `current`. Callers get
+            # the requested start so a kiosk shows something instead of crashing the render loop.
+            return [start_index]
         if self.shuffle:
+            playlist = list(order)
             random.shuffle(playlist)
             # Ensure requested start mode is first
             if start_index in playlist:
                 playlist.remove(start_index)
             playlist.insert(0, start_index)
         else:
-            # Sequential order starting at start_index
-            playlist = playlist[start_index:] + playlist[:start_index]
+            # Sequential order starting at start_index, wrapping within the allowed set
+            if start_index in order:
+                k = order.index(start_index)
+            else:
+                k = next((i for i, v in enumerate(order) if v > start_index), 0)
+            playlist = order[k:] + order[:k]
         return playlist
 
     @classmethod

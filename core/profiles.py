@@ -28,7 +28,7 @@ import glob
 import os
 from dataclasses import dataclass, field
 
-from .config import LOCAL_CONFIG_NAME, load_json, normalize_type
+from .config import LOCAL_CONFIG_NAME, NON_PARAM_KEYS, load_json, normalize_type
 
 PROFILES_DIRNAME = "configs"
 DEFAULT_PROFILE_NAME = "modes_config.json"
@@ -44,6 +44,7 @@ class ModeEntry:
     label: str = ""                    # "name" or "title" if present
     params: dict = field(default_factory=dict)     # this instance's own keys/values
     override_keys: tuple = ()          # keys the local override layer supplies
+    enabled: bool = True               # "enabled": false opts the mode out of the rotation
 
 
 @dataclass(frozen=True)
@@ -136,8 +137,9 @@ def mode_entries(modes: dict, overridden: dict | None = None) -> list[ModeEntry]
             type=raw_type,
             type_key=normalize_type(raw_type),
             label=str(label),
-            params={k: v for k, v in cfg.items() if k not in ("type", "name", "title")},
+            params={k: v for k, v in cfg.items() if k not in NON_PARAM_KEYS},
             override_keys=tuple(overridden.get(str(key), ())),
+            enabled=cfg.get("enabled") is not False,
         ))
     entries.sort(key=lambda e: e.number)
     return entries

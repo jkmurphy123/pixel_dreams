@@ -17,7 +17,12 @@ LOCAL_CONFIG_NAME = "modes_config.local.json"
 SECRETS_NAME = "secrets.json"
 
 # Keys in a mode instance that are structural, not per-type parameters.
-COMMON_INSTANCE_KEYS = {"type", "name", "title", "duration"}
+COMMON_INSTANCE_KEYS = {"type", "name", "title", "duration", "enabled"}
+
+# Of those, the ones that describe the SLOT rather than the mode's behaviour, so they must never
+# render as an editable parameter in the panel. `duration` is deliberately NOT here: it is a real,
+# useful per-instance parameter (how long the mode shows) that the panel should let you tune.
+NON_PARAM_KEYS = {"type", "name", "title", "enabled"}
 
 
 def load_json(path, default):
@@ -55,6 +60,32 @@ def infer_max_modes_from_config(cfg_dict: dict) -> int:
     if not digit_keys:
         return DEFAULT_MAX_MODES
     return max(digit_keys) + 1
+
+
+def _is_disabled(cfg) -> bool:
+    """
+    True only for an explicit false. Strict on purpose: `"enabled": "false"` (a string) must not
+    silently remove a mode from the rotation — the validator warns about it instead, so the
+    mistake is visible rather than acted upon.
+    """
+    return isinstance(cfg, dict) and cfg.get("enabled") is False
+
+
+def enabled_mode_indices(modes_cfg: dict):
+    """
+    The mode indices a rotation may use, honouring each mode's "enabled" flag (absent = enabled).
+
+    Returns (indices, fell_back). If EVERY mode is disabled the caller gets all of them plus
+    fell_back=True, so a typo cannot leave a kiosk showing nothing — and the caller has a reason
+    to say so loudly instead of the wall just going blank.
+    """
+    if not modes_cfg:
+        return [], False
+    all_indices = sorted(int(k) for k in modes_cfg if str(k).isdigit())
+    enabled = [i for i in all_indices if not _is_disabled(modes_cfg.get(str(i)))]
+    if all_indices and not enabled:
+        return all_indices, True
+    return enabled, False
 
 
 def list_configured_modes(modes_cfg: dict, modes_config_file: str):
