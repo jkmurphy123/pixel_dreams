@@ -217,6 +217,54 @@ async def test_derived_and_override_fields_render_read_only_with_a_reason(tmp_pa
         await p.user.should_see("modes_config.local.json supplies this value")
 
 
+# ---------------------------------------------------------------- disabled modes are visible
+
+def _status(**fields):
+    bus = ControlBus()
+    bus.update_status(**fields)
+    return bus
+
+
+async def test_the_mode_list_marks_a_disabled_mode(tmp_path):
+    """A mode that will be skipped by the rotation must be marked as such where you list modes."""
+    modes = json.loads(json.dumps(ALL_SHAPES))
+    modes["1"] = {"type": "EveryShape", "folder": "/tmp", "enabled": False}
+    ctx = PageContext(base_dir=_project(tmp_path, modes=modes), bus=ControlBus(),
+                      bind="127.0.0.1")
+    async with _panel(ctx) as p:
+        await p.user.open("/")
+        await p.user.should_see("disabled")
+
+
+async def test_the_status_card_reports_the_live_rotation(tmp_path):
+    """The app's answer, not the file's: which slots are actually being rotated."""
+    ctx = PageContext(
+        base_dir=_project(tmp_path),
+        bus=_status(display="fullscreen", applied_rotation=[0, 2], enabled_modes=[0, 2],
+                    disabled_modes=[1], max_modes=3, enabled_fell_back=False,
+                    applied_config_path="/x/modes_config.json",
+                    applied_config_sha256="0123456789abcdef"),
+        bind="127.0.0.1")
+    async with _panel(ctx) as p:
+        await p.user.open("/")
+        await p.user.should_see("playing [0, 2]")
+        await p.user.should_see("2 of 3 slot(s) enabled")
+        await p.user.should_see("disabled: [1]")
+        await p.user.should_see("modes_config.json @ 0123456789")
+
+
+async def test_the_status_card_shouts_when_every_mode_is_disabled(tmp_path):
+    """The fallback must be visible, not silent: the flag is being ignored on purpose."""
+    ctx = PageContext(
+        base_dir=_project(tmp_path),
+        bus=_status(display="fullscreen", applied_rotation=[0, 1], enabled_modes=[0, 1],
+                    disabled_modes=[0, 1], max_modes=2, enabled_fell_back=True),
+        bind="127.0.0.1")
+    async with _panel(ctx) as p:
+        await p.user.open("/")
+        await p.user.should_see("disables EVERY mode")
+
+
 async def test_secret_value_never_reaches_the_page(tmp_path):
     """The strongest form of this check: the value is not even in the element tree."""
     ctx = _ctx(tmp_path)

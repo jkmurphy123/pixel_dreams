@@ -114,6 +114,32 @@ def _loop_text(snap: dict, uptime: float) -> str:
             f"frame {snap.get('frame', 0)}, up {_fmt_uptime(uptime)}, pid {snap.get('pid')}")
 
 
+def _rotation_text(snap: dict) -> str:
+    """
+    What the running app is actually rotating through — the APP's answer, not the file's.
+
+    The two can disagree (a saved change that has not been applied, or a profile the app did not
+    load), and seeing the applied filename and hash next to the editor's is how you tell.
+    """
+    if snap.get("display") == "off":
+        return "no display process attached to this panel"
+    rotation = snap.get("applied_rotation")
+    if not rotation:
+        return "starting up"
+    enabled = snap.get("enabled_modes") or []
+    max_modes = snap.get("max_modes", "?")
+    text = f"playing {rotation} — {len(enabled)} of {max_modes} slot(s) enabled"
+    if snap.get("enabled_fell_back"):
+        text += ("; WARNING: the profile disables EVERY mode, so the app is ignoring the flag to "
+                 "keep the wall from going blank")
+    elif snap.get("disabled_modes"):
+        text += f"; disabled: {snap['disabled_modes']}"
+    path = snap.get("applied_config_path")
+    if path:
+        text += f" · {os.path.basename(path)} @ {str(snap.get('applied_config_sha256') or '')[:10]}"
+    return text
+
+
 def _commands_text(snap: dict) -> str:
     text = f"{snap.get('commands_applied', 0)} applied"
     if snap.get("last_command"):
@@ -446,7 +472,7 @@ def _status_card(ctx: PageContext, active_path: str, active_source: str) -> dict
         with ui.grid(columns=2).classes("w-full gap-x-6 gap-y-1 text-sm"):
             for key, caption in (("mode", "Live mode"), ("loop", "Render loop"),
                                  ("profile", "Active profile"), ("panel", "Panel"),
-                                 ("commands", "Commands")):
+                                 ("commands", "Commands"), ("rotation", "Rotation")):
                 ui.label(caption).classes("opacity-60")
                 labels[key] = ui.label("-").mark(f"status-{key}")
         if not ctx.token_required:
@@ -469,6 +495,7 @@ def _refresh_status(ctx: PageContext, labels: dict) -> None:
         f"{snap.get('panel_bind')}:{snap.get('panel_port')} (nicegui {snap.get('nicegui_version')})"
     )
     labels["commands"].set_text(_commands_text(snap))
+    labels["rotation"].set_text(_rotation_text(snap))
 
 
 # ---------------------------------------------------------------- data for pages
@@ -499,6 +526,9 @@ def _render_mode_rows(container, info, base_dir: str) -> None:
                     .mark(f"mode-number-{e.number}")
                 ui.label(e.label or "—").classes("w-44 truncate text-sm")
                 ui.label(e.type).classes("w-56 truncate text-xs opacity-70")
+                if not e.enabled:
+                    ui.badge("disabled").props("outline color=orange").classes("text-xs") \
+                        .mark(f"mode-disabled-{e.number}")
                 if e.override_keys:
                     ui.badge(f"local override: {', '.join(e.override_keys)}") \
                         .props("outline color=orange").classes("text-xs")

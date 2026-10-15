@@ -527,6 +527,59 @@ kiosk paths (e.g. `/home/ubuntu/narrow_slideshow/...`). That is the per-host cas
 
 ---
 
+### 10.3 Phase 3 — implementation record (DONE, 2026-10-15)
+
+**What shipped.** Editing works while the kiosk runs: the generated fields are editors, Save &
+Apply writes the file and tells the running app to reload and rebuild the mode, the enable switch
+takes a mode out of the rotation immediately, and Refresh rebuilds the mode on screen from the
+config in memory. Nothing needed a restart at any point.
+
+**The write model is one tested module, not button handlers** (`core/editor.py`). It stages,
+validates the whole profile, refuses what it can prove wrong, detects a file that moved underneath
+it, and writes atomically with a backup. Three properties are worth naming because they are the
+difference between a useful panel and a dangerous one:
+
+- *Staging is free.* Nothing touches the disk before Save; Revert costs nothing; a Save with
+  nothing staged does not rewrite the file or leave a backup.
+- *Validation judges the schema, not the value just typed.* Field checks resolve their widget,
+  type, range and allowed set from the schema and the file's CURRENT value. Inferring them from the
+  staged value would make everything valid by construction — stage a number into a text field and
+  the field would define itself as numeric. A test pins this.
+- *A stale file is refused, not overwritten.* The page says what changed on disk and Save stays
+  blocked until Reload. Two tabs, or an ssh edit, cannot be silently clobbered.
+
+**Validation is shared, not duplicated** (`core/validation.py`). `validate_configs.py` keeps the
+CLI and the report format and delegates every rule to the same module the panel uses. A test fails
+if the check messages ever get copied back into the CLI, because two implementations would drift
+and the panel is the one that can wreck a config at 2am.
+
+**The `enabled` flag, end to end.** The rotation honours it from the first frame (so disabling
+survives a restart), an apply rebuilds the rotation from the new enabled set while keeping its
+place, and `--play N` still plays a disabled mode when asked for by name. The status reports the
+PROFILE's answer and the ROTATION's answer separately: when every mode is disabled the fallback
+plays them all to avoid a blank wall, and `enabled_fell_back` says so rather than letting the panel
+claim the flag was respected.
+
+**How "it applied" is answerable.** The controller records a digest of the config it BUILT the
+current mode from (`mode_config_digest`) and publishes it. Comparing it with the file's hash says
+whether the wall is running the edit; without it, "it should have picked it up" is all anyone could
+say. The mode page compares the two and tells you when the wall is showing an older version.
+
+**Decisions taken during implementation** (§12 Q7-Q11): the enable switch acts immediately; absent
+keys are edited in place rather than through a separate "add a parameter" picker; `POST /api/apply`
+and `/api/refresh` exist as the scripted form of Save & Apply; a refresh requested mid-fade is
+queued rather than dropped; a mode that exists only in the local override is shown read-only with
+the reason instead of being edited into the profile.
+
+**Numbers.** 407 tests (was 397 at the end of Phase 2). `validate_configs.py --all`: 0 errors, the
+same single pre-existing warning. The 2508 form fields across 167 modes are unchanged by this
+phase; what changed is that they are editable. Live verification: a parameter edit reached a
+running kiosk and changed what the live mode was built from, a disabled mode left the rotation and
+was never shown by it, and disabling everything kept the wall alive with a warning in the log.
+
+
+---
+
 ## 11. Risks and non-goals
 
 Risks:
@@ -563,6 +616,16 @@ All six were answered on 2026-10-15. Nothing here is waiting on you.
 | Q4 | `profile` metadata block | **Yes** — `label`/`resolution`/`notes` per profile; core ignores it, the dropdown uses it | Filenames only |
 | Q5 | Derived/effective values | **Yes** — show the configured value with a "derived at runtime" tag; Phase 5 makes them real params | Skip the tagging |
 | Q6 | `--panel-only` (no display) | **Yes** — moved into Phase 1, since it also makes Phases 2-3 testable without a display | Decide later |
+
+Phase 3 raised five more, all settled during implementation:
+
+| # | Question | Decision | Runner-up (recorded, not pursued) |
+|---|---|---|---|
+| Q7 | Does the disable switch stage or act? | **Acts immediately** (write + apply). A switch that silently waits for a Save button teaches the wrong thing about the config, and it is a one-key change with nothing to stage | Stage it like a parameter (uniform, but a switch that appears not to work) |
+| Q8 | How do you add a parameter the profile does not set? | **Edit it in place**: absent keys are already listed and badged "not set in this profile", and editing one adds the key. `unset` removes one | A separate "add a parameter" picker (two ways to do one thing) |
+| Q9 | Is there a scripted form of Save & Apply? | **Yes** — `POST /api/apply` (re-read a profile from disk and apply) and `POST /api/refresh`, token-gated, read-only on disk, same code path as the buttons | Buttons only (the apply path could then only be exercised with a browser) |
+| Q10 | A refresh arriving mid-fade? | **Queued** and done at the next clean frame, and counted when it happens | Drop it (silent failure), or interrupt the fade (visible glitch) |
+| Q11 | How does the panel know the change reached the wall? | **The controller publishes `mode_config_digest`** — a hash of the config the live mode was BUILT from — and the page compares it with the file | Assume it applied (unfalsifiable) |
 
 If any of these turns out wrong once you are using it, the doc is the place the reversal gets
 written — not the transcript.

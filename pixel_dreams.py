@@ -237,6 +237,7 @@ def main(argv=None):
         disabled_modes=disabled_modes,
         enabled_fell_back=enabled_fell_back,
         applied_rotation=playlist.entries if not single_mode_lock else [playlist.current],
+        max_modes=max_modes,
         # The mode's identity and the digest of the config it was built from, present from the
         # first frame: a consumer must never have to guess whether a missing key means "not yet".
         mode_type=type(manager.current_mode).__name__ if manager.current_mode else None,

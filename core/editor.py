@@ -54,7 +54,7 @@ class StagedEdit:
         bits = [f"{k} = {v!r}" for k, v in self.sets.items()]
         bits += [f"{k} removed" for k in self.removes]
         if self.enabled is not None:
-            bits.append(f"enabled = {self.enabled}")
+            bits.append("enabled (the key is removed)" if self.enabled else "disabled")
         return "; ".join(bits)
 
 
@@ -221,7 +221,13 @@ class ProfileEditor:
             for k, v in state.sets.items():
                 cfg[k] = v
             if state.enabled is not None:
-                cfg["enabled"] = bool(state.enabled)
+                if state.enabled:
+                    # "enabled" is the DEFAULT, so enabling REMOVES the key: a disable -> enable
+                    # round trip then leaves the file exactly as it was found, instead of
+                    # accumulating `"enabled": true` noise in a config a human reads.
+                    cfg.pop("enabled", None)
+                else:
+                    cfg["enabled"] = False
             modes[key] = cfg
         return doc
 

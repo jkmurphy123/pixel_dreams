@@ -43,9 +43,42 @@ without fastapi/uvicorn loaded at all).
 | `--panel-only` | serve the panel without initialising pygame — for preparing a profile offline |
 | `--frames N` | exit after N frames (used by the verification tests) |
 
-Pages so far: `/` (active profile + its mode list + live status).
-See `designs/PIXEL_DREAMS_DESIGN.md` for the full plan; the source of truth for what is
-actually built is that doc's Phase 1 implementation record.
+Pages: `/` (active profile + its mode list + live status) and `/mode/<n>?profile=<rel>`, the
+generated parameter form for one mode. See `designs/PIXEL_DREAMS_DESIGN.md`; the source of truth
+for what is actually built is that doc's per-phase implementation records.
+
+### Tuning a mode while the kiosk runs
+
+Open `/`, click `params →` on a mode, change the values you want, then **Save & Apply**: the file
+is written (validated, atomic, with a timestamped backup in `.backups/`) and the running app is told
+to reload and rebuild that mode — you see the change on the wall without a restart. `Refresh this
+mode now` rebuilds it again from the config already loaded, which is what you want after adjusting
+something the mode re-reads on construction.
+
+The `Enabled in the rotation` switch writes immediately and takes the mode in or out of the
+rotation, so a mode that only looks right in one orientation can be switched off per profile. If
+every mode in a profile is disabled the app plays them all anyway and logs a warning, rather than
+leaving the wall blank.
+
+Fields the panel will not write, each saying why on the page: secrets (they live in
+`secrets.json`), values supplied by `modes_config.local.json` (that file wins over the profile), and
+values the mode computes at runtime. A field badged `not set in this profile` is declared by the
+registry but absent from the file — editing it adds the key, `unset` removes one.
+
+If the file changed underneath you (another tab, an ssh edit), Save is refused and the page says
+what changed, until you press `Reload from disk`. Nothing is written that you did not see.
+
+Scripted equivalents, both token-gated and read-only on disk:
+
+```bash
+curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/apply \
+     -H 'Content-Type: application/json' -d '{"profile": "configs/modes_config_portrait.json", "refresh": true}'
+curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/refresh
+curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/status
+```
+
+`/api/apply` re-reads a profile from disk and applies it (the same path the button takes, minus the
+write) — handy after editing a file by hand or pulling a commit.
 
 Panel reach: loopback by default. To open it from another machine, add
 `"panel_token": "<long random string>"` to `secrets.json` (gitignored — see
@@ -62,8 +95,14 @@ form is never remembered as a cookie.
 - `configs/*.json` — **profiles**: one per display orientation (portrait, landscape,
   narrow_horz, narrow_vert, jetson, windows, basic)
 - `modes_config.local.json` — optional per-host overrides (gitignored)
-- `secrets.json` — API keys and the panel token (gitignored, see `secrets.example.json`)
+- `secrets.json` — API keys and the panel token (gitignored, see `secrets.example.json`) with
+  chmod 600
 - `runtime/active_profile.json` — which profile is active (gitignored, written by the panel)
+- `.backups/` — timestamped copies of a profile taken just before each save (gitignored, newest 20
+  kept per file). If a save ever goes wrong, the previous file is here.
+
+Any mode may carry `"enabled": false` to opt out of the rotation; a profile where every mode is
+disabled still plays them all, with a warning in the log, so a mistake cannot blank the wall.
 
 Validate everything after editing:
 

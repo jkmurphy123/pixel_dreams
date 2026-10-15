@@ -149,12 +149,24 @@ def test_a_second_save_is_not_a_conflict_with_our_own_write(project):
     assert len(_backups(project)) == 2
 
 
-def test_enabled_is_written_as_a_real_boolean(project):
+def test_enabled_false_is_written_and_enabling_removes_the_key(project):
+    """Disabling writes a real boolean; enabling REMOVES the key so the round trip is exact."""
+    path = os.path.join(project, "modes_config.json")
+    original = sha256_file(path)
+
     ed = _editor(project)
     ed.stage_enabled(1, False)
     assert ed.save().ok
     assert _on_disk(project)["modes"]["1"]["enabled"] is False
     assert _editor(project).mode_config(1).get("enabled") is False
+
+    ed2 = _editor(project)
+    ed2.stage_enabled(1, True)
+    assert ed2.save().ok
+    after = _on_disk(project)["modes"]["1"]
+    assert "enabled" not in after, f"enabling left the key behind: {after}"
+    assert json.load(open(path)) == PROFILE, "the round trip changed the file"
+    assert sha256_file(path) == original, "a disable -> enable round trip must be byte-identical"
 
 
 def test_adding_a_declared_key_then_removing_it_is_a_no_op(project):
@@ -375,7 +387,7 @@ def test_staged_summary_is_readable(project):
     ed.stage_set(0, "refresh_hz", 45)
     ed.stage_enabled(1, False)
     summary = ed.staged_summary()
-    assert "refresh_hz = 45" in summary and "enabled = False" in summary
+    assert "refresh_hz = 45" in summary and "disabled" in summary
 
 
 # ---------------------------------------------------------------- the real tree

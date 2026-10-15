@@ -57,6 +57,13 @@ Core (shared by everything — edit here, not in copies):
 - `core/playlist.py` — Playlist: sequential/shuffled rotation (no global state)
 - `core/hardware.py` — RotaryHardware: lazy gpiozero wrapper (Pi only)
 - `core/profiles.py` — profile (config file) discovery, active-profile resolution, mode summaries
+- `core/params.py` — the param schema/resolver: what a field is, its widget, and whether a value
+  is acceptable for it (`validate_param_value`)
+- `core/validation.py` — THE config rules (registry, one instance, whole profile). Shared by
+  `validate_configs.py` and by the panel before it writes; never copy these checks elsewhere
+- `core/editor.py` — the only writer of profile files: stage, validate, conflict-check, atomic
+  write with backup, plus `load_payload()` (what the loop swaps in)
+- `core/store.py` — crash-safe JSON write + backups
 - `core/bus.py` — ControlBus: the ONLY channel between the panel thread and the render loop
 - `validate_configs.py` — static config validator (run it in CI / before commit)
 
@@ -109,8 +116,8 @@ Rules, each one a bug class already avoided:
    finished dicts; the loop only swaps references.
 2. **The panel never touches pygame or ModeManager.** It posts commands to the bus and reads
    `bus.snapshot()`. No cross-thread UI calls, ever.
-3. **One writer per file.** Profile JSON is written by the panel only (later phases); the
-   registry is edited by hand only. Never two write paths for one file.
+3. **One writer per file.** Profile JSON is written by `core/editor.py` only; the registry is edited
+   by hand only. Never two write paths for one file.
 4. **Bounded drain.** `bus.drain()` applies at most `MAX_DRAIN_PER_FRAME` commands per frame,
    so a burst of clicks cannot stall a frame.
 5. **Panel import is lazy.** `import nicegui` happens only when the panel is enabled, so the
@@ -118,8 +125,20 @@ Rules, each one a bug class already avoided:
 6. **Config on disk never lands half-written.** Temp sibling + `flush` + `fsync` + `os.replace`,
    then re-read and hash-verify (see `designs/PIXEL_DREAMS_DESIGN.md` §7).
 
+Commands the loop understands (`core/bus.py` + `pixel_dreams.py`): `ping`, `apply_config` (swap in
+freshly read registry/modes, rebuild the rotation, optionally rebuild the mode on screen) and
+`refresh_mode` (rebuild the mode on screen from the config already in memory). A refresh that
+arrives mid-fade is queued to the next clean frame, never dropped.
+
+Writing a config goes through `core/editor.py` and nowhere else. It stages, validates the whole
+profile, refuses what it can prove wrong, refuses to clobber a file that changed since it was read,
+and writes atomically with a backup. The rules it applies are in `core/validation.py`, which is
+also what `validate_configs.py` uses — do not add a second copy of those checks anywhere.
+
 A non-loopback `--panel-bind` requires `panel_token` in `secrets.json`; without a token the
-controller refuses to start rather than exposing an unauthenticated control surface.
+controller refuses to start rather than exposing an unauthenticated control surface. A loopback
+bind is ungated by design (only this machine can reach it) — `tests/test_panel_apply.py` asserts
+both halves of that.
 
 
 ## Config schema
@@ -140,10 +159,19 @@ Top-level object with a `modes` key:
 ```json
 {
   "modes": {
-    "1": { "type": "slideshow", "folder": "/path/to/images", "duration": 12 }
+    "1": { "type": "slideshow", "folder": "/path/to/images", "duration": 12 },
+    "7": { "type": "dungeon", "seed": 42, "enabled": false }
   }
 }
 ```
+
+Any mode may carry `"enabled": false` to opt out of the rotation. Absent means enabled; only an
+explicit JSON boolean disables (a string `"false"` is a mistake, is warned about by the validator,
+and is treated as enabled). If EVERY mode is disabled the app plays them all anyway and says so —
+a typo must not be able to leave the wall blank.
+
+Structural per-instance keys, which are not type parameters: `type`, `name`, `title`, `enabled`
+(`duration` IS a real parameter, so it is editable in the panel).
 
 ### `modes_config.local.json` (gitignored)
 Same shape. Shallow-merged per mode number on top of `modes_config.json`.
