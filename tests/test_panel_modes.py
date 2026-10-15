@@ -144,8 +144,9 @@ async def test_every_value_shape_renders_with_its_widget(tmp_path):
             "event_interval_range-min": "Number", "event_interval_range-max": "Number",
             # declared but unset: the schema's choices make it a dropdown
             "scale_mode": "Select",
-            # declared but unset, no name hint: a plain text field carrying the code default
-            "never_set_here": "Input",
+            # declared but unset: the schema's recorded default (42) now decides the widget,
+            # which is stronger evidence than the key's name — the rule that fixed the 500
+            "never_set_here": "Number",
         }
         for key, kind in expected.items():
             assert key in widgets, f"{key} did not render (got {sorted(widgets)})"
@@ -235,6 +236,49 @@ async def test_non_numeric_mode_number_is_reported(tmp_path):
     async with _panel(ctx) as p:
         await p.user.open("/mode/abc")
         await p.user.should_see("must be an integer")
+
+
+# ---------------------------------------------------------------- the real tree, for real
+
+async def test_every_mode_page_of_every_real_profile_renders(tmp_path):
+    """
+    Regression for the bug the fixture tests could not see: /mode/2 returned HTTP 500 in the real
+    project because slideshow's `scale_mode` is absent from that profile, the name heuristic
+    ("scale") guessed a number field, and the schema's default "cover" then hit int(). The
+    fixture profile covered every VALUE SHAPE but none of the real registry's schema oddities.
+
+    So: render EVERY mode of EVERY shipped profile through the real page builders. A page that
+    raises surfaces its traceback from here (NiceGUI re-raises after rendering its 500 page).
+    """
+    ctx = PageContext(base_dir=BASE_DIR, bus=ControlBus())
+    profiles = _real_profiles()
+    assert len(profiles) >= 8, [name for name, _ in profiles]
+
+    rendered = 0
+    async with _panel(ctx) as p:
+        for profile_name, modes in profiles:
+            for number in modes:
+                await p.user.open(f"/mode/{number}?profile={profile_name}")
+                await p.user.should_see("Parameters")
+                await p.user.should_see("READ-ONLY")
+                rendered += 1
+    assert rendered >= 160, f"expected to render every real mode, did {rendered}"
+
+
+async def test_real_pages_show_their_values_and_derived_flags(tmp_path):
+    """Spot-check the two things the user will look at first, on the real project."""
+    ctx = PageContext(base_dir=BASE_DIR, bus=ControlBus())
+    async with _panel(ctx) as p:
+        # slideshow mode 2 in the root profile: a string param rendered as a string
+        await p.user.open("/mode/2?profile=modes_config.json")
+        await p.user.should_see("Scale mode")
+        await p.user.should_see("cover")            # the schema default, as text not a number
+        await p.user.should_see("Overlay font size")
+
+        # the status ticker: font_size is computed from screen width at runtime
+        await p.user.open("/mode/1?profile=modes_config.json")
+        await p.user.should_see("derived at runtime")
+        await p.user.should_see("Scroll px per sec")
 
 
 # ---------------------------------------------------------------- helpers

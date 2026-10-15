@@ -50,7 +50,8 @@
           "suggestions": [
             "cover"
           ],
-          "default": "none"
+          "default": "none",
+          "widget": "text"
         },
         "scene_duration": {
           "default": 45
@@ -126,7 +127,8 @@
             "contain",
             "cover"
           ],
-          "default": "cover"
+          "default": "cover",
+          "widget": "text"
         },
         "scaled_cache_items": {
           "widget": "number",
@@ -2572,7 +2574,8 @@
             "contain",
             "cover"
           ],
-          "default": "cover"
+          "default": "cover",
+          "widget": "text"
         },
         "show_description": {
           "default": true
@@ -2933,7 +2936,8 @@
             "contain",
             "cover"
           ],
-          "default": "cover"
+          "default": "cover",
+          "widget": "text"
         },
         "shuffle_images": {
           "widget": "switch",

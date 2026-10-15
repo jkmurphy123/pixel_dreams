@@ -544,7 +544,14 @@ def _param_widget(p) -> None:
         return
 
     if p.widget == "number":
-        ui.number(value=value, step=p.step, min=p.min, max=p.max).disable().mark(marker)
+        # A number field must never be able to take the page down: a value whose shape
+        # disagrees with the widget (a string in a numeric field) shows as a note instead.
+        numeric = value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+        ui.number(value=numeric, step=p.step, min=p.min, max=p.max).disable().mark(marker)
+        if numeric is None and value is not None:
+            ui.label(f"value {value!r} is not a number — the widget and the value disagree; "
+                     f"check the schema for '{p.key}'") \
+                .classes("text-[10px] text-orange-300")
         return
 
     if p.widget == "choice":

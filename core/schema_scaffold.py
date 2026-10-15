@@ -189,19 +189,17 @@ def _is_meaningful_correction(inferred: str, candidate: "str | None") -> bool:
     """
     Should the schema carry this correction?
 
-    No when it would only replace a more specific name heuristic with the generic "text"
-    (`save_path` is better as a path picker than as a text box), and no when it says nothing
-    new. EXCEPTION: "json" is our honest fallback for a shape we cannot model, so a text field
-    wins over it — "palette" means a colour-scheme NAME in some modes and a list of RGB triples
-    in others, and only the code can tell them apart.
+    Evidence strength, weakest to strongest: a key's NAME is a guess, a code default's shape is
+    better, an explicit coercion is best. So a code candidate normally wins — with one exception:
+    when the code says "str" but the name reveals the string is a PATH or a COLOUR, the name is a
+    refinement (both are strings), not a contradiction, and the better widget should stay.
 
-    Everything else is a real upgrade: a switch where the name looked like text, a number where
-    it looked like text, a closed set of choices where it looked like free text.
+    Everything else is a real contradiction, and the code wins: a `str(...)` coercion must beat a
+    numeric-looking name, or a string like "cover" ends up in a number field.
     """
     if not candidate or candidate == inferred:
         return False
-    if candidate == "text" and inferred in ("path", "color", "range", "stringlist", "palette",
-                                            "switch", "number", "choice"):
+    if candidate == "text" and inferred in ("path", "color"):
         return False
     return True
 

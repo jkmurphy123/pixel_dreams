@@ -362,12 +362,22 @@ def resolve_params(instance_params: dict | None, spec: dict | None,
     for key in declared + extras:
         present = key in instance_params
         value = instance_params.get(key) if present else None
+        entry = schema.get(key, {})
         if present:
             widget = infer_widget(value, key)
             type_name = shape_of(value)
         else:
-            widget = infer_widget_for_absent(key)
-            type_name = infer_type_for_absent(key, widget)
+            # For a key this profile does not set, the schema's recorded default is REAL
+            # evidence about the type — stronger than the key's name. Taking the name's word
+            # first is how `scale_mode` (a string, "cover") got rendered as a number field and
+            # crashed the page with ValueError.
+            default = entry.get("default")
+            if default is not None:
+                widget = infer_widget(default, key)
+                type_name = shape_of(default)
+            else:
+                widget = infer_widget_for_absent(key)
+                type_name = infer_type_for_absent(key, widget)
 
         p = ParamSpec(
             key=key,
