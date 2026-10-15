@@ -314,7 +314,10 @@ def _apply_schema(spec: ParamSpec, entry: dict) -> ParamSpec:
         spec.has_default = True
     if "choices" in entry and isinstance(entry["choices"], list):
         spec.choices = tuple(entry["choices"])
-        if spec.widget == "text":
+        # A declared closed set DEFINES the widget, whatever inference guessed: a key whose
+        # name looks numeric ("scale_mode") would otherwise keep a number field and silently
+        # ignore the choices. Secrets stay masked.
+        if spec.choices and not spec.secret:
             spec.widget = "choice"
     if "suggestions" in entry and isinstance(entry["suggestions"], list):
         # Suggestions are NOT a closed set: the field stays editable free text, with the
@@ -385,7 +388,13 @@ def resolve_params(instance_params: dict | None, spec: dict | None,
             p.item = shape_of(value[0])
         if p.widget in ("stringlist", "palette") and isinstance(value, list) and value:
             p.item = shape_of(value[0])
+        if p.secret:
+            # A secret's value must not travel to the renderer at all. The loader injects it
+            # into the mode at construction time; the panel only ever needs to know it exists.
+            p.value = None
         _apply_schema(p, schema.get(key, {}))
+        if p.secret:
+            p.value = None
         params.append(p)
 
     # One source of truth for group order: GROUPS. A separate dict here drifted out of step

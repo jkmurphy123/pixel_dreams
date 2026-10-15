@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import secrets as _secrets
 import time
@@ -28,6 +29,7 @@ from nicegui import app, context, ui
 
 from core import profiles as profiles_mod
 from core.bus import APP_NAME, APP_VERSION, ControlBus, is_loopback
+from core.params import GROUPS, group_params, resolve_params
 
 #: How often the status labels are refreshed (a poll, never a page rebuild).
 REFRESH_SECONDS = 1.0
@@ -154,15 +156,16 @@ def _chrome(subtitle: str) -> None:
             ui.label(APP_NAME).classes("text-lg font-semibold")
             ui.label("control panel").classes("text-sm opacity-70")
             ui.label(f"v{APP_VERSION}").classes("text-xs opacity-50")
-        ui.row().classes("gap-4 text-sm")
+        with ui.row().classes("gap-4 text-sm"):
+            ui.link("Modes", "/").classes("text-inherit")
     with ui.column().classes("w-full max-w-5xl mx-auto px-4 py-2 gap-1"):
         ui.label(subtitle).classes("text-sm opacity-70")
 
 
 def _footer() -> None:
     ui.label(
-        "Phase 1: read-only preview — this page writes nothing. Saving, mode enable/disable, "
-        "refresh and profile switching arrive in Phases 3-4."
+        "Phase 2: the parameter form is generated and READ-ONLY — nothing on this page writes a "
+        "file. Saving, mode enable/disable, Refresh and profile switching arrive in Phases 3-4."
     ).classes("text-xs opacity-50")
 
 
@@ -218,7 +221,7 @@ def register_pages(ctx: PageContext) -> None:
         state = {"view": _initial_view(ctx.base_dir, active_path,
                                        requested=_requested_profile(ctx))}
 
-        _chrome("Live tuning for the kiosk display — no restart needed once editing lands.")
+        _chrome("Live tuning for the kiosk display — pick a profile, then a mode's parameters.")
         labels = _status_card(ctx, active_path, active_source)
 
         with ui.card().classes("w-full mt-4"):
@@ -273,6 +276,59 @@ def register_pages(ctx: PageContext) -> None:
 
         ui.timer(REFRESH_SECONDS, lambda: _refresh_status(ctx, labels))
         _refresh_status(ctx, labels)
+        _footer()
+
+    @ui.page("/mode/{number}")
+    def mode_page(number: str) -> None:
+        """
+        The generated form for one mode in one profile.
+
+        Phase 2 renders it READ-ONLY: every field shows its current value so you can see what
+        the panel understands, and nothing on this page writes a file. Phase 3 turns the same
+        fields into editors with Save & Apply.
+        """
+        if not _authorised(ctx, context.client.request):
+            _render_refusal()
+            return
+
+        active_path, active_source = profiles_mod.resolve_active_profile(
+            ctx.base_dir, ctx.config_override
+        )
+        view = _initial_view(ctx.base_dir, active_path, requested=_requested_profile(ctx))
+        profiles = profiles_mod.discover_profiles(ctx.base_dir, active_path)
+        info = next((p for p in profiles if p.rel == view), None)
+
+        _chrome(f"Mode {number} — {view}")
+        if info is None:
+            ui.label(f"Profile not found: {view}").classes("text-sm")
+            return
+        if not str(number).isdigit():
+            ui.label(f"Mode number must be an integer (got {number!r}).").classes("text-sm")
+            return
+
+        wanted = int(number)
+        modes, _meta = profiles_mod.profile_modes(info.path)
+        merged, overridden = profiles_mod.merge_local_override(
+            modes, profiles_mod.load_local_overrides(ctx.base_dir)
+        )
+        entry = next((e for e in profiles_mod.mode_entries(merged, overridden)
+                      if e.number == wanted), None)
+
+        if entry is None:
+            with ui.card().classes("w-full mt-2"):
+                ui.label(f"No mode {wanted} in this profile.").classes("text-base")
+                ui.label("Mode numbers are SLOTS within a profile, so that number may exist in "
+                         "another profile while meaning something else entirely.") \
+                    .classes("text-xs opacity-60")
+            _footer()
+            return
+
+        registry = _load_registry(ctx.base_dir)
+        spec = registry.get(entry.type_key, {})
+        params, warnings = resolve_params(entry.params, spec, entry.override_keys)
+
+        _mode_header(ctx, info, entry, active_source)
+        _render_mode_form(entry, params, warnings)
         _footer()
 
 
@@ -366,6 +422,193 @@ def _render_mode_rows(container, info, base_dir: str) -> None:
                         .props("outline color=orange").classes("text-xs")
                 else:
                     ui.label(f"{len(e.params)} params").classes("text-xs opacity-50")
+                ui.link("params →", f"/mode/{e.number}?profile={info.rel}") \
+                    .classes("text-xs ml-auto").mark(f"open-mode-{e.number}")
+
+
+def _load_registry(base_dir: str) -> dict:
+    """The registry's type specs. Re-read per page build so a hand edit shows up on reload."""
+    from core.config import load_json
+
+    registry = load_json(os.path.join(base_dir, "modes_registry.json"), {})
+    return registry.get("types", {}) if isinstance(registry, dict) else {}
+
+
+def _hex_from_rgb(value) -> str:
+    if not (isinstance(value, (list, tuple)) and len(value) == 3):
+        return "#000000"
+    try:
+        return "#%02x%02x%02x" % tuple(max(0, min(255, int(c))) for c in value)
+    except (TypeError, ValueError):
+        return "#000000"
+
+
+def _swatch(color_hex: str) -> None:
+    ui.element("div").style(
+        f"background:{color_hex};width:44px;height:22px;border-radius:4px;"
+        "border:1px solid rgba(255,255,255,0.25)")
+
+
+def _display_value(p):
+    """What to show: the profile's value, else the mode code's default, else nothing."""
+    if p.present:
+        return p.value
+    return p.default if p.has_default else None
+
+
+def _mode_header(ctx: PageContext, info, entry, active_source: str) -> None:
+    snap = ctx.bus.snapshot()
+    live = bool(info.active and snap.get("mode_index") == entry.number)
+    with ui.card().classes("w-full mt-2"):
+        with ui.row().classes("items-baseline gap-3"):
+            ui.label(f"Mode {entry.number}").classes("text-lg font-semibold")
+            ui.label(entry.label or "—").classes("text-base")
+            ui.label(entry.type).classes("text-sm opacity-60")
+            if live:
+                ui.badge("LIVE NOW").props("color=green").classes("text-xs").mark("live-badge")
+        ui.label(
+            f"profile {info.rel}" + (f" (on the display, chosen via {active_source})"
+                                     if info.active else " (PREVIEW — not on the display)")
+        ).classes("text-xs opacity-60")
+        if entry.override_keys:
+            ui.badge(f"modes_config.local.json supplies: {', '.join(entry.override_keys)}") \
+                .props("outline color=orange").classes("text-xs")
+
+
+def _render_mode_form(entry, params, warnings) -> None:
+    with ui.card().classes("w-full mt-4 gap-1"):
+        ui.label("Parameters").classes("text-base font-semibold")
+        ui.label(
+            f"{len(params)} field(s): every key this mode sets in this profile, plus every key "
+            f"the registry declares for the type (including ones this profile does not set)."
+        ).classes("text-xs opacity-60")
+        ui.label(
+            "READ-ONLY for now — this page writes nothing. Save, Cancel and Refresh arrive in "
+            "Phase 3."
+        ).classes("text-xs opacity-70").mark("readonly-banner")
+    for warning in warnings:
+        ui.label(f"warning: {warning}").classes("text-xs text-orange-300").mark("form-warning")
+
+    for group, items in group_params(params):
+        with ui.card().classes("w-full mt-2"):
+            ui.label(group.capitalize()).classes("text-sm font-semibold")
+            for p in items:
+                _param_field(p)
+
+    with ui.expansion("Raw JSON for this mode").classes("w-full mt-2"):
+        ui.textarea(value=json.dumps(entry.params, indent=2)) \
+            .props("readonly rows=14").classes("w-full font-mono text-xs").mark("raw-json")
+
+
+def _param_field(p) -> None:
+    with ui.row().classes("w-full items-start gap-4 py-2 border-b border-white/5") \
+            .mark(f"param-{p.key}"):
+        with ui.column().classes("w-72 shrink-0 gap-0"):
+            ui.label(p.label).classes("text-sm").mark(f"param-label-{p.key}")
+            with ui.row().classes("gap-1 items-center"):
+                ui.label(p.key).classes("text-[10px] opacity-40 font-mono")
+                if p.required:
+                    ui.badge("required").props("outline").classes("text-[10px]")
+                if p.derived:
+                    ui.badge("derived at runtime").props("outline color=purple") \
+                        .classes("text-[10px]")
+                if p.secret:
+                    ui.badge("secret").props("outline color=red").classes("text-[10px]")
+                if not p.present:
+                    ui.badge("not set in this profile").props("outline color=blue") \
+                        .classes("text-[10px]")
+                elif p.origin == "local override":
+                    ui.badge("local override").props("outline color=orange").classes("text-[10px]")
+            note = f"{p.type_name} · {p.widget}"
+            if p.has_default:
+                note += f" · code default {p.default!r}"
+            ui.label(note).classes("text-[10px] opacity-40")
+        with ui.column().classes("grow gap-1"):
+            _param_widget(p)
+            if p.help:
+                ui.label(p.help).classes("text-xs opacity-50")
+
+
+def _param_widget(p) -> None:
+    """Render one field. Phase 2: always read-only, never a secret value."""
+    value = _display_value(p)
+    marker = f"param-widget-{p.key}"
+
+    if p.widget == "secret":
+        ui.label("•••••••• supplied from secrets.json — never sent to the browser") \
+            .classes("text-sm opacity-60 font-mono").mark(f"param-secret-{p.key}")
+        return
+
+    if p.widget == "switch":
+        ui.switch(value=bool(value)).disable().mark(marker)
+        return
+
+    if p.widget == "number":
+        ui.number(value=value, step=p.step, min=p.min, max=p.max).disable().mark(marker)
+        return
+
+    if p.widget == "choice":
+        ui.select(options=list(p.choices), value=value).disable().mark(marker)
+        if p.suggestions:
+            ui.label("known values: " + ", ".join(p.suggestions)).classes("text-[10px] opacity-50")
+        return
+
+    if p.widget == "text":
+        # NOTE: this branch must exist explicitly. Without it a plain string fell through to
+        # the JSON fallback below, so `folder` rendered as a raw-JSON textarea.
+        ui.input(value="" if value is None else str(value)).props("readonly") \
+            .classes("w-full text-sm").mark(marker)
+        if p.suggestions:
+            ui.label("known values: " + ", ".join(p.suggestions)).classes("text-[10px] opacity-50")
+        return
+
+    if p.widget == "path":
+        ui.input(value="" if value is None else str(value)).props("readonly") \
+            .classes("w-full font-mono text-xs").mark(marker)
+        if isinstance(value, str) and value:
+            if os.path.isdir(value):
+                ui.label("exists: directory").classes("text-[10px] text-green-400")
+            elif os.path.isfile(value):
+                ui.label("exists: file").classes("text-[10px] text-green-400")
+            else:
+                ui.label("not found on this machine (paths are usually per-host — see "
+                         "modes_config.local.json)").classes("text-[10px] text-orange-300")
+        return
+
+    if p.widget == "color":
+        with ui.row().classes("items-center gap-2"):
+            _swatch(_hex_from_rgb(value))
+            ui.input(value=_hex_from_rgb(value)).props("readonly") \
+                .classes("w-28 font-mono text-xs").mark(marker)
+            ui.label(str(value)).classes("text-[10px] opacity-50")
+        return
+
+    if p.widget == "range":
+        low, high = (value if isinstance(value, list) and len(value) == 2 else (None, None))
+        with ui.row().classes("items-center gap-2"):
+            ui.number(value=low).disable().classes("w-28").mark(f"{marker}-min")
+            ui.number(value=high).disable().classes("w-28").mark(f"{marker}-max")
+            ui.label(f"[min, max] of {p.item or 'number'}").classes("text-[10px] opacity-50")
+        return
+
+    if p.widget == "stringlist":
+        ui.textarea(value="\n".join(str(v) for v in (value or []))).props("readonly") \
+            .classes("w-full font-mono text-xs").mark(marker)
+        ui.label("one entry per line").classes("text-[10px] opacity-50")
+        return
+
+    if p.widget == "palette":
+        entries = value if isinstance(value, list) else []
+        with ui.row().classes("items-center gap-1"):
+            for colour in entries:
+                _swatch(_hex_from_rgb(colour))
+        ui.textarea(value=json.dumps(entries)).props("readonly") \
+            .classes("w-full font-mono text-xs").mark(marker)
+        return
+
+    # json (and anything unmodelled): show it, do not pretend to understand it
+    ui.textarea(value=json.dumps(value, indent=2, default=str)) \
+        .props("readonly rows=4").classes("w-full font-mono text-xs").mark(marker)
 
 
 def _profile_rows(ctx: PageContext) -> list:
