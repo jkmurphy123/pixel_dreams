@@ -145,4 +145,13 @@ Validate everything after editing:
 python validate_configs.py --all
 ```
 
+The parameter exposure audit (what is NOT tunable yet, and what it would take):
+
+```bash
+python3 scripts/audit_params.py                       # the knobs worth reviewing
+python3 scripts/audit_params.py --mode blinkenlights  # one mode
+```
+
+Read-only. Its findings and recommendations are in `designs/PHASE_05_PARAMETER_AUDIT.md`.
+
 See AGENTS.md for the developer guide, including the panel's thread rules.

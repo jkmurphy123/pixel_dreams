@@ -627,6 +627,58 @@ the record survived a fresh process, and switching back restored the previous st
 
 ---
 
+### 10.5 Phase 5 — parameter exposure audit (DONE, 2026-10-15 — awaiting your review)
+
+**What shipped.** An analyser (`core/param_audit.py`, CLI `scripts/audit_params.py`) and the report
+it produced (`designs/PHASE_05_PARAMETER_AUDIT.md`). **No mode, registry entry or profile was
+changed**: the design says the candidate list is "reviewed before anything changes", and that review
+is the user's.
+
+**The rules are the deliverable as much as the list.** Three exclusions keep it trustworthy, and each
+one is pinned by a test:
+- a literal the mode itself overwrites (`self.margin_x = 20` then `int(self.w * 0.06)`) is a
+  PLACEHOLDER, not a knob — reporting it would send the reviewer to change a number with no effect;
+- a value already fed from config is not a knob (that would be two controls for one behaviour), and
+  neither is a value derived from another attribute (`1.0 / max(0.1, self.refresh_hz)`);
+- a one-off coordinate is not a knob, and neither is `0/1/2/-1/0.0/1.0` (indexes, flags, state
+  initialisers).
+
+**What it found** (measured, and every number in the document is generated output): 53 modules, 487
+raw values, **193 distinct knobs in the 39 modes a profile uses**. The dominant finding is a repeated
+idiom rather than a scatter of magic numbers — **29 modes compute their padding as
+`int(min(w, h) * X)`**, and the same shape recurs for font sizes — which is exactly the
+orientation-sensitive surface this project exists to tune.
+
+**Two false-positive classes were caught by verifying the draft against the tool's own output**: a
+"fifteen modes" claim that was really twenty-nine, and a "four timing knobs" claim whose every
+example was a state initialiser (`self._fade_t = 0.0`). The second became a code fix (skip
+`0.0`/`1.0`) and removed 243 junk candidates. Writing the narrative before checking it against the
+generated numbers is how audit documents end up quoting things that are not true.
+
+**Recommendation put to the user**: per-mode params (`pad_scale`, `font_scale`, colour knobs with
+one consistent name) rather than a profile-level scale factor, which would be a design change needing
+its own review — with the runner-up recorded so the choice is visible.
+
+**Open**: the review itself. Nothing in the exposure plan is scheduled until the user says so.
+
+**A leftover from the previous phase's live check surfaced here.** The first full-suite run of this
+phase failed two REAL-TREE tests: `runtime/active_profile.json` was present, pointing at the portrait
+profile, so `resolve_active_profile` returned `runtime` where `tests/test_profiles.py` only expected
+`registry`/`default`. Two things were wrong and both are now fixed:
+- the record was removed again (the tree is back to the root profile via registry, which is how it
+  was before Phase 4's live check);
+- the test itself was out of date — `runtime` is a legitimate source since Phase 4, and that assertion
+  would have failed the first time the user switched a profile for real.
+The mechanism by which the record survived Phase 4's own cleanup is NOT explained (the script printed
+and verified the removal, the post-commit check saw the directory absent, and the log that might have
+shown a second write was overwritten by the script's next step), and this record says so rather than
+guessing. What matters: the suite caught it, which is the point of the real-tree tests.
+
+**Numbers.** 462 tests (was 444).
+
+
+---
+
 ## 11. Risks and non-goals
 
 Risks:

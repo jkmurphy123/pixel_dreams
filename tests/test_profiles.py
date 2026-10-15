@@ -69,7 +69,10 @@ def test_real_project_profiles_discovered():
     actives = [p for p in profiles if p.active]
     assert len(actives) == 1, [p.name for p in actives]
     assert os.path.realpath(actives[0].path) == os.path.realpath(active_path)
-    assert source in ("cli", "registry", "default")
+    # "runtime" is a legitimate source since Phase 4: the panel can record which profile should
+    # play, and that record outranks the registry's setting. This test used to insist on
+    # registry/default, which meant it failed the first time a switch was recorded for real.
+    assert source in ("cli", "runtime", "registry", "default")
 
 
 def test_real_profiles_have_distinct_mode_sets():
