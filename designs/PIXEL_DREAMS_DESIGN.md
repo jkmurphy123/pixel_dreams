@@ -58,7 +58,7 @@ Phase 1 measures RSS and fps there.
 | Decision | Answer | Effect on this doc |
 |---|---|---|
 | Fork vs in-place | **New repo `pixel_dreams`, forked with history; pixel_drift frozen as the fallback app.** | §4 stands as the plan; the fork commands in §4 are step 1 of Phase 1. |
-| Panel reach | **Loopback by default; LAN only with `--panel-bind 0.0.0.0` plus a token from `secrets.json`.** | Token auth is in scope from the phase that first binds non-loopback (Phase 4); loopback is the default everywhere. |
+| Panel reach | **Loopback by default; LAN only with `--panel-bind 0.0.0.0` plus a token from `secrets.json`.** | Token gate shipped in **Phase 1**, not Phase 4: `--panel-bind` exists from the first release of the panel, so the gate that makes it safe had to ship with it. Loopback remains the default everywhere. |
 | Sparse profiles | **The form may add and remove optional parameters per profile.** | Phase 3 includes the add/remove-optional-param controls (§8), not just editing existing keys. |
 | Panel without a display | **`--panel-only` is wanted.** | Added to Phase 1, not deferred — it also makes Phases 2-3 testable without a display attached. |
 
@@ -397,9 +397,11 @@ Acceptance, verified in a browser with the app running: change
 restart; disable a mode → it is skipped by `--auto` (and `--play N` still plays it); corrupt config
 is refused with a reason; kill -9 the app mid-save and the file is still valid JSON.
 
-**Phase 4 — Live profile switching + LAN access + polish.**
+**Phase 4 — Live profile switching + polish.** (LAN access and token auth moved into Phase 1
+because `--panel-bind` shipped there; this phase keeps the service packaging and the rest.)
 Deliverables: `runtime/active_profile.json` + precedence + live reload of a different profile;
-`--panel-bind` with token auth for LAN use; `/raw`; optional `/logs`; "restore backup" action.
+`/raw`; optional `/logs`; "restore backup" action; packaging as a user service alongside the
+existing kiosk setup. (Token auth and `--panel-bind` already shipped in Phase 1.)
 Acceptance: switch from the laptop → the wall changes orientation profile, panel reports the new
 file; a request without the token is rejected from a non-loopback address; documented as a systemd
 user service alongside the existing kiosk setup.
@@ -413,6 +415,67 @@ deliberately separate from the panel work.
 
 ---
 
+### 10.1 Phase 1 — implementation record (DONE, 2026-10-15)
+
+Fork revision: `e0b0e16` → pixel_dreams commits `eabc5e3` (scaffold), `b703025` (core), `7cc2225`
+(panel), plus the wiring commit. Host: Jetson/Tegra aarch64, Python 3.10.12 (venv), pygame 2.6.1,
+NiceGUI 3.18.0.
+
+| Step | Status | Measured evidence |
+|---|---|---|
+| 1. Fork + scaffold (entrypoint rename, deps, `.gitignore`) | DONE | history preserved; 141/141 inherited tests pass on the renamed tree |
+| 2. `core/profiles.py` + `core/bus.py` | DONE | 38/38 new tests, incl. a 500-command real-thread handoff with no loss or duplication |
+| 3. `panel/` (read-only page, token gate, status/ping endpoints) | DONE | 14/14 in-process UI tests; page renders real mode names |
+| 4. Controller wiring (`--panel-port/--panel-bind/--panel-only/--frames`) | DONE | 8/8 process-level tests; full suite **200 passed** |
+
+Measured acceptance numbers (same run shape, `--auto 4 --windowed --input none --frames 1500`,
+25s each, headless SDL dummy driver):
+
+| Metric | Panel OFF | Panel ON | Delta |
+|---|---|---|---|
+| frames / wall time | 1500 / 25.31s | 1500 / 25.50s | — |
+| average fps | 59.3 | 58.8 | **−0.8%** |
+| peak RSS | 41.3 MB | 87.1 MB | **+45.8 MB** |
+| `nicegui` imported | no | yes | — |
+
+Live behaviour confirmed on the running app: `/api/status` reported mode 1 `StatusTickerMode` then
+transitioned 1 → 2 → 3 on the 4s auto-cycle; `/api/ping` moved `pong_count` 0 → 1 and
+`commands_applied` 0 → 1 — i.e. a panel request reached the render loop. Eight profiles listed,
+exactly one flagged active (`modes_config.json`, chosen via `registry`). RSS of +46 MB is the
+number to watch on a Pi Zero-class host; the panel is opt-in and lazily imported, so it costs
+nothing when off.
+
+**Deviations from this doc, with reasons** (folded in above where they affect a decision):
+
+1. **Token gate + `--panel-bind` shipped in Phase 1** (doc said Phase 4). `--panel-bind` exists as
+   soon as the panel does, so shipping it unguarded for three phases was not acceptable. The gate
+   is an HTTP **middleware**, not just a page check: a page-level guard still answers HTTP 200 with
+   a refusal page, which reads as "served" to a script and to anyone auditing exposure. Found by
+   the wiring test asserting 403 and getting 200.
+2. **`--frames N` added** (not in the doc): a bounded-run flag is what makes the fps/RSS/import
+   claims above verifiable, and it is what `tests/test_panel_wiring.py` uses.
+3. **`/api/status` and `/api/ping` added** (not in the doc): gated, machine-readable views used by
+   the acceptance runs. `/api/ping` posts the same command as the page button, which is how the
+   panel→loop direction was proven against the real process.
+4. **`?profile=<rel>` added**: the inspected profile is chosen by URL. NiceGUI 3.18's select cannot
+   have its change event driven from the test harness (its handler reads front-end props), and a
+   URL-chosen view exercises the same rendering path while being bookmarkable.
+5. **Status labels are mutated in place; only the mode list rebuilds** — and only on a user action.
+   A 1s page rebuild would delete anything a client is using and re-request content.
+6. **`secrets.json` was not actually gitignored** in the inherited `.gitignore` (AGENTS.md claimed
+   it was). Fixed here and recorded in AGENTS.md. Worth checking on the kiosk's copy of pixel_drift,
+   since a real key file would otherwise be committable.
+7. `modes/` is byte-identical to pixel_drift, so a few mode-file comments still say "pixel_drift".
+   Deliberate: it keeps the two trees diffable.
+
+Environment note (not a defect): the inherited profiles point at the kiosk's paths, so on this
+machine `modes_config.json` modes 2 and 3 log
+`[SlideshowMode] folder does not exist: /home/ubuntu/narrow_slideshow/...` and render nothing. That
+is exactly the per-host case `modes_config.local.json` exists for, and the panel already badges
+override-supplied values.
+
+---
+
 ## 11. Risks and non-goals
 
 Risks:
@@ -420,7 +483,8 @@ Risks:
 - **LAN exposure.** A panel that writes configs is a write surface; a 0.0.0.0 bind puts it on the
   network. Mitigation: loopback default, explicit `--panel-bind 0.0.0.0` plus a token from
   `secrets.json` (never in the UI), and no destructive actions in the panel (no reboot/shutdown).
-  (ASSUMED until Phase 4's non-loopback rejection test.)
+  Measured in Phase 1: an unauthorised request gets a real 403 on every route, and the browser
+  path (auth route → cookie → page) is covered by a test.
 - **Pi memory.** NiceGUI + fastapi + uvicorn add real RSS. Mitigation: opt-in flag, lazy import,
   measured in Phase 1 so you can decide per host.
 - **Invalid config reaching the kiosk.** Blast radius is contained by validate-before-write,

@@ -27,6 +27,8 @@ import pygame
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
+from core import profiles as profiles_mod
+from core.bus import ControlBus, require_loopback_or_token
 from core.config import (
     infer_max_modes_from_config,
     list_configured_modes,
@@ -36,6 +38,31 @@ from core.config import (
 from core.hardware import RotaryHardware
 from core.manager import ModeManager
 from core.playlist import Playlist
+
+
+def _rss_mb() -> float:
+    """Resident memory, for the verification runs. Linux /proc first, rusage as backup."""
+    try:
+        with open("/proc/self/status") as fh:
+            for line in fh:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024.0
+    except Exception:
+        pass
+    try:
+        import resource
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+    except Exception:
+        return float("nan")
+
+
+def _summary(frames: int, elapsed: float, panel_url: str | None) -> str:
+    """One parseable line about a completed run (used by the Phase 1 verification)."""
+    avg = (frames / elapsed) if elapsed > 0 else 0.0
+    return (f"[Controller] Summary: frames={frames} elapsed={elapsed:.2f}s "
+            f"avg_fps={avg:.1f} rss_mb={_rss_mb():.1f} "
+            f"nicegui_imported={'nicegui' in sys.modules} "
+            f"panel={panel_url or 'off'}")
 
 
 def parse_args(argv):
@@ -71,6 +98,17 @@ def parse_args(argv):
     parser.add_argument("--gc-seconds", type=float, default=30.0,
                         help="Run gc.collect() every N seconds (default: 30, 0 disables)")
 
+    # ---- control panel (see AGENTS.md, "the thread contract") ----
+    parser.add_argument("--panel-port", type=int, default=None, metavar="N",
+                        help="Serve the web control panel on port N (default: off)")
+    parser.add_argument("--panel-bind", default="127.0.0.1", metavar="ADDR",
+                        help="Panel bind address (default: 127.0.0.1). A non-loopback address "
+                             "requires panel_token in secrets.json")
+    parser.add_argument("--panel-only", action="store_true",
+                        help="Serve the panel without initialising pygame (no display needed)")
+    parser.add_argument("--frames", type=int, default=None, metavar="N",
+                        help="Exit after N frames (verification aid)")
+
     args = parser.parse_args(argv[1:])
 
     if args.auto is not None and args.auto <= 0:
@@ -83,6 +121,12 @@ def parse_args(argv):
         parser.error("--gc-seconds must be >= 0")
     if args.play is not None and args.auto is not None:
         parser.error("--play and --auto are mutually exclusive")
+    if args.panel_port is not None and not (1 <= args.panel_port <= 65535):
+        parser.error("--panel-port must be between 1 and 65535")
+    if args.panel_only and args.panel_port is None:
+        parser.error("--panel-only needs --panel-port N (there is nothing else to serve)")
+    if args.frames is not None and args.frames < 1:
+        parser.error("--frames must be >= 1")
 
     return args
 
@@ -101,6 +145,43 @@ def main(argv=None):
         return 0
 
     print(f"[Controller] Max modes: {max_modes}")
+
+    # ---------------- control bus + panel ----------------
+
+    bus = ControlBus()
+    profile_path, profile_source = profiles_mod.resolve_active_profile(BASE_DIR, args.config)
+    bus.update_status(profile_abs=profile_path,
+                      profile_rel=os.path.relpath(profile_path, BASE_DIR),
+                      profile_source=profile_source,
+                      mode_count=max_modes)
+
+    panel = None
+    panel_url = None
+    if args.panel_port is not None:
+        try:
+            require_loopback_or_token(args.panel_bind, secrets.get("panel_token"))
+        except ValueError as e:
+            print(f"[Panel] Refusing to start: {e}")
+            return 2
+        from panel import start_panel          # lazy: imports nicegui only when enabled
+        panel = start_panel(
+            base_dir=BASE_DIR, bus=bus, host=args.panel_bind, port=args.panel_port,
+            token=secrets.get("panel_token"), config_override=args.config,
+        )
+        panel_url = panel.url
+        print(f"[Panel] Control panel on {panel_url} (bind {args.panel_bind})")
+
+    if args.panel_only:
+        # No display at all: the panel is the whole program.
+        bus.update_status(display="off")
+        print("[Panel] --panel-only: no display initialised. Ctrl-C to stop.")
+        try:
+            while True:
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            pass
+        print(_summary(0, 0.0, panel_url))
+        return 0
 
     # ---------------- pygame shell ----------------
 
@@ -128,6 +209,8 @@ def main(argv=None):
 
     manager = ModeManager(screen, registry, modes_config, max_modes, secrets)
     manager.start(initial_index=playlist.current)
+    bus.update_status(display="windowed" if args.windowed else "fullscreen",
+                      mode_index=manager.mode_index)
 
     # ---------------- hardware input (optional) ----------------
 
@@ -163,6 +246,35 @@ def main(argv=None):
     queued_delta = 0
     last_gc = time.time()
 
+    # Panel plumbing, all of it inside the frame loop:
+    #   * frame counter + a real fps sample (not the 60 we asked for)
+    #   * bus.dispatch() applies at most MAX_DRAIN_PER_FRAME panel commands per frame
+    #   * status is published at ~4Hz so a panel poll never sees a stale mode
+    started = time.time()
+    frame = 0
+    fps = 0.0
+    sample_at = started
+    sample_frame = 0
+
+    def _publish() -> None:
+        mode = manager.current_mode
+        cfg = manager.modes_config.get(str(manager.mode_index), {})
+        bus.update_status(
+            frame=frame,
+            fps=fps,
+            uptime_s=time.time() - started,
+            mode_index=manager.mode_index,
+            mode_type=type(mode).__name__ if mode is not None else None,
+            mode_name=(cfg.get("name") or cfg.get("title") or "") if isinstance(cfg, dict) else "",
+        )
+
+    def _panel_ping(_cmd) -> None:
+        # The pump the panel uses to prove the loop is alive and reachable.
+        pongs = bus.status("pong_count", 0) or 0
+        bus.update_status(pong_count=int(pongs) + 1)
+
+    handlers = {"ping": _panel_ping}
+
     if args.auto:
         print(f"[Controller] Auto-cycle every {args.auto:.1f}s. ESC quits.")
     elif single_mode_lock:
@@ -176,6 +288,9 @@ def main(argv=None):
         while not quit_requested:
             dt = clock.tick(60) / 1000.0
             elapsed_in_mode += dt
+            frame += 1
+
+            bus.dispatch(handlers)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -236,6 +351,18 @@ def main(argv=None):
                     _gc.collect()
                     last_gc = now
 
+            # Publish status only a few times a second: the loop's own timing stays the
+            # loop's business, and the panel's poll reads a small dict.
+            if time.time() - sample_at >= 0.25:
+                span = time.time() - sample_at
+                fps = (frame - sample_frame) / span if span > 0 else 0.0
+                sample_at, sample_frame = time.time(), frame
+                _publish()
+
+            if args.frames is not None and frame >= args.frames:
+                print(f"[Controller] Reached --frames {args.frames}")
+                break
+
     finally:
         print("[Controller] Quitting cleanly...")
         try:
@@ -251,6 +378,8 @@ def main(argv=None):
             pass
 
     print("[Controller] Exited.")
+    if args.frames is not None:
+        print(_summary(frame, time.time() - started, panel_url))
     return 0
 
 
