@@ -26,6 +26,7 @@ sys.path.insert(0, BASE_DIR)
 from core import profiles as profiles_mod          # noqa: E402
 from core.bus import ControlBus                     # noqa: E402
 from panel.app import (                             # noqa: E402
+    COOKIE_MAX_AGE_SECONDS,
     COOKIE_NAME,
     PageContext,
     _authorised,
@@ -255,12 +256,30 @@ async def test_auth_route_sets_the_cookie_and_rejects_a_bad_token(tmp_path):
         r = await p.client.get("/_panel/auth?token=s3cret-token", follow_redirects=False)
         assert r.status_code == 303
         assert r.headers["location"] == "/"
-        assert COOKIE_NAME in r.headers.get("set-cookie", "")
+        cookie = r.headers.get("set-cookie", "")
+        assert COOKIE_NAME in cookie
+        # it must be httpOnly (no script access) and last 60 days, not just the browser session
+        assert "httponly" in cookie.lower(), cookie
+        assert f"max-age={COOKIE_MAX_AGE_SECONDS}" in cookie.lower(), cookie
 
         # the cookie the route just set is what opens the page
         p.client.cookies.set(COOKIE_NAME, "s3cret-token")
         r2 = await p.client.get("/")
         assert r2.status_code == 200
+
+
+async def test_the_cookie_lifetime_is_sixty_days(tmp_path):
+    """60 days, stated once as a constant and asserted on both paths that set the cookie."""
+    assert COOKIE_MAX_AGE_SECONDS == 60 * 24 * 60 * 60, COOKIE_MAX_AGE_SECONDS
+
+    ctx = _ctx(tmp_path, bind="0.0.0.0", token="s3cret-token")
+    async with _panel(ctx) as p:
+        from_query = await p.client.get("/?token=s3cret-token")
+        assert f"max-age={COOKIE_MAX_AGE_SECONDS}" in from_query.headers.get("set-cookie", "").lower()
+
+        from_route = await p.client.get("/_panel/auth?token=s3cret-token",
+                                        follow_redirects=False)
+        assert f"max-age={COOKIE_MAX_AGE_SECONDS}" in from_route.headers.get("set-cookie", "").lower()
 
 
 async def test_loopback_binding_needs_no_token(tmp_path):

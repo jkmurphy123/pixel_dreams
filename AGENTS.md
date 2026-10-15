@@ -190,7 +190,10 @@ Kiosk-friendly logging:
   automatically when the config declares the key (see `core/loader.py`).
 - `panel_token` in `secrets.json` (or `PANEL_TOKEN` in the environment) is required before the
   panel may bind a non-loopback address. Never put the token in a page, a URL the server logs,
-  or a config file.
+  or a config file. A valid token presented in the URL becomes an httpOnly cookie that lasts
+  `COOKIE_MAX_AGE_SECONDS` (60 days), so the panel is reachable from that browser without the
+  token; changing the token invalidates every existing cookie. A token in an `X-Panel-Token`
+  header is deliberately NOT remembered.
 - If you see keys in `modes_registry.json` / `modes_config.json`, treat them
   as placeholders and refactor.
 

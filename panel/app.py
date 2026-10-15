@@ -37,6 +37,13 @@ REFRESH_SECONDS = 1.0
 #: Cookie the auth route sets, so the token is not needed in every URL.
 COOKIE_NAME = "pd_panel_token"
 
+#: How long the access cookie lasts: 60 days. Long enough that a laptop or tablet you use to tune
+#: the kiosk does not ask for the token every session, which was the whole friction this removes.
+#: The tradeoff is deliberate and worth stating: a browser that remembers this cookie is a device
+#: that can open the panel without the token, so the cookie now outlives the browser session.
+#: Rotation is "edit panel_token in secrets.json" — the cookie then stops matching.
+COOKIE_MAX_AGE_SECONDS = 60 * 24 * 60 * 60
+
 #: The one path that must be reachable without a token (it is how you get one).
 AUTH_PATH = "/_panel/auth"
 
@@ -656,7 +663,8 @@ def _install_token_gate(ctx: PageContext) -> None:
         # A header is deliberately NOT remembered: that form is a per-request credential for
         # scripts, and it should not quietly install a cookie in whatever made the request.
         if request.query_params.get("token") and not request.cookies.get(COOKIE_NAME):
-            response.set_cookie(COOKIE_NAME, ctx.token, httponly=True, samesite="lax")
+            response.set_cookie(COOKIE_NAME, ctx.token, httponly=True, samesite="lax",
+                                max_age=COOKIE_MAX_AGE_SECONDS)
         return response
 
 
@@ -669,5 +677,6 @@ def _register_auth_route(ctx: PageContext) -> None:
             return PlainTextResponse("invalid token", status_code=403)
         target = redirect if redirect.startswith("/") else "/"
         response = RedirectResponse(target, status_code=303)
-        response.set_cookie(COOKIE_NAME, token, httponly=True, samesite="lax")
+        response.set_cookie(COOKIE_NAME, token, httponly=True, samesite="lax",
+                            max_age=COOKIE_MAX_AGE_SECONDS)
         return response

@@ -50,7 +50,10 @@ actually built is that doc's Phase 1 implementation record.
 Panel reach: loopback by default. To open it from another machine, add
 `"panel_token": "<long random string>"` to `secrets.json` (gitignored — see
 `secrets.example.json`) and start with `--panel-bind 0.0.0.0`, then visit
-`http://<host>:8090/` once with `?token=<the token>`.
+`http://<host>:8090/?token=<the token>` once. That sets an httpOnly cookie which lasts **60 days**,
+so the token is not needed again in that browser until it expires (or you change the token, which
+invalidates every existing cookie). Scripts should send `X-Panel-Token: <token>` instead — that
+form is never remembered as a cookie.
 
 ## Configuration
 
