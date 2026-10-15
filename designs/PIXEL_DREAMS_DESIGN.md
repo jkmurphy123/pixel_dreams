@@ -1,0 +1,474 @@
+# pixel_dreams — design document (for review, before any coding)
+
+Status: DRAFT for review. Date: 2026-10-15. Author: Hikari (with the user).
+Scope: the application, the live-tuning web control panel, and the phased build plan.
+
+Convention used throughout this doc:
+
+- **MEASURED** = I ran a command or read the code and have the output. Evidence is named.
+- **ASSUMED** = believed, not yet proven. Every ASSUMED item is either probed in Phase 1 or
+  called out as an open decision.
+
+---
+
+## 1. What is being asked for
+
+pixel_drift works and its config method is fine. The problem is the tuning loop: to change a
+font size or a colour in a mode you edit JSON by hand and restart the app, which is painful when
+you are dialling in the same mode across portrait / landscape / narrow-orientation profiles.
+
+pixel_dreams keeps the same architecture (one controller, many visual modes, one JSON config per
+orientation) and adds **a web control panel that talks to the running application**:
+
+1. pick the active profile (config file) from a dropdown — the one that is actually on the wall
+2. pick a mode from that profile's list
+3. get a form **generated from that mode's parameters and their current values**
+4. edit values, then **Save** (write the JSON) or **Cancel** (discard)
+5. toggle a mode **off** without deleting it
+6. hit **Refresh** and watch the live mode restart on the new parameters — no app restart
+
+Out of scope for this doc: rewriting the modes. The mode interface contract does not change.
+
+---
+
+## 2. Resolved decisions (measured before designing)
+
+The riskiest assumption in the obvious design is "a NiceGUI web server can live in the same
+process as the pygame render loop without wrecking the frame rate". That was **probed, not
+assumed** — probe script kept at `designs/arch_spike_probe.py`, run on this host
+(Jetson/Tegra, aarch64, Python 3.10.12) on 2026-10-15.
+
+| # | Question | Measured answer | Consequence for the design |
+|---|----------|-----------------|----------------------------|
+| D1 | Can NiceGUI's uvicorn server run in a background thread while pygame owns the main thread? | **YES** — panel served on 127.0.0.1:8099, `/api/health` answered with `main_thread: False` | In-process panel is viable. No second process, no IPC layer. |
+| D2 | Can an HTTP request hand a command to the render loop? | **YES** — `GET /api/refresh` → queue → loop drained it: `refresh_count=1`, `params={'font_size': 96}` | The Save/Refresh/Profile-switch buttons all work through one queue. |
+| D3 | Does the panel thread cost frame rate? | **NO** — 62.3 fps sustained live sample with the panel serving (SDL dummy driver) | Render loop is untouched; the panel never does work on the frame path. |
+| D4 | Crash-safe config write round-trips? | **YES** — temp sibling + `fsync` + `os.replace`, re-read identical (sha256 `6fec1cdf501e`), no leftover tmp | Use this for every write. A kiosk loses power; a torn config is a dead display. |
+| D5 | Do param value types conflict across profiles? | **NO** — 0 conflicts across 8 config files, 279 distinct param keys | Per-**type** param schemas are safe; no per-instance typing needed. |
+| D6 | Are all params flat scalars? | **NO** — params include `list[int]` (RGB), `list[float]` (ranges), `list[str]` (labels), `list[list[int]]` (palette), and `list[dict]` (`devices`: list of `{hostname,name,role}`) | The form needs real typed editors plus a raw-JSON escape hatch. Generic "text box" would corrupt data. |
+| D7 | Is the registry's `required`/`optional` list a complete list of a mode's knobs? | **NO** — 6 types read config keys that are not declared: `blinkenlights`, `headlinesnews`, `penrosetiling`, `quotegenerator`, `slideshow`, `statusticker` (e.g. slideshow reads `dow_symbol`, `overlay_margin`, `scale_mode`, `scaled_cache_items`) | A form built only from the registry would silently hide real knobs. Schema must be inference-first. |
+
+Dependency versions installed and verified working together on this host: pygame 2.6.1,
+nicegui 3.18.0, uvicorn 0.54.0, fastapi 0.143.2, Python 3.10.12 (`/usr/bin/python3`).
+**ASSUMED:** the same stack installs and holds its frame rate on the target kiosk hardware;
+Phase 1 measures RSS and fps there.
+
+### 2.1 Confirmed at design review (2026-10-15)
+
+| Decision | Answer | Effect on this doc |
+|---|---|---|
+| Fork vs in-place | **New repo `pixel_dreams`, forked with history; pixel_drift frozen as the fallback app.** | §4 stands as the plan; the fork commands in §4 are step 1 of Phase 1. |
+| Panel reach | **Loopback by default; LAN only with `--panel-bind 0.0.0.0` plus a token from `secrets.json`.** | Token auth is in scope from the phase that first binds non-loopback (Phase 4); loopback is the default everywhere. |
+| Sparse profiles | **The form may add and remove optional parameters per profile.** | Phase 3 includes the add/remove-optional-param controls (§8), not just editing existing keys. |
+| Panel without a display | **`--panel-only` is wanted.** | Added to Phase 1, not deferred — it also makes Phases 2-3 testable without a display attached. |
+
+Taken as recommended defaults (object at any time, nothing depends on them): §6.2's `profile` metadata
+block for readable dropdown labels, and the "derived at runtime" tag on params whose mode computes its
+own size.
+
+---
+
+## 3. What exists today (measured inventory)
+
+- Controller: `pixel_drift.py` — 258 lines, one pygame shell, 60 fps loop, arrow keys / rotary
+  encoder to switch, `--play N`, `--auto N`, `--config FILE`, `--windowed`.
+- `core/manager.py` — `ModeManager` owns the display, does the fade, and `_activate_now(index)`
+  **exits the old mode, re-reads config from an in-memory dict, and constructs the new one**.
+  This is why live tuning needs no new lifecycle machinery.
+- `core/config.py` + `core/loader.py` — three-layer merge, per-mode:
+  `registry type_config` → `modes_config.json` (or profile) instance → `modes_config.local.json`
+  (gitignored per-host override). `load_project_config()` is the single entry point.
+- Scale: 53 mode modules / 53 registry types, ~25.7k LOC in `modes/` + `core/`, 34 instances in
+  the root profile, 8 config files (root + 7 in `configs/`).
+- Profiles are **not** the same set of modes: `modes_config_landscape.json` has 9 instances
+  (modes 1-4, 7-11), `modes_config.basic.json` has 20 (0-4, 13-19), portrait/jetson/windows
+  have 14-25 with overlapping numbers. Mode numbers are **slot numbers within a profile**, not
+  global identities — so the panel's unit of work is *(profile, mode number)*.
+- No param type metadata exists anywhere. `modes_registry.json` gives `required`, `optional`,
+  `entrypoint`, and (for 2 types only) `type_config`.
+- Several modes already auto-adapt to orientation at runtime (`self._is_portrait = h > w` in
+  `status_ticker_mode.py`, `system_information_mode.py`, `mission_control_console_mode.py`), and
+  some derive sizes from screen width rather than from config (ticker computes its font size from
+  `self.w`). So for those modes a config value is a *hint*, not the rendered truth. The panel
+  should show the configured value and label these as derived — Phase 5 makes them real params.
+
+---
+
+## 4. Recommendation: new project `pixel_dreams`, seeded as a fork of pixel_drift
+
+**Recommended:** create `pixel_dreams` as a **new project forked from pixel_drift** (git clone so
+the mode-authoring history comes along, then detach it as its own repo), and treat pixel_drift as
+the **frozen fallback kiosk app**. All future mode work happens in pixel_dreams.
+
+Why a fork rather than extending pixel_drift in place:
+
+- A live-write path over a running display's configs plus a web server is a real risk surface. Put
+  it where a bug cannot corrupt the app you rely on today.
+- The core changes needed are **small and additive** (an `enabled` flag honoured at selection time,
+  a playlist that takes an allowed-index set, a reload path, a param-schema block). Copying is
+  cheap; there is no big rewrite to justify staying.
+- Adding NiceGUI/fastapi/uvicorn to the kiosk app is a dependency decision you may want to reverse.
+  A separate repo makes "go back to the lean app" a checkout, not a revert.
+- Divergence is safe because there is only **one live codebase**: new modes go in pixel_dreams. A
+  mode you want in pixel_drift is a manual cherry-pick — acceptable, and it is the honest cost of
+  the split. (If you would rather keep a single tree, say so and I will design the panel as an
+  opt-in module inside pixel_drift instead; the rest of this doc is unchanged either way.) Confirmed
+  at review (2026-10-15): fork it.
+
+**Rejected — extend pixel_drift in place:** mixes a live experiment into a working kiosk, and the
+panel would end up editing the same versioned files the kiosk boots from.
+
+**Rejected — pixel_dreams imports pixel_drift across `sys.path`:** the two trees get coupled while
+still diverging, because the fork-specific changes (enabled flag, playlist, reload, param schema)
+have to be edited anyway. The kiosk would then break whenever pixel_drift's working tree changes.
+Worst of both.
+
+Implementation note: `/mnt/ssd/projects/pixel_dreams` already exists and holds only the `.venv` I
+created for the spike. Fork with:
+
+```bash
+cd /mnt/ssd/projects
+mv pixel_dreams/.venv /tmp/pdvenv && rmdir pixel_dreams
+git clone pixel_drift pixel_dreams && mv /tmp/pdvenv pixel_dreams/.venv
+cd pixel_dreams && git remote remove origin
+```
+
+---
+
+## 5. Architecture
+
+One process. The panel is a thread inside it; the render loop is the only thing that touches
+pygame, and the only way in is a command queue it drains once per frame. (MEASURED: D1-D3.)
+
+```
+   ┌──────────────────────────── pixel_dreams process ────────────────────────────┐
+   │                                                                              │
+   │  MAIN THREAD (60 fps, owns pygame)          PANEL THREAD (uvicorn + NiceGUI)  │
+   │  ┌───────────────────────────────┐          ┌──────────────────────────────┐ │
+   │  │ pixel_dreams.py loop          │          │ http://<host>:8090/          │ │
+   │  │  - events (keys/rotary)       │          │  profile dropdown            │ │
+   │  │  - ModeManager.update/render  │          │  mode list + enable toggles  │ │
+   │  │  - drain ControlBus  ◄────────┼──────────┼── post(cmd)                  │ │
+   │  └───────────────┬───────────────┘   queue  └───────────┬──────────────────┘ │
+   │                  │                                      │ disk I/O only here │
+   │                  ▼                                      ▼                    │
+   │   ModeManager (registry, modes_config in memory)   ConfigStore (read/write)   │
+   │                  │                                      │                    │
+   │            modes/*.py (unchanged contract)              ▼                    │
+   │                                              configs/*.json  (atomic writes) │
+   └──────────────────────────────────────────────────────────────────────────────┘
+```
+
+Rules this buys us (each one is a bug class avoided):
+
+- **The render thread never does disk I/O.** The panel parses config files and hands over finished
+  dicts; the loop only swaps references. D3 is the evidence that this matters.
+- **One writer.** The panel is the only thing that writes profile JSON; the app is the only reader.
+  No lock files, no lost updates.
+- **No cross-thread UI calls.** The panel never touches pygame objects. It posts commands and
+  polls the bus snapshot on a `ui.timer` for its status display.
+- **Bounded drain.** At most N commands per frame, so a burst can't stall a frame.
+- **Opt-in.** `--panel-port 8090` enables it; importing NiceGUI is lazy, so the kiosk runs without
+  the panel (and without the dependency) if you ever want that. `--panel-only` serves the same panel
+  with no display at all — pygame is never initialised (useful for preparing a profile offline, and
+  for testing Phases 2-3 with no display attached).
+
+---
+
+## 6. Config data model
+
+### 6.1 `enabled` — the disable toggle
+
+Add an optional instance key, default true:
+
+```json
+"7": { "type": "dungeon", "enabled": false, "seed": 42 }
+```
+
+Semantics — **selection, not construction**:
+
+- `enabled` is a *rotation* concept. The loader keeps ignoring/normalising it; the playlist and the
+  auto-cycle skip disabled slots; `--play N` still plays a disabled mode on purpose (explicit user
+  intent), printing a note.
+- If a profile ends up with **zero** enabled modes the app must not show a black wall: fall back to
+  all modes with a loud log line, and the panel refuses to save a zero-enabled profile in the first
+  place.
+- Files touched: `core/config.py` (add `enabled` to `COMMON_INSTANCE_KEYS` so the validator stops
+  calling it an unknown key), `core/playlist.py` (build entries from an allowed-index set instead of
+  `range(max_modes)`), `pixel_dreams.py` (compute the mask, respect it in `--auto`).
+
+Why a flag and not "just delete the mode from the profile": non-destructive and reversible in one
+click, and it keeps the tuned parameters for when that orientation comes back — which is exactly the
+workflow (same mode, different orientation, different settings).
+
+### 6.2 Profile metadata (default taken at review)
+
+Profiles currently carry no identity beyond their filename, and one of them references a Windows
+path (`configs/modes_config_portrait.json` mode 1 → `G:\images\...`), which suggests they travel
+between machines. Optional, ignored by core, displayed by the panel:
+
+```json
+"profile": { "label": "Portrait 1080x1920 wall", "resolution": [1080, 1920], "notes": "kitchen" },
+"modes": { ... }
+```
+
+Discovery: `modes_config.json` + every `configs/*.json` (glob, so `mode_*.json` naming conventions
+both work — the folder currently mixes `modes_config.basic.json` and `modes_config_portrait.json`).
+
+### 6.3 Which profile is active
+
+Precedence (extends the existing pattern, one new source inserted):
+
+```
+--config FILE (CLI)  >  runtime/active_profile.json  >  registry settings.modes_config_file
+```
+
+The panel's profile dropdown writes **`runtime/active_profile.json`** (small, untracked, one line)
+and never rewrites `modes_registry.json`.
+
+**Why not write `settings.modes_config_file` in the registry:** that file already has an editor —
+your text editor — and it holds entrypoints and (after Phase 2) the param schemas. A second writer
+that must round-trip a 26 KB versioned file to change one string is a divergence bug waiting to
+happen, and it dirties git on every profile switch. One file, one editor.
+
+### 6.4 Param schema — inference-first, metadata-optional
+
+The mechanism you asked for ("flexible, because adding modes is easy") has to work the day you add
+a mode, without you writing any UI metadata. So:
+
+- **Inference is the baseline.** For every param, the panel picks a widget from the value's type in
+  the current profile (MEASURED D5: types are consistent, so this is reliable), and from the
+  registry's `required`/`optional` lists for params that are declared but absent from this profile.
+- **Metadata is an upgrade**, opt-in per param, in `modes_registry.json`:
+
+```json
+"slideshow": {
+  "entrypoint": "modes.slideshow_mode:SlideshowMode",
+  "required": ["folder", "duration"],
+  "optional": ["font_size", "overlay_font_size", "weather_units", "crypto_ids", "..."],
+  "params": {
+    "font_size":   { "widget": "int",  "min": 8, "max": 400, "step": 1, "label": "Clock font px" },
+    "duration":    { "widget": "float", "min": 1, "max": 600, "label": "Seconds per image" },
+    "weather_units": { "widget": "choice", "choices": ["imperial", "metric"] },
+    "folder":      { "widget": "path", "kind": "dir" },
+    "crypto_ids":  { "widget": "list", "item": "str", "label": "Coin ids" }
+  }
+}
+```
+
+- Widget mapping (MEASURED D6 drives this table):
+
+| Value shape | Widget |
+|---|---|
+| `bool` | toggle switch |
+| `int` / `float` | number field (`step` from schema, else 1 / 0.05; min/max clamp) |
+| `str` | text field; `choice` if schema lists choices; `path` if schema says so |
+| `list[int]` len 3, values 0-255 | colour picker + hex field (`accent_rgb`, `bg_rgb`, ...) |
+| `list[float]` len 2 | min/max pair (`*_range` params, e.g. `burst_duration_range`) |
+| `list[str]` | one-per-line / chip list (`crypto_ids`, `status_labels`, `waypoint_labels`) |
+| `list[list[int]]` | palette editor — a list of colours (`palette` on penrose tiling) |
+| `list[dict]` | **raw JSON textarea**, validated on save (`devices` on network status wall) |
+
+- **`scripts/scaffold_param_schema.py`** (Phase 2) generates a first-draft `params` block for all 53
+  types by scanning every profile's values, plus the code-drift scan, so the review is "adjust these
+  numbers", not "type 279 definitions". Also fixes D7: the 6 undeclared keys get added to `optional`
+  so `validate_configs.py` stops warning about them and the form shows them.
+- Nothing is mandatory: a param with no metadata still renders with an inferred widget. Adding a
+  mode tomorrow = add the registry entry as you already do, and its params appear.
+
+---
+
+## 7. Write path (crash-safety, validation, conflicts)
+
+Every save:
+
+1. **Validate first, refuse before writing.** Reuse `validate_configs.py`'s rules (required keys
+   present, type match, unknown-key warnings surfaced to you inline) plus schema min/max. A save
+   that would break a mode is blocked, in the UI, with the reason.
+2. **Conflict check.** The panel remembers the hash of the file it loaded. If the file changed on
+   disk since (you hand-edited it), it **refuses to overwrite** and shows both versions' differing
+   keys with "keep mine / reload theirs". Never silently clobber an edit.
+3. **Atomic write.** Temp sibling → `flush` + `fsync` → `os.replace` → re-read and hash-verify
+   (MEASURED D4). Power loss either keeps the old config or the new one, never a fragment.
+4. **Backup.** Previous version kept as `configs/.backups/<name>.<UTCstamp>.json`, last N per file,
+   so a bad tuning session is one "restore" click away.
+5. **Apply in memory + refresh.** The loop swaps the parsed dict and rebuilds the live mode if the
+   edited mode is the one on screen.
+
+Formatting: rewritten with `indent=2` and a trailing newline, matching the existing files. Key order
+is preserved (dict order from load, new keys appended) so diffs stay small and readable.
+
+Note on the local override layer: `modes_config.local.json` (gitignored, per-host) is merged on top
+of the profile, so a param can be *shadowed* — you edit the profile, save, and nothing changes on
+screen because the override still wins. The panel therefore shows an origin badge per field
+(`registry default` / `profile` / `local override`) and a banner when the mode you are editing has
+shadowed keys, with a one-click "clear override for this key". (Not present on this machine today —
+`modes_config.local.json` does not exist here — but the example file shows the pattern is in use.)
+
+---
+
+## 8. Panel UI
+
+Pages (loopback by default; reachable from a laptop on the LAN only with `--panel-bind 0.0.0.0`
+plus the token — confirmed at review):
+
+- **`/` — Modes.** Active profile at the top (with a "switch profile" dropdown and its file path),
+  live status (current mode number, fps, uptime, panel clients), then the profile's mode list:
+  slot number, `name`/`title`, type, an **enable toggle** per row, and a "live now" marker on the
+  mode currently playing. Buttons: **Refresh current mode**, **Reload from disk**, and a per-row
+  **Open** that jumps to `/mode/<n>`.
+- **`/mode/<n>` — the dynamic form.** Grouped: appearance (fonts, colours, alphas) / layout /
+  data (folders, files, ids). Each field shows its widget, its origin badge, and its validation
+  state. Buttons: **Save & Apply** (write + refresh if this mode is live), **Save**, **Revert**
+  (reload from disk), and a collapsible **raw JSON** view for the whole mode. Because profiles are
+  sparse, also: **+ add optional parameter** (picks from the registry's `optional` list) and a
+  per-field delete — that is how you turn on `portrait_layout` or `scale_mode` for one profile
+  without hand-editing.
+- **`/raw` — the profile's whole JSON**, validated on save. Escape hatch for nested structures.
+- **`/logs` (optional)** — a ring buffer of the app's stdout, so you can see a mode's
+  `[Mode]` errors while tuning instead of SSHing in.
+
+Keyboard-free by design (a wall kiosk has no keyboard): every action is a button; the panel is the
+only place that needs a browser, and the display keeps running whatever the panel does.
+
+Save/Cancel/Refresh semantics, precisely:
+
+- **Cancel** = reload the form from disk. Nothing was written (the panel stages edits client-side
+  until Save — no partial writes).
+- **Save** = validate → write → swap in memory. Other modes pick the change up when they are next
+  switched to, because the manager builds from the in-memory config.
+- **Refresh** = re-instantiate the **currently playing** mode (`exit()` → build from updated config
+  → `enter()`), at a frame boundary, i.e. literally the same path as a mode switch (MEASURED from
+  code: `core/manager.py::_activate_now`). There is no separate "refresh all": modes you are not
+  looking at are rebuilt on switch anyway.
+- Refresh cost: same as a mode switch. Worst case is bounded by a mode's own `exit()`: the slideshow
+  joins a network thread with a 1.0 s timeout (`modes/slideshow_mode.py:158`), so expect a
+  sub-second hitch on that one, and a re-fetch of weather/coins (that is the point, when you are
+  tuning its overlay). The fade to black already covers the switch visually.
+- **Profile switch** = write `runtime/active_profile.json`, re-run `load_project_config()`, rebuild
+  the playlist from the new profile's enabled slots, and activate its first enabled slot. Never a
+  restart. `--config` on the command line still wins over the dropdown (the UI says so, and disables
+  the dropdown when a CLI override is in force, so the panel can't lie about what is playing).
+
+---
+
+## 9. Compatibility contract (your "compatible with the pixel drift mode interfaces")
+
+- The mode contract is untouched: `__init__(config: dict)`, `enter(manager)`, `exit()`,
+  `handle_event(event)`, `update(dt)`, `render(screen)`. Every existing pixel_drift mode drops in
+  unmodified; the mode files themselves are copied, not rewritten.
+- Add-a-mode workflow is unchanged (registry entry + config instance + `validate_configs.py`), and
+  the panel picks the new mode up on "Reload from disk" with zero UI work.
+- `validate_configs.py` stays the single source of truth for validity and grows only additively
+  (schema awareness); it must still pass on all 8 profiles.
+- Existing CLI flags keep working (`--play`, `--auto`, `--config`, `--input rotary`, `--gc-seconds`),
+  with `--panel-port` added.
+
+---
+
+## 10. Phased plan
+
+Each phase is independently verifiable, and closes by handing you a URL plus what to click
+(your usual check). The riskiest integration is first.
+
+**Phase 1 — Fork, scaffold, panel on the wire (proof of life).**
+Deliverables: pixel_dreams forked with full history; `.venv` with pygame + nicegui pinned in
+`requirements.txt`; lazy-imported panel thread behind `--panel-port 8090` (loopback by default);
+`--panel-only` (serve the panel with no pygame display at all); read-only `/` page listing profiles
++ modes + live status; ControlBus with a bounded drain.
+Acceptance: (a) `python pixel_dreams.py --auto 30 --windowed --panel-port 8090` cycles modes while
+`http://127.0.0.1:8090/` lists them; (b) fps before/after enabling the panel measured and reported;
+(c) RSS with the panel on/off recorded; (d) panel OFF = nicegui never imported (assert it);
+(e) `--panel-only` serves the same page with no display initialised.
+
+**Phase 2 — Param schema + read-only dynamic form.**
+Deliverables: `params` schema support in the registry (inference fallback); the scaffold script and
+its generated draft for 53 types; the 6 drift keys added to `optional`; `/mode/<n>` rendering every
+param with a plausible widget (no writes). Acceptance: automated check that **every** param present
+in every profile renders (count matched, 100%), plus the drift keys now visible; you eyeball a
+handful of real modes (slideshow, status ticker, control panel) and say the widgets are sane.
+
+**Phase 3 — Editing, saving, toggles, refresh (the headline feature).**
+Deliverables: staged edits + Save/Cancel; validation-before-write; conflict detection; atomic write
++ backups; `enabled` toggle end-to-end (config → playlist → auto-cycle); Refresh current mode;
++add/remove optional param; the "derived at runtime" tag on params whose mode computes its own value.
+Acceptance, verified in a browser with the app running: change
+`font_size` in the portrait profile → **Save & Apply** → the number on screen changes with no app
+restart; disable a mode → it is skipped by `--auto` (and `--play N` still plays it); corrupt config
+is refused with a reason; kill -9 the app mid-save and the file is still valid JSON.
+
+**Phase 4 — Live profile switching + LAN access + polish.**
+Deliverables: `runtime/active_profile.json` + precedence + live reload of a different profile;
+`--panel-bind` with token auth for LAN use; `/raw`; optional `/logs`; "restore backup" action.
+Acceptance: switch from the laptop → the wall changes orientation profile, panel reports the new
+file; a request without the token is rejected from a non-loopback address; documented as a systemd
+user service alongside the existing kiosk setup.
+
+**Phase 5 (optional) — parameter exposure audit.**
+The panel can only tune what is a parameter. Widen the surface for trouble modes: the derived sizes
+(ticker font from `self.w`), the hardcoded colours/alphas, and the params that currently exist only
+in code. Output: a candidate list with a recommendation each, reviewed before anything changes.
+This is where "adjust the appearance until it looks best" gets *fully* unlocked, and it is
+deliberately separate from the panel work.
+
+---
+
+## 11. Risks and non-goals
+
+Risks:
+
+- **LAN exposure.** A panel that writes configs is a write surface; a 0.0.0.0 bind puts it on the
+  network. Mitigation: loopback default, explicit `--panel-bind 0.0.0.0` plus a token from
+  `secrets.json` (never in the UI), and no destructive actions in the panel (no reboot/shutdown).
+  (ASSUMED until Phase 4's non-loopback rejection test.)
+- **Pi memory.** NiceGUI + fastapi + uvicorn add real RSS. Mitigation: opt-in flag, lazy import,
+  measured in Phase 1 so you can decide per host.
+- **Invalid config reaching the kiosk.** Blast radius is contained by validate-before-write,
+  atomic writes, and backups; the profile you are not editing is never touched.
+- **Two configs in flight.** The panel edits *files*; the app holds a *snapshot*. If a mode's data
+  file changes underneath (a quotes JSON, an image folder), only a mode switch/refresh re-reads it.
+  Stated in the UI as "changes apply on Save & Apply / next switch".
+- **Tuning a mode whose appearance is derived** (D7/§3): the form will show the configured value
+  even where the mode computes its own. Labelled in the UI; fixed properly in Phase 5.
+
+Non-goals: no mode rewriting, no remote kiosk administration, no multi-kiosk sync, no user accounts
+(single-token only), no mode-authoring/no-code mode creation.
+
+---
+
+## 12. Decisions — settled at review
+
+All six were answered on 2026-10-15. Nothing here is waiting on you.
+
+| # | Question | Decision | Runner-up (recorded, not pursued) |
+|---|---|---|---|
+| Q1 | Fork or in-place | **New repo `pixel_dreams`**, forked with history; pixel_drift frozen as the fallback app | Panel as an opt-in module inside pixel_drift (one tree, but shares the kiosk's risky files) |
+| Q2 | Panel reach | **Loopback default; LAN with `--panel-bind 0.0.0.0` + token in `secrets.json`** | Loopback only (safest, but then you tune on the kiosk) |
+| Q3 | Sparse profiles | **The form adds and removes optional params per profile** (Phase 3) | Edit only params already present (simpler form, more hand-editing) |
+| Q4 | `profile` metadata block | **Yes** — `label`/`resolution`/`notes` per profile; core ignores it, the dropdown uses it | Filenames only |
+| Q5 | Derived/effective values | **Yes** — show the configured value with a "derived at runtime" tag; Phase 5 makes them real params | Skip the tagging |
+| Q6 | `--panel-only` (no display) | **Yes** — moved into Phase 1, since it also makes Phases 2-3 testable without a display | Decide later |
+
+If any of these turns out wrong once you are using it, the doc is the place the reversal gets
+written — not the transcript.
+
+
+---
+
+## Appendix A — Evidence
+
+- Frozen pixel_drift revision the fork starts from: `e0b0e16`
+  ("Shrink portrait cover to ~75% and make fraction configurable"), tree clean.
+- Spike: `designs/arch_spike_probe.py`, run with `pixel_dreams/.venv/bin/python`, 6/6 checks PASS
+  (results reproduced in §2 D1-D4).
+- Drift scan: regex over `modes/*.py` for `config.get(...)`/`config[...]` keys vs registry
+  `required`/`optional`/`type_config` — 6 types, keys listed in D7.
+- Inventory: 53 `modes/*_mode.py`, 53 registry types, 34 instances in the root profile, 8 profile
+  files, 279 distinct param keys, 0 cross-profile type conflicts, nested values in
+  `devices` (network status wall) and `palette` (penrose tiling).
+
+## Appendix B — Where the doc lives
+
+`/mnt/ssd/projects/pixel_dreams/designs/PIXEL_DREAMS_DESIGN.md` (this file), spike alongside it.
+Per-phase docs, if you want the finer granularity used in Daedalus, will land in the same folder as
+`PHASE_0N_*.md`.

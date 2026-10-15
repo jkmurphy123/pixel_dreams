@@ -1,20 +1,26 @@
 # AGENTS.md
 
-pixel_drift is a Raspberry Pi / kiosk-style **mode controller** that runs one of many
+pixel_dreams is a Raspberry Pi / kiosk-style **mode controller** that runs one of many
 visual "modes" (screen-saver style apps) fullscreen and lets the user switch modes
-via keyboard or a rotary encoder.
+via keyboard or a rotary encoder. It also embeds a **web control panel** for tuning a
+mode's parameters live, while the display keeps running.
+
+Forked from `pixel_drift` at revision `e0b0e16`. `modes/` and the mode interface contract
+are inherited **unmodified** (a comment inside a mode file may still say "pixel_drift" —
+that is heritage, not a bug). pixel_drift is frozen; new modes go here.
 
 The system is plugin-like:
 - **Mode types** are declared in `modes_registry.json` (type -> Python entrypoint + defaults).
-- **Mode instances** are declared in `modes_config.json` (mode number -> type + parameters).
-- The **controller** (`pixel_drift.py`) loads registry + config, merges settings,
-  instantiates the mode class, and runs it in a single pygame shell.
+- **Mode instances** are declared in a *profile* config (`modes_config.json` or `configs/*.json`)
+  (mode number -> type + parameters).
+- The **controller** (`pixel_dreams.py`) loads registry + config, merges settings,
+  instantiates the mode class, and runs it in a single pygame shell, alongside the panel thread.
 
 Typical goals in this repo:
 - add new modes
+- tune how a mode looks on a given display orientation, without restarting the app
 - improve stability / memory usage
 - unify config schema and validation
-- tweak UI overlays (e.g., mode number watermark)
 - harden error handling and logging
 
 
@@ -24,10 +30,13 @@ Typical goals in this repo:
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt -r requirements-dev.txt
 
-python pixel_drift.py --show_modes
-python pixel_drift.py --play 1 --windowed
+python pixel_dreams.py --show_modes
+python pixel_dreams.py --play 1 --windowed
+
+# tests (headless — no display needed; UI files standalone first, see below)
+SDL_VIDEODRIVER=dummy python -m pytest tests/ -q
 ```
 
 Always validate configs after editing them:
@@ -40,14 +49,20 @@ python validate_configs.py --all
 ## Repository map
 
 Core (shared by everything — edit here, not in copies):
-- `pixel_drift.py` — the ONE controller entrypoint (all run modes, all inputs)
+- `pixel_dreams.py` — the ONE controller entrypoint (all run modes, all inputs, panel wiring)
 - `core/config.py` — JSON loading, type normalization, local override merge, secrets
 - `core/cache.py` — ResourceCache (shared fonts/images)
 - `core/loader.py` — entrypoint import, config validation, mode instantiation
 - `core/manager.py` — ModeManager: scene lifecycle, fades, mode-number overlay
 - `core/playlist.py` — Playlist: sequential/shuffled rotation (no global state)
 - `core/hardware.py` — RotaryHardware: lazy gpiozero wrapper (Pi only)
+- `core/profiles.py` — profile (config file) discovery, active-profile resolution, mode summaries
+- `core/bus.py` — ControlBus: the ONLY channel between the panel thread and the render loop
 - `validate_configs.py` — static config validator (run it in CI / before commit)
+
+Control panel (no pygame imports anywhere in here — it must stay usable headless):
+- `panel/__init__.py` — `start_panel()`: lazy NiceGUI import + background server thread
+- `panel/app.py` — NiceGUI pages, shared page chrome, token gate
 
 Modes:
 - `modes/<name>_mode.py` — one file per mode type
@@ -64,17 +79,47 @@ Config & data:
 ## Controller CLI
 
 ```
-python pixel_drift.py --show_modes          # list configured modes
-python pixel_drift.py --play N              # single mode, ESC quits
-python pixel_drift.py                       # manual: LEFT/RIGHT switch, ESC quits
-python pixel_drift.py --auto 30 [--shuffle] # auto-cycle every N seconds
-python pixel_drift.py --input rotary        # Pi rotary encoder (tap=quit, hold=reboot)
+python pixel_dreams.py --show_modes          # list configured modes
+python pixel_dreams.py --play N              # single mode, ESC quits
+python pixel_dreams.py                       # manual: LEFT/RIGHT switch, ESC quits
+python pixel_dreams.py --auto 30 [--shuffle] # auto-cycle every N seconds
+python pixel_dreams.py --input rotary        # Pi rotary encoder (tap=quit, hold=reboot)
 
 Common flags: --windowed --width W --height H --start N --max-modes N
               --config FILE --gc-seconds N
+Panel flags:  --panel-port N --panel-bind ADDR --panel-only --frames N
 ```
 
 Do not break existing flags. If a new flag is added, keep backward compatibility.
+
+
+## Control panel architecture (the thread contract — do not violate)
+
+The panel is a **thread inside the controller process**, not a separate program:
+
+```
+MAIN THREAD (60fps, owns pygame)                PANEL THREAD (uvicorn + NiceGUI)
+  loop -> bus.drain()  <--- queue <---  bus.post(cmd)   <- page/button handlers
+  loop -> bus.update_status(...) ---> shared status ---> page timers read bus.snapshot()
+```
+
+Rules, each one a bug class already avoided:
+
+1. **The render thread never does disk I/O.** The panel parses config files and hands over
+   finished dicts; the loop only swaps references.
+2. **The panel never touches pygame or ModeManager.** It posts commands to the bus and reads
+   `bus.snapshot()`. No cross-thread UI calls, ever.
+3. **One writer per file.** Profile JSON is written by the panel only (later phases); the
+   registry is edited by hand only. Never two write paths for one file.
+4. **Bounded drain.** `bus.drain()` applies at most `MAX_DRAIN_PER_FRAME` commands per frame,
+   so a burst of clicks cannot stall a frame.
+5. **Panel import is lazy.** `import nicegui` happens only when the panel is enabled, so the
+   kiosk runs without fastapi/uvicorn in memory. A test asserts that.
+6. **Config on disk never lands half-written.** Temp sibling + `flush` + `fsync` + `os.replace`,
+   then re-read and hash-verify (see `designs/PIXEL_DREAMS_DESIGN.md` §7).
+
+A non-loopback `--panel-bind` requires `panel_token` in `secrets.json`; without a token the
+controller refuses to start rather than exposing an unauthenticated control surface.
 
 
 ## Config schema
@@ -139,9 +184,13 @@ Kiosk-friendly logging:
 ## Security & secrets (MUST follow)
 
 - **Never commit API keys** in JSON files.
-- Secrets come from `secrets.json` (gitignored) or environment variables
-  (e.g., `OPENAI_API_KEY`). The controller injects them into mode configs
+- Secrets come from `secrets.json` (gitignored — verified with `git check-ignore -v secrets.json`,
+  because pixel_drift's `.gitignore` did NOT actually ignore it despite claiming to) or environment
+  variables (`OPENAI_API_KEY`, `PANEL_TOKEN`). The controller injects them into mode configs
   automatically when the config declares the key (see `core/loader.py`).
+- `panel_token` in `secrets.json` (or `PANEL_TOKEN` in the environment) is required before the
+  panel may bind a non-loopback address. Never put the token in a page, a URL the server logs,
+  or a config file.
 - If you see keys in `modes_registry.json` / `modes_config.json`, treat them
   as placeholders and refactor.
 
@@ -150,8 +199,12 @@ Kiosk-friendly logging:
 
 1) create `modes/<name>_mode.py` implementing the interface contract
 2) add a type entry to `modes_registry.json` (with `required`/`optional` key lists)
-3) add at least one instance entry to `modes_config.json`
+3) add at least one instance entry to the profile(s) you want it in (`modes_config.json`
+   and/or `configs/*.json` — profiles hold different mode sets on purpose)
 4) run `python validate_configs.py --all`
-5) test via `python pixel_drift.py --play N --windowed`
+5) test via `python pixel_dreams.py --play N --windowed`
+6) check it renders a form: `python pixel_dreams.py --panel-only --panel-port 8090`, then
+   open the panel (params are inferred from the config values, so a new mode shows up with
+   no UI work; add a `params` block to the registry entry only to set ranges/choices/labels)
 
 Keep image / media paths configurable and never hardcode absolute paths in code.

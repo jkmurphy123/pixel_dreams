@@ -8,7 +8,7 @@ falls back to keeping the existing values when a source cannot be reached or
 parsed. Always review the diff before committing updated prices.
 
 Suggested cron entry (weekly; review prices periodically, OpenRouter includes markup):
-    0 3 * * 1 cd /home/ubuntu/ai_projects/pixel_drift && .venv/bin/python scripts/refresh_llm_pricing.py --apply
+    0 3 * * 1 cd /mnt/ssd/projects/pixel_dreams && .venv/bin/python scripts/refresh_llm_pricing.py --apply
 """
 
 import argparse

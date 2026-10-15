@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-# pixel_drift.py
+# pixel_dreams.py
 #
 # Unified mode controller — replaces the old mode_controller.py,
 # single_mode_controller.py, and auto_mode_controller.py.
 #
 # Usage:
-#   python3 pixel_drift.py --show_modes
-#   python3 pixel_drift.py --play 3                     # single mode, ESC quits
-#   python3 pixel_drift.py --play 3 --windowed --width 1280 --height 720
-#   python3 pixel_drift.py                              # manual: arrows switch, ESC quits
-#   python3 pixel_drift.py --auto 30                    # auto-cycle every 30s
-#   python3 pixel_drift.py --auto 30 --shuffle --start 2
-#   python3 pixel_drift.py --input rotary               # Raspberry Pi rotary encoder
+#   python3 pixel_dreams.py --show_modes
+#   python3 pixel_dreams.py --play 3                     # single mode, ESC quits
+#   python3 pixel_dreams.py --play 3 --windowed --width 1280 --height 720
+#   python3 pixel_dreams.py                              # manual: arrows switch, ESC quits
+#   python3 pixel_dreams.py --auto 30                    # auto-cycle every 30s
+#   python3 pixel_dreams.py --auto 30 --shuffle --start 2
+#   python3 pixel_dreams.py --input rotary               # Raspberry Pi rotary encoder
 #
 # Input:
 #   keyboard (default): LEFT/RIGHT switch modes, ESC quits
@@ -40,7 +40,7 @@ from core.playlist import Playlist
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(
-        description="pixel_drift — kiosk mode controller"
+        description="pixel_dreams — kiosk mode controller"
     )
 
     parser.add_argument("--show_modes", action="store_true",
@@ -111,10 +111,10 @@ def main(argv=None):
 
     if args.windowed:
         screen = pygame.display.set_mode((args.width, args.height), pygame.RESIZABLE)
-        pygame.display.set_caption("pixel_drift — windowed")
+        pygame.display.set_caption("pixel_dreams — windowed")
     else:
         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        pygame.display.set_caption("pixel_drift")
+        pygame.display.set_caption("pixel_dreams")
 
     # ---------------- playlist / manager ----------------
 

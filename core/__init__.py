@@ -1,1 +1,1 @@
-# core — shared infrastructure for the pixel_drift mode controller.
+# core — shared infrastructure for the pixel_dreams mode controller.

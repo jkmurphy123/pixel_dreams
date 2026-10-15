@@ -139,7 +139,7 @@ def validate_modes_config(name: str, modes_config: dict, registry: dict):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Validate pixel_drift configs")
+    parser = argparse.ArgumentParser(description="Validate pixel_dreams configs")
     parser.add_argument("--config", default=None,
                         help="Specific modes config file to validate")
     parser.add_argument("--all", action="store_true",

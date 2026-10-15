@@ -219,3 +219,9 @@ __marimo__/
 
 # Dungeon expedition save file
 dungeon_save.json
+
+# pixel_dreams: runtime state and secrets (never commit these)
+secrets.json
+runtime/
+configs/.backups/
+.pytest_cache/

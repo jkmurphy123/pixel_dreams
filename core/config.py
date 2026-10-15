@@ -1,6 +1,6 @@
 # core/config.py
 #
-# Config loading for pixel_drift.
+# Config loading for pixel_dreams (forked from pixel_drift).
 #
 # Load order for a mode's effective config:
 #   registry type_config  ->  modes_config.json instance  ->  modes_config.local.json instance
@@ -79,10 +79,10 @@ def load_secrets(base_dir: str) -> dict:
     secrets = {}
 
     # Environment first (lowest priority)
-    for key in ("OPENAI_API_KEY",):
+    for key in ("OPENAI_API_KEY", "PANEL_TOKEN"):
         val = os.environ.get(key)
         if val:
-            secrets[key.lower()] = val  # e.g. secrets["openai_api_key"]
+            secrets[key.lower()] = val  # e.g. secrets["openai_api_key"], secrets["panel_token"]
 
     # Untracked secrets.json overrides env
     raw = load_json(os.path.join(base_dir, SECRETS_NAME), {})
