@@ -20,7 +20,49 @@
         "crossfade_sec",
         "motion_period",
         "base_pan_speed"
-      ]
+      ],
+      "params": {
+        "background_rgb": {
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        "base_amplitude": {
+          "widget": "number",
+          "default": 60
+        },
+        "base_pan_speed": {
+          "default": 40
+        },
+        "crossfade_sec": {
+          "default": 1.0
+        },
+        "image_folder": {
+          "default": ""
+        },
+        "motion_period": {
+          "widget": "number",
+          "default": 8.0
+        },
+        "scale_layers": {
+          "suggestions": [
+            "cover"
+          ],
+          "default": "none"
+        },
+        "scene_duration": {
+          "default": 45
+        },
+        "scenes_file": {
+          "default": ""
+        },
+        "shuffle": {
+          "widget": "switch",
+          "default": true
+        }
+      }
     },
     "slideshow": {
       "entrypoint": "modes.slideshow_mode:SlideshowMode",
@@ -39,8 +81,82 @@
         "weather_units",
         "show_crypto",
         "crypto_ids",
-        "show_dow"
-      ]
+        "show_dow",
+        "dow_symbol",
+        "overlay_margin",
+        "overlay_update_seconds_markets",
+        "overlay_update_seconds_weather",
+        "scale_mode",
+        "scaled_cache_items"
+      ],
+      "params": {
+        "crypto_ids": {
+          "default": [
+            "bitcoin",
+            "ethereum",
+            "tether"
+          ]
+        },
+        "dow_symbol": {
+          "default": "^DJI"
+        },
+        "duration": {
+          "default": 10
+        },
+        "folder": {
+          "default": "."
+        },
+        "font_size": {
+          "default": 28
+        },
+        "overlay_font_path": {
+          "default": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        },
+        "overlay_margin": {
+          "default": 12
+        },
+        "overlay_update_seconds_markets": {
+          "default": 120
+        },
+        "overlay_update_seconds_weather": {
+          "default": 600
+        },
+        "scale_mode": {
+          "suggestions": [
+            "contain",
+            "cover"
+          ],
+          "default": "cover"
+        },
+        "scaled_cache_items": {
+          "widget": "number",
+          "default": 2
+        },
+        "show_crypto": {
+          "default": false
+        },
+        "show_date": {
+          "default": false
+        },
+        "show_dow": {
+          "default": false
+        },
+        "show_time": {
+          "default": false
+        },
+        "show_weather": {
+          "default": false
+        },
+        "weather_location": {
+          "default": "New York, NY"
+        },
+        "weather_units": {
+          "suggestions": [
+            "imperial"
+          ],
+          "default": "imperial"
+        }
+      }
     },
     "systeminformation": {
       "entrypoint": "modes.system_information_mode:SystemInformationMode",
@@ -49,7 +165,15 @@
         "refresh_hz",
         "show_seconds",
         "compact"
-      ]
+      ],
+      "params": {
+        "refresh_hz": {
+          "default": 2.0
+        },
+        "show_seconds": {
+          "default": true
+        }
+      }
     },
     "statusticker": {
       "entrypoint": "modes.status_ticker_mode:StatusTickerMode",
@@ -62,8 +186,36 @@
         "cursor_blink_hz",
         "accent_probability",
         "blank_lines_between_loops",
-        "font_size"
-      ]
+        "font_size",
+        "font_name"
+      ],
+      "params": {
+        "accent_probability": {
+          "default": 0.35
+        },
+        "blank_lines_between_loops": {
+          "default": 20
+        },
+        "cursor_blink_hz": {
+          "default": 2.0
+        },
+        "file": {
+          "default": ""
+        },
+        "font_name": {
+          "default": "dejavusansmono"
+        },
+        "font_size": {
+          "derived": true
+        },
+        "pause": {
+          "widget": "number",
+          "default": 0.35
+        },
+        "scroll_px_per_sec": {
+          "default": 180.0
+        }
+      }
     },
     "blinkenlights": {
       "entrypoint": "modes.blinkenlights_mode:BlinkenlightsPanelMode",
@@ -91,8 +243,107 @@
         "status_probability_per_sec",
         "subtitle",
         "ticker_text",
-        "title_font_scale"
-      ]
+        "title_font_scale",
+        "border_thickness",
+        "col_pad_scale",
+        "title_gap_shrink"
+      ],
+      "params": {
+        "border_thickness": {
+          "default": 2
+        },
+        "burst_duration_range": {
+          "default": [
+            0.6,
+            1.4
+          ]
+        },
+        "burst_probability_per_sec": {
+          "default": 0.18
+        },
+        "burst_registers_range": {
+          "default": [
+            1,
+            3
+          ]
+        },
+        "burst_strength": {
+          "default": 1.8
+        },
+        "col_pad_scale": {
+          "default": 0.02
+        },
+        "columns": {
+          "default": 2
+        },
+        "computer_name": {
+          "default": "UNKNOWN SYSTEM"
+        },
+        "frame_rgb": {
+          "default": [
+            208,
+            208,
+            198
+          ]
+        },
+        "label_font_scale": {
+          "default": 0.045
+        },
+        "label_rgb": {
+          "default": [
+            220,
+            220,
+            220
+          ]
+        },
+        "led_color": {
+          "default": "Red"
+        },
+        "led_radius_scale": {
+          "default": 0.018
+        },
+        "panel_fill_rgb": {
+          "default": [
+            12,
+            12,
+            12
+          ]
+        },
+        "panel_id": {
+          "default": "PANEL A"
+        },
+        "pulse_speed": {
+          "default": 0.6
+        },
+        "register_labels": {
+          "default": []
+        },
+        "registers_per_column": {
+          "widget": "number",
+          "default": 6
+        },
+        "row_group_size": {
+          "default": 0
+        },
+        "status_labels": {
+          "default": []
+        },
+        "status_probability_per_sec": {
+          "default": 0.65
+        },
+        "subtitle": {
+          "default": ""
+        },
+        "ticker_text": {
+          "default": "NO FAULTS // STANDBY"
+        },
+        "title_font_scale": {
+          "default": 0.1
+        },
+        "title_gap_shrink": {
+          "default": 0.35
+        }
+      }
     },
     "reminderhtml": {
       "entrypoint": "modes.reminder_html_mode:ReminderHTMLMode",
@@ -107,7 +358,38 @@
         "margin_scale",
         "line_spacing",
         "refresh_hz"
-      ]
+      ],
+      "params": {
+        "bg_rgb": {
+          "default": [
+            255,
+            255,
+            255
+          ]
+        },
+        "default_fg_rgb": {
+          "default": [
+            20,
+            80,
+            200
+          ]
+        },
+        "default_font_name": {
+          "default": "Comic Sans MS"
+        },
+        "file": {
+          "default": ""
+        },
+        "line_spacing": {
+          "default": 8
+        },
+        "margin_scale": {
+          "default": 0.06
+        },
+        "refresh_hz": {
+          "default": 1.0
+        }
+      }
     },
     "quotegenerator": {
       "entrypoint": "modes.quote_generator_mode:QuoteGeneratorMode",
@@ -119,8 +401,58 @@
         "font_size",
         "image_path",
         "text_position",
-        "theme"
-      ]
+        "theme",
+        "bg_color_rgb",
+        "duration",
+        "font_name",
+        "max_api_calls",
+        "max_api_calls_default",
+        "model",
+        "openai_api_key",
+        "overlay_alpha",
+        "text_color_rgb"
+      ],
+      "params": {
+        "bg_color_rgb": {
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        "duration": {
+          "default": 30
+        },
+        "font_size": {
+          "default": 56
+        },
+        "max_api_calls_default": {
+          "default": 100
+        },
+        "model": {
+          "default": "gpt-4o-mini"
+        },
+        "overlay_alpha": {
+          "default": 140
+        },
+        "text_color_rgb": {
+          "default": [
+            240,
+            240,
+            240
+          ]
+        },
+        "text_position": {
+          "suggestions": [
+            "bottom",
+            "top"
+          ],
+          "default": "middle"
+        },
+        "theme": {
+          "default": "Motivational"
+        }
+      }
     },
     "headlinesnews": {
       "entrypoint": "modes.headlines_news_mode:HeadlinesNewsMode",
@@ -142,8 +474,58 @@
         "margin_scale",
         "overlay_alpha",
         "refresh_every_stories",
-        "max_body_chars"
-      ]
+        "max_body_chars",
+        "folder",
+        "max_body_lines"
+      ],
+      "params": {
+        "body_font_scale": {
+          "default": 0.035
+        },
+        "duration": {
+          "default": 60
+        },
+        "feed_url": {
+          "default": ""
+        },
+        "font_size": {
+          "default": 28
+        },
+        "headline_font_scale": {
+          "default": 0.065
+        },
+        "margin_scale": {
+          "default": 0.08
+        },
+        "max_body_chars": {
+          "default": 320
+        },
+        "max_body_lines": {
+          "default": 8
+        },
+        "overlay_alpha": {
+          "default": 150
+        },
+        "overlay_font_path": {
+          "default": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        },
+        "overlay_margin": {
+          "default": 12
+        },
+        "refresh_every_stories": {
+          "widget": "number",
+          "default": 20
+        },
+        "show_time": {
+          "default": false
+        },
+        "text_position": {
+          "suggestions": [
+            "middle",
+            "top"
+          ]
+        }
+      }
     },
     "galacticnavigation": {
       "entrypoint": "modes.galactic_navigation_mode:GalacticNavigationConsoleMode",
@@ -160,7 +542,40 @@
         "show_coordinates",
         "jump_interval_sec",
         "waypoint_labels"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            80,
+            200,
+            255
+          ]
+        },
+        "grid_alpha": {
+          "default": 70
+        },
+        "jump_interval_sec": {
+          "default": 18.0
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 16
+        },
+        "sector_name": {
+          "default": "SECTOR: UNKNOWN"
+        },
+        "show_coordinates": {
+          "default": true
+        },
+        "star_count": {
+          "default": 240
+        },
+        "waypoint_count": {
+          "default": 8
+        }
+      }
     },
     "deepspacesignaldecoder": {
       "entrypoint": "modes.deep_space_signal_decoder_mode:DeepSpaceSignalDecoderMode",
@@ -180,7 +595,54 @@
         "show_hex",
         "show_glyphs",
         "title"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            80,
+            200,
+            255
+          ]
+        },
+        "grid_alpha": {
+          "default": 70
+        },
+        "lock_duration_range": {
+          "default": [
+            7.0,
+            16.0
+          ]
+        },
+        "lock_probability_per_min": {
+          "default": 1.2
+        },
+        "message_rate_cps": {
+          "default": 24.0
+        },
+        "noise_alpha": {
+          "default": 18
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 16
+        },
+        "show_glyphs": {
+          "default": true
+        },
+        "show_hex": {
+          "default": true
+        },
+        "waterfall_bins": {
+          "widget": "number",
+          "default": 96,
+          "derived": true
+        },
+        "waterfall_speed": {
+          "default": 240.0
+        }
+      }
     },
     "retrocrthackerterminal": {
       "entrypoint": "modes.retro_crt_hacker_terminal_mode:RetroCRTHackerTerminalMode",
@@ -202,7 +664,51 @@
         "crt_vignette",
         "crt_chroma",
         "seed"
-      ]
+      ],
+      "params": {
+        "crt_chroma": {
+          "widget": "number",
+          "default": 0.08
+        },
+        "crt_curvature": {
+          "widget": "number",
+          "default": 0.14
+        },
+        "crt_vignette": {
+          "widget": "number",
+          "default": 0.32
+        },
+        "cursor_blink_hz": {
+          "default": 2.0
+        },
+        "glitch_probability_per_min": {
+          "default": 1.0
+        },
+        "jitter_px": {
+          "default": 2
+        },
+        "noise_alpha": {
+          "default": 12
+        },
+        "palette": {
+          "widget": "text",
+          "suggestions": [
+            "amber",
+            "cyan",
+            "white"
+          ],
+          "default": "green"
+        },
+        "prompt": {
+          "default": "root@node:/#"
+        },
+        "scanline_alpha": {
+          "default": 16
+        },
+        "typing_cps": {
+          "default": 36.0
+        }
+      }
     },
     "cryopodstatuswall": {
       "entrypoint": "modes.cryogenic_pod_status_wall_mode:CryogenicPodStatusWallMode",
@@ -222,7 +728,50 @@
         "frost_particle_rate",
         "alarm_probability_per_min",
         "seed"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            90,
+            220,
+            255
+          ]
+        },
+        "alarm_probability_per_min": {
+          "default": 0.7
+        },
+        "columns_landscape": {
+          "default": 3
+        },
+        "columns_portrait": {
+          "default": 2
+        },
+        "footer_font_scale": {
+          "default": 0.018
+        },
+        "frost_particle_rate": {
+          "default": 45.0
+        },
+        "header_font_scale": {
+          "default": 0.05
+        },
+        "label_font_scale": {
+          "default": 0.02
+        },
+        "num_pods": {
+          "widget": "number",
+          "default": 12
+        },
+        "pod_spacing_scale": {
+          "default": 0.03
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "value_font_scale": {
+          "default": 0.028
+        }
+      }
     },
     "autonomousdronefleettracker": {
       "entrypoint": "modes.autonomous_drone_fleet_tracker_mode:AutonomousDroneFleetTrackerMode",
@@ -242,7 +791,53 @@
         "offline_probability_per_min",
         "return_probability_per_min",
         "charge_time_range"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            90,
+            220,
+            255
+          ]
+        },
+        "charge_time_range": {
+          "default": [
+            6.0,
+            14.0
+          ]
+        },
+        "crt_vignette": {
+          "widget": "number",
+          "default": 0.28
+        },
+        "drone_count": {
+          "default": 24
+        },
+        "map_margin_scale": {
+          "default": 0.05
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "offline_probability_per_min": {
+          "default": 0.5
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "return_probability_per_min": {
+          "default": 0.9
+        },
+        "scanline_alpha": {
+          "default": 12
+        },
+        "sector_name": {
+          "default": "SECTOR: UNKNOWN"
+        },
+        "show_event_log": {
+          "default": true
+        }
+      }
     },
     "cosmiclibraryindex": {
       "entrypoint": "modes.cosmic_library_index_mode:CosmicLibraryIndexMode",
@@ -261,7 +856,50 @@
         "noise_alpha",
         "vignette_strength",
         "portrait_columns"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            170,
+            220,
+            255
+          ]
+        },
+        "anomaly_probability_per_min": {
+          "default": 0.4
+        },
+        "cards_per_shelf": {
+          "widget": "number",
+          "default": 7
+        },
+        "dust_rate": {
+          "default": 50.0
+        },
+        "flip_interval_range": {
+          "default": [
+            0.8,
+            1.8
+          ]
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "portrait_columns": {
+          "default": 1
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "shelf_count": {
+          "default": 5
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "alienbiometricscanner": {
       "entrypoint": "modes.alien_biometric_scanner_mode:AlienBiometricScannerMode",
@@ -279,7 +917,46 @@
         "target_switch_interval_range",
         "alert_probability_per_min",
         "show_waveform"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            170,
+            255,
+            200
+          ]
+        },
+        "alert_probability_per_min": {
+          "default": 0.5
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scan_band_height": {
+          "default": 0.1
+        },
+        "scan_speed": {
+          "default": 0.4
+        },
+        "scanline_alpha": {
+          "default": 12
+        },
+        "show_waveform": {
+          "default": true
+        },
+        "target_switch_interval_range": {
+          "default": [
+            6.0,
+            14.0
+          ]
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "vintagespaceprobetelemetry": {
       "entrypoint": "modes.vintage_space_probe_telemetry_mode:VintageSpaceProbeTelemetryMode",
@@ -299,7 +976,56 @@
         "reacquire_time_range",
         "packet_rate_range",
         "portrait_layout"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            210,
+            140
+          ]
+        },
+        "chart_count": {
+          "default": 3
+        },
+        "dropout_probability_per_min": {
+          "default": 0.5
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "packet_rate_range": {
+          "default": [
+            16,
+            60
+          ]
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": true
+        },
+        "probe_name": {
+          "default": "PROBE: UNKNOWN"
+        },
+        "reacquire_time_range": {
+          "default": [
+            2.0,
+            5.0
+          ]
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "show_stripcharts": {
+          "default": true
+        },
+        "vignette_strength": {
+          "default": 0.28
+        }
+      }
     },
     "forgottenspacestationdirectory": {
       "entrypoint": "modes.forgotten_space_station_directory_mode:ForgottenSpaceStationDirectoryMode",
@@ -320,7 +1046,58 @@
         "announcement_interval_range",
         "portrait_mode",
         "font_scale"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            200,
+            255,
+            210
+          ]
+        },
+        "announcement_interval_range": {
+          "default": [
+            9.0,
+            18.0
+          ]
+        },
+        "font_scale": {
+          "default": 1.0,
+          "derived": true
+        },
+        "glitch_probability_per_min": {
+          "default": 1.0
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "offline_probability_per_min": {
+          "default": 0.6
+        },
+        "portrait_mode": {
+          "widget": "switch",
+          "default": true
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "rows_visible": {
+          "widget": "number",
+          "default": 14
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "scroll_speed": {
+          "default": 0.3
+        },
+        "station_name": {
+          "default": "STATION: UNKNOWN"
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "retrocomputermemoryvisualizer": {
       "entrypoint": "modes.retro_computer_memory_visualizer_mode:RetroComputerMemoryVisualizerMode",
@@ -340,7 +1117,51 @@
         "vignette_strength",
         "show_hex_dump",
         "portrait_columns"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            90,
+            220,
+            255
+          ]
+        },
+        "alloc_rate": {
+          "default": 0.85
+        },
+        "block_kb": {
+          "widget": "number",
+          "default": 4
+        },
+        "free_rate": {
+          "default": 0.5
+        },
+        "gc_probability_per_min": {
+          "default": 0.4
+        },
+        "memory_kb": {
+          "widget": "number",
+          "default": 256
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "portrait_columns": {
+          "default": 2
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "show_hex_dump": {
+          "default": true
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "coldwarcommandroomwall": {
       "entrypoint": "modes.cold_war_command_room_wall_mode:ColdWarCommandRoomWallMode",
@@ -362,7 +1183,62 @@
         "log_interval_range",
         "show_teletype",
         "lamp_count"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            210,
+            140
+          ]
+        },
+        "blip_rate": {
+          "default": 0.8
+        },
+        "defcon_drift_probability_per_min": {
+          "default": 0.5
+        },
+        "defcon_start": {
+          "widget": "number",
+          "default": 3
+        },
+        "lamp_count": {
+          "default": 10,
+          "derived": true
+        },
+        "log_interval_range": {
+          "default": [
+            1.0,
+            2.2
+          ]
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": true
+        },
+        "radar_count": {
+          "default": 2,
+          "derived": true
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "room_name": {
+          "default": "SITUATION ROOM"
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "show_teletype": {
+          "default": true
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "missioncontrolconsole": {
       "entrypoint": "modes.mission_control_console_mode:MissionControlConsoleMode",
@@ -383,7 +1259,57 @@
         "event_interval_range",
         "chart_count",
         "orbit_period_sec"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            205,
+            135
+          ]
+        },
+        "anomaly_probability_per_min": {
+          "default": 0.55
+        },
+        "chart_count": {
+          "default": 3
+        },
+        "console_cols": {
+          "widget": "number",
+          "default": 7
+        },
+        "console_rows": {
+          "default": 4
+        },
+        "event_interval_range": {
+          "default": [
+            1.8,
+            3.8
+          ]
+        },
+        "mission_name": {
+          "default": "APOLLO-STYLE TEST FLIGHT"
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "orbit_period_sec": {
+          "default": 48.0
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": false
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "vignette_strength": {
+          "default": 0.26
+        }
+      }
     },
     "corememorymatrix": {
       "entrypoint": "modes.core_memory_matrix_mode:CoreMemoryMatrixMode",
@@ -404,7 +1330,55 @@
         "noise_alpha",
         "vignette_strength",
         "portrait_layout"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            176,
+            96
+          ]
+        },
+        "bank_name": {
+          "default": "BANK A // 4K WORD STORE"
+        },
+        "cols": {
+          "widget": "number",
+          "default": 16
+        },
+        "noise_alpha": {
+          "default": 9
+        },
+        "parity_fault_probability_per_min": {
+          "default": 0.35
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": false
+        },
+        "pulse_ttl": {
+          "widget": "number",
+          "default": 1.1
+        },
+        "read_probability_per_sec": {
+          "default": 1.8
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "rows": {
+          "default": 16
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "vignette_strength": {
+          "default": 0.28
+        },
+        "write_probability_per_sec": {
+          "default": 1.2
+        }
+      }
     },
     "basicprompt": {
       "entrypoint": "modes.basic_prompt_mode:BasicPromptMode",
@@ -419,7 +1393,29 @@
         "lines_on_screen",
         "max_chars_per_line",
         "seed"
-      ]
+      ],
+      "params": {
+        "cursor_blink_hz": {
+          "default": 2.0
+        },
+        "machine_name": {
+          "default": "MICRO-COMPUTER BASIC V2"
+        },
+        "palette": {
+          "widget": "text",
+          "suggestions": [
+            "green",
+            "white"
+          ],
+          "default": "amber"
+        },
+        "prompt": {
+          "default": "READY."
+        },
+        "typing_cps": {
+          "default": 30.0
+        }
+      }
     },
     "rbmkreactorsimulation": {
       "entrypoint": "modes.rbmk_reactor_simulation_mode:RBMKReactorSimulationMode",
@@ -434,7 +1430,36 @@
         "cols",
         "loop_duration_sec",
         "portrait_layout"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            164,
+            96
+          ]
+        },
+        "cols": {
+          "widget": "number",
+          "default": 12
+        },
+        "loop_duration_sec": {
+          "default": 38.0
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": true
+        },
+        "reactor_name": {
+          "default": "UNIT 4 // TURBINE TEST"
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "rows": {
+          "default": 12
+        }
+      }
     },
     "machinedreamscape": {
       "entrypoint": "modes.machine_dreamscape_mode:MachineDreamscapeMode",
@@ -455,7 +1480,59 @@
         "vignette_strength",
         "whisper_interval_range",
         "show_whispers"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            170,
+            255,
+            230
+          ]
+        },
+        "bloom_strength": {
+          "default": 0.55
+        },
+        "connectivity": {
+          "widget": "number",
+          "default": 0.18
+        },
+        "drift_speed": {
+          "default": 0.22
+        },
+        "layer_count": {
+          "default": 4,
+          "derived": true
+        },
+        "node_count": {
+          "default": 42,
+          "derived": true
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": true
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "show_whispers": {
+          "default": true
+        },
+        "vignette_strength": {
+          "default": 0.32
+        },
+        "whisper_interval_range": {
+          "default": [
+            6.0,
+            14.0
+          ]
+        }
+      }
     },
     "spaceelevatortrafficcontrol": {
       "entrypoint": "modes.space_elevator_traffic_control_mode:SpaceElevatorTrafficControlMode",
@@ -476,7 +1553,60 @@
         "noise_alpha",
         "vignette_strength",
         "show_log"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            170,
+            255,
+            230
+          ]
+        },
+        "car_count": {
+          "default": 5,
+          "derived": true
+        },
+        "car_speed_range": {
+          "default": [
+            0.03,
+            0.1
+          ]
+        },
+        "dwell_time_range": {
+          "default": [
+            2.0,
+            6.0
+          ]
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": true
+        },
+        "queue_rate_per_min": {
+          "default": 1.0
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "show_log": {
+          "default": true
+        },
+        "site_name": {
+          "default": "SITE: UNKNOWN"
+        },
+        "vignette_strength": {
+          "default": 0.3
+        },
+        "weather_alert_probability_per_min": {
+          "default": 0.5
+        }
+      }
     },
     "alienlanguagerosettaconsole": {
       "entrypoint": "modes.alien_language_rosetta_console_mode:AlienLanguageRosettaConsoleMode",
@@ -497,7 +1627,56 @@
         "noise_alpha",
         "vignette_strength",
         "show_log"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            200,
+            255,
+            210
+          ]
+        },
+        "confidence_drift": {
+          "widget": "number",
+          "default": 0.2
+        },
+        "decode_rate": {
+          "default": 0.8
+        },
+        "lock_probability_per_min": {
+          "default": 0.5
+        },
+        "mutation_rate": {
+          "default": 0.3
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": true
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "rows_visible": {
+          "widget": "number",
+          "default": 12,
+          "derived": true
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "show_log": {
+          "default": true
+        },
+        "site_name": {
+          "default": "LINGUISTICS BAY"
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "dnasequencevisualizer": {
       "entrypoint": "modes.dna_sequence_visualizer_mode:DNASequenceVisualizerMode",
@@ -514,7 +1693,34 @@
         "noise_alpha",
         "vignette_strength",
         "seed"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            100,
+            255,
+            100
+          ]
+        },
+        "helix_rotation_speed": {
+          "default": 1.0
+        },
+        "marker_probability": {
+          "default": 0.05
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 15
+        },
+        "scroll_speed": {
+          "default": 3.0
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "binarywaterfall": {
       "entrypoint": "modes.binary_waterfall_mode:BinaryWaterfallMode",
@@ -531,7 +1737,41 @@
         "noise_alpha",
         "vignette_strength",
         "seed"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            0,
+            255,
+            0
+          ]
+        },
+        "binary_only": {
+          "widget": "switch",
+          "default": false
+        },
+        "drop_speed_range": {
+          "default": [
+            2,
+            7
+          ]
+        },
+        "flicker_speed": {
+          "default": 0.05
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 15
+        },
+        "spawn_rate": {
+          "default": 0.1
+        },
+        "vignette_strength": {
+          "default": 0.3
+        }
+      }
     },
     "animatedcityrain": {
       "entrypoint": "modes.animated_city_rain_mode:AnimatedCityRainMode",
@@ -547,7 +1787,36 @@
         "wind_slant",
         "scanline_alpha",
         "vignette_strength"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            180,
+            200,
+            255
+          ]
+        },
+        "rain_density": {
+          "widget": "number",
+          "default": 150
+        },
+        "rain_speed_range": {
+          "default": [
+            10,
+            20
+          ]
+        },
+        "scanline_alpha": {
+          "default": 15
+        },
+        "vignette_strength": {
+          "default": 0.3
+        },
+        "wind_slant": {
+          "widget": "number",
+          "default": -2
+        }
+      }
     },
     "globalthreatmap": {
       "entrypoint": "modes.global_threat_map_mode:GlobalThreatMapMode",
@@ -561,7 +1830,22 @@
         "api_update_interval_min",
         "vector_glow_strength",
         "seed"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            50,
+            255,
+            100
+          ]
+        },
+        "api_update_interval_min": {
+          "default": 5
+        },
+        "vector_glow_strength": {
+          "default": 2
+        }
+      }
     },
     "seventiescomputerdashboard": {
       "entrypoint": "modes.seventies_operator_dashboard_mode:SeventiesComputerDashboardMode",
@@ -579,7 +1863,34 @@
         "noise_alpha",
         "vignette_strength",
         "seed"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            210,
+            140
+          ]
+        },
+        "flicker_rate": {
+          "default": 2.0
+        },
+        "lamp_count": {
+          "default": 18
+        },
+        "needle_speed": {
+          "default": 0.3
+        },
+        "panel_count": {
+          "default": 3
+        },
+        "refresh_hz": {
+          "default": 60
+        },
+        "show_log": {
+          "default": true
+        }
+      }
     },
     "chatreplay": {
       "entrypoint": "modes.chat_replay_mode:ChatReplayMode",
@@ -610,7 +1921,74 @@
         "bg_rgb",
         "panel_outline_alpha",
         "noise_alpha"
-      ]
+      ],
+      "params": {
+        "bg_rgb": {
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        "bubble_alpha": {
+          "default": 210
+        },
+        "bubble_max_width_frac": {
+          "default": 0.72
+        },
+        "bubble_outline_alpha": {
+          "default": 90
+        },
+        "bubble_radius": {
+          "default": 18
+        },
+        "chat_padding": {
+          "default": 18
+        },
+        "end_pause_s": {
+          "widget": "number",
+          "default": 3.0
+        },
+        "font_scale": {
+          "default": 1.0
+        },
+        "footer_height_frac": {
+          "default": 0.06
+        },
+        "header_height_frac": {
+          "default": 0.12
+        },
+        "max_pause_s": {
+          "default": 1.8
+        },
+        "min_pause_s": {
+          "default": 0.6
+        },
+        "noise_alpha": {
+          "default": 8
+        },
+        "panel_outline_alpha": {
+          "default": 120
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "show_timestamp": {
+          "default": true
+        },
+        "timestamp_format": {
+          "default": "%H:%M"
+        },
+        "typing_cps": {
+          "default": 45.0
+        },
+        "typing_indicator_max_s": {
+          "default": 2.6
+        },
+        "typing_indicator_min_s": {
+          "default": 0.8
+        }
+      }
     },
     "fantasynews": {
       "entrypoint": "modes.fantasy_news_mode:FantasyNewsMode",
@@ -633,7 +2011,56 @@
         "dim_bg",
         "font_path",
         "ordered"
-      ]
+      ],
+      "params": {
+        "body_font_scale": {
+          "default": 0.03
+        },
+        "dim_bg": {
+          "widget": "number",
+          "default": 40
+        },
+        "duration": {
+          "default": 30
+        },
+        "font_name": {
+          "default": "dejavusansmono"
+        },
+        "headline_font_scale": {
+          "default": 0.06
+        },
+        "image_folder": {
+          "default": ""
+        },
+        "margin_scale": {
+          "default": 0.055
+        },
+        "max_body_chars": {
+          "default": 560
+        },
+        "ordered": {
+          "widget": "switch",
+          "default": false
+        },
+        "overlay_alpha": {
+          "default": 170
+        },
+        "show_seconds": {
+          "default": false
+        },
+        "show_time": {
+          "default": true
+        },
+        "stories_folder": {
+          "default": ""
+        },
+        "time_font_scale": {
+          "default": 0.04
+        },
+        "time_format": {
+          "default": "%I:%M %p"
+        }
+      }
     },
     "alienstarmapcartographer": {
       "entrypoint": "modes.alien_star_map_cartographer_mode:AlienStarMapCartographerMode",
@@ -659,7 +2086,73 @@
         "scanline_alpha",
         "noise_alpha",
         "vignette_strength"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            180,
+            255,
+            235
+          ]
+        },
+        "constellation_count": {
+          "default": 10,
+          "derived": true
+        },
+        "constellation_links": {
+          "widget": "number",
+          "default": 6,
+          "derived": true
+        },
+        "drift_speed": {
+          "default": 0.02
+        },
+        "grid_alpha": {
+          "default": 28
+        },
+        "label_density": {
+          "widget": "number",
+          "default": 0.35
+        },
+        "near_star_frac": {
+          "widget": "number",
+          "default": 0.18
+        },
+        "noise_alpha": {
+          "default": 8
+        },
+        "parallax_strength": {
+          "default": 0.85
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "ring_alpha": {
+          "default": 40
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "stamp_probability_per_min": {
+          "default": 0.45
+        },
+        "star_count": {
+          "default": 850,
+          "derived": true
+        },
+        "subtitle": {
+          "default": "ARCHIVE CHART / AUTOSOLVE ENABLED"
+        },
+        "twinkle_strength": {
+          "default": 0.55
+        },
+        "vignette_strength": {
+          "default": 0.28
+        },
+        "zoom_pulse_strength": {
+          "default": 0.05
+        }
+      }
     },
     "retroaithoughtstream": {
       "entrypoint": "modes.retro_ai_thought_stream_mode:RetroAIThoughtStreamMode",
@@ -683,7 +2176,71 @@
         "timestamp_format",
         "left_margin",
         "top_margin"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            220,
+            150
+          ]
+        },
+        "dim_rgb": {
+          "default": [
+            140,
+            140,
+            140
+          ]
+        },
+        "font_scale": {
+          "default": 1.0
+        },
+        "glitch_rate_per_min": {
+          "default": 2.0
+        },
+        "left_margin": {
+          "default": 40
+        },
+        "lines_visible": {
+          "widget": "number",
+          "default": 22,
+          "derived": true
+        },
+        "poem_rate_per_min": {
+          "default": 1.2
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scroll_speed_lps": {
+          "default": 5.5
+        },
+        "show_timestamps": {
+          "default": true
+        },
+        "subtitle": {
+          "default": "INTERNAL CHANNEL"
+        },
+        "text_rgb": {
+          "default": [
+            220,
+            220,
+            220
+          ]
+        },
+        "thought_rate_per_min": {
+          "default": 22.0
+        },
+        "timestamp_format": {
+          "default": "%H:%M:%S"
+        },
+        "top_margin": {
+          "default": 36
+        },
+        "wrongness_rate_per_min": {
+          "default": 3.0
+        }
+      }
     },
     "aiethicscompliancedashboard": {
       "entrypoint": "modes.ai_ethics_compliance_dashboard_mode:AIEthicsComplianceDashboardMode",
@@ -706,7 +2263,73 @@
         "show_events",
         "event_rate_per_min",
         "graph_history_seconds"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            180,
+            255,
+            235
+          ]
+        },
+        "compliance_target": {
+          "widget": "number",
+          "default": 0.82
+        },
+        "dim_rgb": {
+          "default": [
+            140,
+            140,
+            140
+          ]
+        },
+        "drift_strength": {
+          "default": 0.06
+        },
+        "event_rate_per_min": {
+          "default": 5.5
+        },
+        "font_scale": {
+          "default": 1.0
+        },
+        "graph_history_seconds": {
+          "default": 70.0
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "show_events": {
+          "default": true
+        },
+        "slider_count": {
+          "default": 9,
+          "derived": true
+        },
+        "subtitle": {
+          "default": "AUDIT CHANNEL / NON-INTERVENTIVE OBSERVATION"
+        },
+        "text_rgb": {
+          "default": [
+            220,
+            220,
+            220
+          ]
+        },
+        "update_rate_hz": {
+          "default": 8.0
+        },
+        "volatility": {
+          "widget": "number",
+          "default": 0.22
+        },
+        "warn_rgb": {
+          "default": [
+            255,
+            180,
+            180
+          ]
+        }
+      }
     },
     "hackerbbsfeed": {
       "entrypoint": "modes.hacker_bbs_feed_mode:HackerBBSFeedMode",
@@ -722,7 +2345,31 @@
         "seed",
         "max_lines",
         "max_chars_per_line"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            80,
+            255,
+            120
+          ]
+        },
+        "max_chars_per_line": {
+          "default": 60
+        },
+        "max_messages": {
+          "default": 18
+        },
+        "message_interval_sec": {
+          "default": 1.5
+        },
+        "refresh_hz": {
+          "default": 60
+        },
+        "typing_cps": {
+          "default": 40
+        }
+      }
     },
     "conwaylife": {
       "entrypoint": "modes.conway_life_mode:ConwayLifeMode",
@@ -741,7 +2388,55 @@
         "dead_rgb",
         "show_grid",
         "grid_rgb"
-      ]
+      ],
+      "params": {
+        "alive_rgb": {
+          "default": [
+            180,
+            255,
+            200
+          ]
+        },
+        "cells_on_short_side": {
+          "widget": "number",
+          "default": 80
+        },
+        "dead_rgb": {
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        "grid_rgb": {
+          "default": [
+            20,
+            40,
+            20
+          ]
+        },
+        "random_fill": {
+          "widget": "number",
+          "default": 0.28
+        },
+        "reset_if_static_steps": {
+          "widget": "number",
+          "default": 80
+        },
+        "reset_interval_sec": {
+          "default": 120.0
+        },
+        "show_grid": {
+          "default": false
+        },
+        "update_hz": {
+          "default": 10.0
+        },
+        "wrap": {
+          "widget": "switch",
+          "default": true
+        }
+      }
     },
     "galtonboard": {
       "entrypoint": "modes.galton_board_mode:GaltonBoardMode",
@@ -765,7 +2460,69 @@
         "bin_rgb",
         "show_pins",
         "show_bins"
-      ]
+      ],
+      "params": {
+        "background_rgb": {
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        "ball_rgb": {
+          "default": [
+            255,
+            200,
+            120
+          ]
+        },
+        "balls": {
+          "widget": "number",
+          "default": 300
+        },
+        "bin_rgb": {
+          "default": [
+            80,
+            80,
+            90
+          ]
+        },
+        "drop_one_at_time": {
+          "widget": "switch",
+          "default": true
+        },
+        "drop_rate": {
+          "default": 40.0,
+          "derived": true
+        },
+        "fall_speed": {
+          "default": 260.0,
+          "derived": true
+        },
+        "pin_rgb": {
+          "default": [
+            190,
+            190,
+            210
+          ]
+        },
+        "pin_rows": {
+          "derived": true
+        },
+        "pins": {
+          "widget": "number",
+          "default": 12
+        },
+        "show_bins": {
+          "default": true
+        },
+        "show_pins": {
+          "default": true
+        },
+        "wait_after_sec": {
+          "default": 10.0
+        }
+      }
     },
     "curatedslideshow": {
       "entrypoint": "modes.curated_slideshow_mode:CuratedSlideshowMode",
@@ -786,7 +2543,58 @@
         "line_spacing",
         "show_title",
         "show_description"
-      ]
+      ],
+      "params": {
+        "desc_font_scale": {
+          "default": 0.026
+        },
+        "duration": {
+          "default": 12.0
+        },
+        "line_spacing": {
+          "default": 1.15
+        },
+        "margin_scale": {
+          "default": 0.03
+        },
+        "panel_alpha": {
+          "default": 160
+        },
+        "panel_rgb": {
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        "scale_mode": {
+          "suggestions": [
+            "contain",
+            "cover"
+          ],
+          "default": "cover"
+        },
+        "show_description": {
+          "default": true
+        },
+        "show_title": {
+          "default": true
+        },
+        "shuffle": {
+          "widget": "switch",
+          "default": false
+        },
+        "text_rgb": {
+          "default": [
+            240,
+            240,
+            240
+          ]
+        },
+        "title_font_scale": {
+          "default": 0.05
+        }
+      }
     },
     "networkstatuswall": {
       "entrypoint": "modes.network_status_wall_mode:NetworkStatusWallMode",
@@ -807,7 +2615,50 @@
         "noise_alpha",
         "vignette_strength",
         "seed"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            90,
+            220,
+            255
+          ]
+        },
+        "columns_landscape": {
+          "default": 3
+        },
+        "columns_portrait": {
+          "default": 2
+        },
+        "devices": {
+          "widget": "stringlist",
+          "default": []
+        },
+        "noise_alpha": {
+          "default": 8
+        },
+        "panel_spacing_scale": {
+          "default": 0.028
+        },
+        "ping_timeout_sec": {
+          "default": 1.5
+        },
+        "poll_interval_sec": {
+          "default": 15.0
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "subtitle": {
+          "default": "LAN reachability monitor"
+        },
+        "vignette_strength": {
+          "default": 0.25
+        }
+      }
     },
     "antfarm": {
       "entrypoint": "antfarm.antfarm_mode:AntFarmMode",
@@ -847,7 +2698,41 @@
         "scanline_alpha",
         "noise_alpha",
         "vignette_strength"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            0,
+            255,
+            200
+          ]
+        },
+        "crossfade_sec": {
+          "default": 0.8
+        },
+        "noise_alpha": {
+          "default": 10
+        },
+        "panel_duration_sec": {
+          "default": 60.0
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": true
+        },
+        "refresh_hz": {
+          "default": 60.0
+        },
+        "scanline_alpha": {
+          "default": 10
+        },
+        "subtitle": {
+          "default": "KESTREL HABITAT // TIER 3 DOMICILE"
+        },
+        "vignette_strength": {
+          "default": 0.18
+        }
+      }
     },
     "fantasymapgenerator": {
       "entrypoint": "modes.fantasy_map_mode:FantasyMapMode",
@@ -868,7 +2753,58 @@
         "terrain_colors",
         "border_color",
         "render_scale"
-      ]
+      ],
+      "params": {
+        "border_color": {
+          "default": [
+            210,
+            190,
+            150
+          ]
+        },
+        "hill_level": {
+          "widget": "number",
+          "default": 0.58
+        },
+        "map_size": {
+          "default": 256
+        },
+        "mountain_level": {
+          "widget": "number",
+          "default": 0.72
+        },
+        "num_rivers": {
+          "widget": "number",
+          "default": 18
+        },
+        "num_settlements": {
+          "widget": "number",
+          "default": 14
+        },
+        "regeneration_interval_sec": {
+          "default": 45
+        },
+        "render_scale": {
+          "default": 4
+        },
+        "show_labels": {
+          "default": true
+        },
+        "show_rivers": {
+          "default": true
+        },
+        "show_roads": {
+          "default": true
+        },
+        "terrain_colors": {
+          "widget": "json",
+          "default": {}
+        },
+        "water_level": {
+          "widget": "number",
+          "default": 0.4
+        }
+      }
     },
     "penrosetiling": {
       "entrypoint": "modes.penrose_tiling_mode:PenroseTilingMode",
@@ -884,8 +2820,47 @@
         "seed",
         "center_x",
         "center_y",
-        "initial_radius"
-      ]
+        "initial_radius",
+        "palette_obtuse",
+        "render_mode"
+      ],
+      "params": {
+        "bg_rgb": {
+          "default": [
+            8,
+            8,
+            16
+          ]
+        },
+        "center_x": {
+          "default": 0.5
+        },
+        "center_y": {
+          "default": 0.5
+        },
+        "generation_interval_sec": {
+          "default": 3.0
+        },
+        "max_generations": {
+          "default": 10
+        },
+        "render_mode": {
+          "default": "both"
+        },
+        "tile_edge_alpha": {
+          "default": 80
+        },
+        "tile_fill_alpha": {
+          "default": 200
+        },
+        "tiling_type": {
+          "suggestions": [
+            "p1",
+            "p2"
+          ],
+          "default": "p3"
+        }
+      }
     },
     "quoteslideshow": {
       "entrypoint": "modes.quote_slideshow_mode:QuoteSlideshowMode",
@@ -905,7 +2880,66 @@
         "quote_font_scale",
         "quote_max_width_frac",
         "quote_line_spacing"
-      ]
+      ],
+      "params": {
+        "duration": {
+          "default": 10
+        },
+        "folder": {
+          "default": "."
+        },
+        "play_audio": {
+          "widget": "switch",
+          "default": false
+        },
+        "quote_author_color": {
+          "default": [
+            180,
+            180,
+            200
+          ]
+        },
+        "quote_file": {
+          "default": "quotes_dystopian.json"
+        },
+        "quote_font_scale": {
+          "default": 0.035
+        },
+        "quote_line_spacing": {
+          "default": 1.35
+        },
+        "quote_max_width_frac": {
+          "default": 0.72
+        },
+        "quote_panel_alpha": {
+          "default": 160
+        },
+        "quote_panel_color": {
+          "default": [
+            20,
+            20,
+            30
+          ]
+        },
+        "quote_text_color": {
+          "default": [
+            240,
+            240,
+            245
+          ]
+        },
+        "scale_mode": {
+          "suggestions": [
+            "contain",
+            "cover"
+          ],
+          "default": "cover"
+        },
+        "shuffle_images": {
+          "widget": "switch",
+          "default": true
+        }
+      }
     },
     "satellitetracker": {
       "entrypoint": "modes.satellite_tracker_mode:SatelliteTrackerMode",
@@ -924,7 +2958,38 @@
         "accent_rgb",
         "seed",
         "scanline_alpha"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            205,
+            135
+          ]
+        },
+        "cache_dir": {
+          "default": "data/tle_cache"
+        },
+        "observer_name": {
+          "default": "HOME QTH"
+        },
+        "rotation": {
+          "suggestions": [
+            "first",
+            "random"
+          ],
+          "default": "daily"
+        },
+        "scanline_alpha": {
+          "default": 0
+        },
+        "tle_max_age_hours": {
+          "default": 24
+        },
+        "update_hz": {
+          "default": 1.0
+        }
+      }
     },
     "wargames": {
       "entrypoint": "modes.wargames_mode:WarGamesMode",
@@ -939,7 +3004,33 @@
         "scanline_alpha",
         "hold_on_outcome_s",
         "hold_on_quote_s"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            204,
+            132
+          ]
+        },
+        "hold_on_outcome_s": {
+          "widget": "number",
+          "default": 6.0
+        },
+        "hold_on_quote_s": {
+          "widget": "number",
+          "default": 10.0
+        },
+        "scanline_alpha": {
+          "default": 0
+        },
+        "seed": {
+          "default": 1983
+        },
+        "speed": {
+          "default": 1.0
+        }
+      }
     },
     "llmpricingwall": {
       "entrypoint": "modes.llm_pricing_wall_mode:LLMPricingWallMode",
@@ -956,7 +3047,40 @@
         "noise_alpha",
         "vignette_strength",
         "seed"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            100,
+            220,
+            180
+          ]
+        },
+        "columns_landscape": {
+          "default": 2
+        },
+        "columns_portrait": {
+          "default": 1
+        },
+        "data_file": {
+          "default": "data/llm_pricing.json"
+        },
+        "noise_alpha": {
+          "default": 0
+        },
+        "panel_spacing_scale": {
+          "default": 0.025
+        },
+        "scanline_alpha": {
+          "default": 0
+        },
+        "subtitle": {
+          "default": "per-million-token input / output prices"
+        },
+        "vignette_strength": {
+          "default": 0.15
+        }
+      }
     },
     "controlpanel": {
       "entrypoint": "modes.control_panel_mode:ControlPanelMode",
@@ -970,7 +3094,38 @@
         "trace_rgb",
         "lamp_rgb",
         "scale_mode"
-      ]
+      ],
+      "params": {
+        "accent_rgb": {
+          "default": [
+            255,
+            176,
+            64
+          ]
+        },
+        "layout_file": {
+          "default": ""
+        },
+        "scale_mode": {
+          "widget": "choice",
+          "choices": [
+            "cover",
+            "fit",
+            "stretch"
+          ],
+          "default": "fit"
+        },
+        "skin": {
+          "default": "placeholder"
+        },
+        "trace_rgb": {
+          "default": [
+            80,
+            255,
+            120
+          ]
+        }
+      }
     },
     "puppettheatre": {
       "entrypoint": "modes.puppet_theatre_mode:PuppetTheatreMode",
@@ -1006,7 +3161,86 @@
         "character_height_frac",
         "base_amplitude",
         "layer_factors"
-      ]
+      ],
+      "params": {
+        "character_height_frac": {
+          "default": 0.45
+        },
+        "default_transition_in": {
+          "widget": "json",
+          "default": {
+            "type": "fade"
+          }
+        },
+        "default_transition_out": {
+          "widget": "json",
+          "default": {
+            "type": "fade"
+          }
+        },
+        "description_font_size": {
+          "default": 52
+        },
+        "dialogue_box_alpha": {
+          "default": 180
+        },
+        "dialogue_box_margin": {
+          "default": 24
+        },
+        "dialogue_fade_in_sec": {
+          "default": 0.3
+        },
+        "dialogue_fade_out_sec": {
+          "default": 0.3
+        },
+        "dialogue_font_size": {
+          "default": 42
+        },
+        "dialogue_hold_extra_per_word": {
+          "widget": "number",
+          "default": 0.18
+        },
+        "dialogue_hold_sec": {
+          "default": 3.0
+        },
+        "image_folder": {
+          "default": ""
+        },
+        "loop_black_hold_sec": {
+          "default": 0.5
+        },
+        "loop_fade_to_black_sec": {
+          "default": 0.8
+        },
+        "pop_duration_sec": {
+          "default": 0.25
+        },
+        "scale_characters": {
+          "widget": "switch",
+          "default": true
+        },
+        "scene_description_fade_in_sec": {
+          "default": 0.8
+        },
+        "scene_description_fade_out_sec": {
+          "default": 0.8
+        },
+        "scene_description_hold_sec": {
+          "default": 4.0
+        },
+        "scene_pause_after_script_sec": {
+          "default": 0.5
+        },
+        "scene_pause_before_script_sec": {
+          "default": 0.5
+        },
+        "scenes_file": {
+          "default": ""
+        },
+        "transition_duration_sec": {
+          "default": 0.9
+        }
+      }
     },
     "dungeonexpedition": {
       "entrypoint": "modes.dungeon_mode:DungeonMode",
@@ -1031,7 +3265,33 @@
         "auto_descend",
         "heal_on_descend",
         "font_name"
-      ]
+      ],
+      "params": {
+        "auto_descend": {
+          "widget": "switch",
+          "default": true
+        },
+        "dungeon_height": {
+          "default": 40
+        },
+        "dungeon_width": {
+          "default": 64
+        },
+        "maximum_rooms": {
+          "widget": "number",
+          "default": 15
+        },
+        "minimum_rooms": {
+          "widget": "number",
+          "default": 8
+        },
+        "save_interval_seconds": {
+          "default": 30.0
+        },
+        "simulation_speed": {
+          "default": 1.0
+        }
+      }
     },
     "imaginarylibrary": {
       "entrypoint": "modes.imaginary_library_mode:ImaginaryLibraryMode",
@@ -1064,7 +3324,56 @@
         "body_font_size",
         "small_font_size",
         "tag_font_size"
-      ]
+      ],
+      "params": {
+        "body_font_size": {
+          "default": 48
+        },
+        "books_file": {
+          "default": "data/imaginary_library/books.json"
+        },
+        "dwell_seconds": {
+          "default": 180.0
+        },
+        "image_folder": {
+          "default": "assets/books"
+        },
+        "match_by": {
+          "suggestions": [
+            "index"
+          ],
+          "default": "filename"
+        },
+        "placeholder_color": {
+          "default": [
+            40,
+            35,
+            55
+          ]
+        },
+        "portrait_cover_height_frac": {
+          "default": 0.34
+        },
+        "portrait_layout": {
+          "widget": "switch",
+          "default": false
+        },
+        "show_review": {
+          "default": true
+        },
+        "show_tags": {
+          "default": true
+        },
+        "small_font_size": {
+          "default": 36
+        },
+        "tag_font_size": {
+          "default": 32
+        },
+        "title_font_size": {
+          "default": 48
+        }
+      }
     }
   }
 }

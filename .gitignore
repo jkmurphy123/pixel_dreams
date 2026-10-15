@@ -224,4 +224,5 @@ dungeon_save.json
 secrets.json
 runtime/
 configs/.backups/
+.backups/
 .pytest_cache/
