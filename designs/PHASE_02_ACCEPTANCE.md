@@ -33,8 +33,8 @@ loopback-only assertions.
 | Schema applied to the versioned registry without loss | PASS | 53 types; entrypoints, `required`, `type_config` and `settings` identical to HEAD; `optional` arrays preserved with additions appended; second run merged 0 keys and produced the same sha256 (`b10b01bc3ddf`) |
 | Configs still valid after the registry change | PASS | `validate_configs.py --all` → 0 errors, 1 warning (pre-existing: a Windows path in an inherited profile) |
 | Existing process behaviour intact | PASS | Sandbox run: panel serves the live loop, `/api/ping` → `pong_count` 1, `/api/status` 200; panel-off run still reports `nicegui_imported=False` |
-| Rendered form against the REAL profiles | PENDING | The sweep proves the model resolves every field, and the fixture proves the renderer handles every shape, but a page containing all 53 real mode types has not been opened. Prerequisite: your browser (see below). |
-| Visual sanity of the real forms | PENDING | Your check, per the design's own acceptance item ("you eyeball slideshow, status ticker, control panel and say the widgets are sane"). |
+| Rendered form against the REAL profiles | PASS | All 167 mode pages of all 8 shipped profiles render through the real page builders (test), and the same 167 pages were swept over HTTP against a real LAN-bound process: **0 non-200**, with every one of the 1522 configured fields' labels present in the served page. This sweep is how the 500 below was found. |
+| Visual sanity of the real forms | PENDING | Your check, per the design's own acceptance item ("you eyeball slideshow, status ticker, control panel and say the widgets are sane"). Nothing here has been looked at in a browser. |
 
 ## Design §10 Phase 2 checks
 
@@ -45,6 +45,26 @@ loopback-only assertions.
 | 3 | The drift keys added to `optional` | PASS — 23 keys; measured drift 0 |
 | 4 | `/mode/<n>` rendering every param with a plausible widget (no writes) | PASS — 2508 fields, 0 missing; each shape's widget kind asserted; the page writes nothing |
 | 5 | You eyeball the widgets on real modes | PENDING — needs your browser |
+
+## Found during live verification (fixed in this phase)
+
+**A 500 on real mode pages — `HTTP 500: ValueError: invalid literal for int() with base 10:
+'cover'`** on `/mode/2` and `/mode/7`. The chain: `scale_mode` is absent from that profile, so the
+widget came from the key's NAME (the tokens include "scale", which is in the numeric vocabulary);
+the schema's default `"cover"` was then handed to `ui.number()`, which `int()`s its value.
+
+Fixed at three layers so no single mistake can repeat it:
+1. `core/params.py`: an unset key's widget now comes from the schema's recorded **default**, which
+   is real evidence about the type, rather than from the key's name, which is a guess.
+2. `core/schema_scaffold.py`: the evidence rule is restated by strength — a code coercion beats a
+   name guess, and `text` only loses to `path`/`color`, where the name *refines* a string instead
+   of contradicting it.
+3. `panel/app.py`: a number field can no longer take a page down; a non-numeric value renders as
+   an explicit note naming the key.
+
+Two tests now cover the class of bug the fixture could not see (it exercised every value shape but
+none of the real registry's schema oddities): every mode page of every real profile is rendered in
+the suite, and the live HTTP sweep is part of the record above.
 
 ## Known deviations
 
@@ -64,11 +84,12 @@ loopback-only assertions.
 
 ## Not verified at all
 
-- **The form in a real browser.** No page has been looked at; the visual layout of the field grid,
-  the swatches and the group cards is unverified. Prerequisite: open the URLs below.
+- **The form in a real browser.** The pages render and serve correctly (machine-checked), but
+  nobody has LOOKED at them: the visual layout of the field grid, the swatches and the group cards
+  is unverified, and only a browser can show it. Prerequisite: open the URLs below.
 - **Editing anything.** Phase 2 is read-only by design: no Save, no enable/disable, no Refresh, no
   profile switching. The write path (`core/store.py`) is built and tested but not yet wired to a UI.
-- **Whether the auto-generated schema is *right* in judgement terms.** The 77 widget corrections,
+- **Whether the auto-generated schema is *right* in judgement terms.** The 81 widget corrections,
   17 derived flags and 12 suggestion sets are inferred from code patterns; they need your eye,
   and the `params` block is yours to edit (a re-run never overwrites it).
 - **The real tuning loop** (change a value → refresh → look at the wall), which is Phase 3.

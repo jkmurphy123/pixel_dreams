@@ -496,7 +496,7 @@ Per profile: root 34 modes/500 fields, portrait 24/359, narrow_vert 24/354, wind
 narrow_horz 17/256, jetson 14/204, landscape 9/130, basic 20/329.
 
 What the code-mining found and recorded (this is the part the panel could never have inferred):
-577 code defaults, 77 widget corrections, 17 keys a mode computes at runtime ("derived", e.g.
+577 code defaults, 81 widget corrections, 17 keys a mode computes at runtime ("derived", e.g.
 status ticker's font size), 12 suggestion sets, 1 closed value set. Schema coverage: 52 of 53
 types (the 53rd genuinely has no tunable keys).
 
