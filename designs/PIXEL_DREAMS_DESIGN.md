@@ -381,7 +381,7 @@ Acceptance: (a) `python pixel_dreams.py --auto 30 --windowed --panel-port 8090` 
 (c) RSS with the panel on/off recorded; (d) panel OFF = nicegui never imported (assert it);
 (e) `--panel-only` serves the same page with no display initialised.
 
-**Phase 2 — Param schema + read-only dynamic form.**
+**Phase 2 — Param schema + read-only dynamic form.** (DONE — see §10.2 for the measured record.)
 Deliverables: `params` schema support in the registry (inference fallback); the scaffold script and
 its generated draft for 53 types; the 6 drift keys added to `optional`; `/mode/<n>` rendering every
 param with a plausible widget (no writes). Acceptance: automated check that **every** param present
@@ -473,6 +473,57 @@ machine `modes_config.json` modes 2 and 3 log
 `[SlideshowMode] folder does not exist: /home/ubuntu/narrow_slideshow/...` and render nothing. That
 is exactly the per-host case `modes_config.local.json` exists for, and the panel already badges
 override-supplied values.
+
+---
+
+### 10.2 Phase 2 — implementation record (DONE, 2026-10-15)
+
+Commits: `236ea29` (schema layer, crash-safe writes, drift fix), `9a1271b` (the generated form).
+Same host and versions as Phase 1.
+
+| Step | Status | Measured evidence |
+|---|---|---|
+| 1. `core/params.py` (inference + schema overlay) | DONE | 11 value shapes mapped; absent-key typing by whole-token name heuristics; secrets masked |
+| 2. `core/store.py` (crash-safe writes) | DONE | backup → temp + fsync → `os.replace` → dir fsync → re-read/hash; a failed swap leaves the original byte-identical with no temp file |
+| 3. `scripts/scaffold_param_schema.py` + registry merge | DONE | 53 types analysed, 580 schema entries applied, idempotent (2nd run: 0 merged, same sha256), structure verified against HEAD |
+| 4. Drift fix (code-read keys declared) | DONE | 23 keys added to `optional` across 6 types; measured drift is now **0** |
+| 5. `/mode/<n>` generated form (read-only) | DONE | 16 UI tests; every field read-only; secret values absent from the element tree |
+| 6. Exhaustive completeness sweep | DONE | **8 profiles, 167 modes, 2508 fields, 0 missing** |
+
+Widget mix over the real tree (what the form actually produces): number 1271, text 608, colour
+256, switch 225, string list 68, range 36, path 30, palette 6, JSON 3, choice 3, secret 2.
+Per profile: root 34 modes/500 fields, portrait 24/359, narrow_vert 24/354, windows 25/376,
+narrow_horz 17/256, jetson 14/204, landscape 9/130, basic 20/329.
+
+What the code-mining found and recorded (this is the part the panel could never have inferred):
+577 code defaults, 77 widget corrections, 17 keys a mode computes at runtime ("derived", e.g.
+status ticker's font size), 12 suggestion sets, 1 closed value set. Schema coverage: 52 of 53
+types (the 53rd genuinely has no tunable keys).
+
+**Deviations from this doc, with reasons:**
+
+1. **`core/store.py` shipped in Phase 2**, not Phase 3. §7 assigns the write path to the profile
+   editor, but the schema tool rewrites a 26 KB versioned registry file — doing that without the
+   atomic-write contract would have been careless, and Phase 3 now inherits it.
+2. **`choices` vs `suggestions`** (not in the doc). Code evidence comes in two strengths: a
+   declared `VALID_*` set is CLOSED (safe as a dropdown); bare `==` comparisons are open-ended, so
+   they become suggestions on a free-text field. The first draft emitted a one-option dropdown for
+   `weather_units` ("imperial"), which would have trapped you in Phase 3.
+3. **A secret's value never enters the model** (`resolve_params` masks it). The doc only required
+   the UI not to show it; masking at the model layer means no future renderer can leak one.
+4. **The schema records only what inference gets wrong.** Re-emitting all 409 keys would freeze
+   today's inference into the registry, so a later improvement in `core/params.py` could never take
+   effect. `--all-keys` exists if you ever want the explicit form.
+5. **`--check` semantics changed**: it now checks schema *health* (every type has at least one
+   entry) rather than demanding an entry for every type, because one type has no tunable keys.
+6. **`default` values from code are fallbacks, not your tuned values.** They differ: status
+   ticker's `pause` default is 0.35 while your profile sets 3.5. The form always shows the
+   profile's value when the profile sets the key; the default only appears for unset keys.
+
+Environment note: the form's path widget reports "not found on this machine" for the inherited
+kiosk paths (e.g. `/home/ubuntu/narrow_slideshow/...`). That is the per-host case
+`modes_config.local.json` exists for, now visible at a glance instead of as a log line.
+
 
 ---
 
