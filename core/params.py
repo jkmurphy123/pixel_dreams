@@ -441,3 +441,116 @@ def coverage(instance_params: dict, spec: dict) -> dict:
         "missing_present": sorted(present - rendered),
         "missing_declared": sorted(declared - rendered),
     }
+
+
+# ---------------------------------------------------------------- value checks
+
+def _shape_word(value) -> str:
+    """A short, human phrase for what a value actually is (used in refusal messages)."""
+    if value is None:
+        return "nothing"
+    if isinstance(value, bool):
+        return "true/false"
+    if isinstance(value, (int, float)):
+        return "a number"
+    if isinstance(value, str):
+        return "text"
+    if isinstance(value, (list, tuple)):
+        return "a list"
+    if isinstance(value, dict):
+        return "an object"
+    return type(value).__name__
+
+
+def _plain_number(value):
+    """Print 5.0 as 5, so a message reads the way the field does."""
+    try:
+        return int(value) if float(value) == int(value) else value
+    except (TypeError, ValueError):
+        return value
+
+
+def _is_hex_colour(value) -> bool:
+    if not isinstance(value, str) or not value.startswith("#"):
+        return False
+    body = value[1:]
+    return len(body) in (3, 6) and all(ch in "0123456789abcdefABCDEF" for ch in body)
+
+
+def _is_rgb_triple(value) -> bool:
+    return (isinstance(value, (list, tuple)) and len(value) == 3
+            and all(isinstance(c, int) and not isinstance(c, bool) and 0 <= c <= 255
+                    for c in value))
+
+
+def validate_param_value(p: "ParamSpec", value) -> list:
+    """
+    Is this value acceptable for this field? Returns human messages; empty means fine.
+
+    The panel calls this BEFORE it writes anything, so a text box cannot store a value the mode
+    will choke on: the schema knows the shape, the range, and — for a closed set — the values that
+    are allowed. Cheap, pure, and deliberately conservative: it refuses what it can prove wrong and
+    stays quiet about what it cannot judge.
+    """
+    if p.secret:
+        return []          # never inspected, never written from the panel
+    if p.derived:
+        return []          # the mode computes its own value; anything stored is only a hint
+
+    widget = p.widget
+    if widget == "switch":
+        return [] if isinstance(value, bool) else [f"must be true or false (got {_shape_word(value)})"]
+
+    if widget == "number":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return [f"must be a number (got {_shape_word(value)})"]
+        if p.type_name == "int" and float(value) != int(value):
+            return [f"must be a whole number (got {_plain_number(value)})"]
+        messages = []
+        if p.min is not None and value < p.min:
+            messages.append(f"must be at least {_plain_number(p.min)}")
+        if p.max is not None and value > p.max:
+            messages.append(f"must be at most {_plain_number(p.max)}")
+        return messages
+
+    if widget in ("text", "path"):
+        return [] if isinstance(value, str) else [f"must be text (got {_shape_word(value)})"]
+
+    if widget == "choice":
+        if not isinstance(value, str):
+            return [f"must be text (got {_shape_word(value)})"]
+        if p.choices and value not in p.choices:
+            return [f"must be one of: {', '.join(str(c) for c in p.choices)}"]
+        return []
+
+    if widget == "color":
+        if _is_rgb_triple(value) or _is_hex_colour(value):
+            return []
+        return ["must be an RGB triple like [255, 128, 0] or a hex colour like #ff8000"]
+
+    if widget == "range":
+        if not (isinstance(value, (list, tuple)) and len(value) == 2
+                and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in value)):
+            return ["must be two numbers like [1.0, 4.0]"]
+        low, high = value
+        if low > high:
+            return [f"low bound {_plain_number(low)} is above high bound {_plain_number(high)}"]
+        return []
+
+    if widget == "stringlist":
+        if not isinstance(value, (list, tuple)):
+            return [f"must be a list of lines (got {_shape_word(value)})"]
+        bad = [v for v in value if not isinstance(v, str)]
+        return [f"every line must be text (found {_shape_word(bad[0])})"] if bad else []
+
+    if widget == "palette":
+        if not isinstance(value, (list, tuple)):
+            return [f"must be a list of colours (got {_shape_word(value)})"]
+        bad = [v for v in value if not (_is_rgb_triple(v) or _is_hex_colour(v))]
+        if bad:
+            return ["every entry must be an RGB triple like [255, 128, 0] or a hex colour"]
+        return []
+
+    # raw JSON and anything the schema did not name: the JSON encoder is the only judge left,
+    # and the writer reports what it refuses.
+    return []
