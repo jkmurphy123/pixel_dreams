@@ -26,8 +26,17 @@ from __future__ import annotations
 import copy
 import os
 from dataclasses import dataclass, field
+from datetime import datetime
 
-from .config import LOCAL_CONFIG_NAME, load_json, load_project_config, normalize_type
+from .config import (
+    LOCAL_CONFIG_NAME,
+    active_profile_file,
+    load_json,
+    load_project_config,
+    normalize_type,
+    resolve_active_profile,
+    write_active_profile,
+)
 from .params import resolve_params, validate_param_value
 from .store import WriteVerificationError, atomic_write_json, sha256_file
 from .validation import ERROR, Issue, validate_profile
@@ -35,6 +44,57 @@ from .validation import ERROR, Issue, validate_profile
 
 class EditorRefused(Exception):
     """A change the editor will not stage (e.g. a key supplied by the local override)."""
+
+
+@dataclass
+class SwitchResult:
+    """The outcome of making a different profile active."""
+
+    ok: bool
+    reason: str = ""
+    errors: tuple = ()
+    warnings: tuple = ()
+    profile: str = ""                 # relative to base_dir, as recorded
+    profile_abs: str = ""
+    runtime_file: str = ""
+    payload: dict = field(default_factory=dict)     # what the render loop needs
+
+
+def default_backup_dir(path: str) -> str:
+    """Where writes of `path` put their backups (same convention as core.store)."""
+    return os.path.join(os.path.dirname(os.path.abspath(path)), ".backups")
+
+
+def list_backups(path: str, backup_dir: str | None = None) -> list:
+    """
+    Newest first. Each entry: {name, path, bytes, sha256, stamp, when}.
+
+    `stamp` is the sortable token from the filename; `when` is it rendered for a human. Only files
+    belonging to THIS target are listed (the directory holds backups for every profile and the
+    registry).
+    """
+    directory = backup_dir or default_backup_dir(path)
+    stem = os.path.basename(path)
+    if not os.path.isdir(directory):
+        return []
+    out = []
+    for name in sorted(os.listdir(directory), reverse=True):
+        if not (name.startswith(stem + ".") and name.endswith(".bak")):
+            continue
+        full = os.path.join(directory, name)
+        stamp = name[len(stem) + 1:-len(".bak")]
+        when = stamp
+        try:
+            when = datetime.strptime(stamp, "%Y%m%dT%H%M%S_%fZ").strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            pass
+        try:
+            size = os.path.getsize(full)
+        except OSError:
+            size = 0
+        out.append({"name": name, "path": full, "bytes": size, "stamp": stamp, "when": when,
+                    "sha256": sha256_file(full) if os.path.exists(full) else ""})
+    return out
 
 
 @dataclass
@@ -106,6 +166,8 @@ class ProfileEditor:
         self.baseline_sha = sha256_file(self.path) if os.path.exists(self.path) else ""
         self.staged: dict[int, StagedEdit] = {}
         self.last_backup = ""
+        #: Set by stage_document() (the raw-JSON editor): it replaces the document wholesale.
+        self.document_override = None
 
     # ---------------------------------------------------------------- reading
 
@@ -168,6 +230,20 @@ class ProfileEditor:
                                 "'enabled' flag in this profile")
         self.edit(number).enabled = bool(enabled)
 
+    def stage_document(self, document) -> None:
+        """
+        Replace the WHOLE document (used by the raw-JSON editor). Validated on save like anything
+        else, and it supersedes any per-mode staging: you cannot half-edit a file one way and half
+        the other and expect to know what you are saving.
+        """
+        if not isinstance(document, dict):
+            raise EditorRefused("the document must be a JSON object")
+        self.document_override = copy.deepcopy(document)
+        self.staged.clear()
+
+    def clear_document(self) -> None:
+        self.document_override = None
+
     def reload_if_changed(self) -> bool:
         """
         Re-read the file when it changed underneath us, so a page that is merely DISPLAYING
@@ -197,6 +273,7 @@ class ProfileEditor:
 
     def revert_all(self) -> None:
         self.staged.clear()
+        self.document_override = None
 
     def reload(self) -> None:
         """Drop staged changes AND re-read the file from disk (the way out of a conflict)."""
@@ -208,6 +285,8 @@ class ProfileEditor:
 
     def prospective(self) -> dict:
         """The document as it would be written right now. Deep copy; self.document is untouched."""
+        if self.document_override is not None:
+            return copy.deepcopy(self.document_override)
         doc = copy.deepcopy(self.document)
         modes = doc.setdefault("modes", {})
         if not isinstance(modes, dict):
@@ -232,15 +311,27 @@ class ProfileEditor:
         return doc
 
     def is_dirty(self, number=None) -> bool:
+        if self.document_override is not None:
+            return self.document_override != self.document
         if number is None:
             return any(not s.empty for s in self.staged.values())
         return not self.staged.get(int(number), StagedEdit(int(number))).empty
 
     def changed_modes(self) -> list:
+        if self.document_override is not None:
+            before, after = self.modes(), (self.document_override.get("modes") or {})
+            keys = set(before) | set(after)
+            return sorted((int(k) for k in keys if str(k).isdigit()
+                           and before.get(k) != after.get(k)))
         return sorted(n for n, s in self.staged.items() if not s.empty)
 
     def staged_summary(self) -> str:
+        if self.document_override is not None:
+            changed = self.changed_modes()
+            return (f"the whole document was replaced (modes changed: {changed})"
+                    if changed else "the whole document was replaced (no mode values differ)")
         return "; ".join(f"mode {n}: {self.staged[n].describe()}" for n in self.changed_modes())
+
 
     def is_stale(self) -> bool:
         """True when the file on disk is not the file this session read."""
@@ -353,6 +444,87 @@ class ProfileEditor:
             backup=self.last_backup,
             warnings=tuple(i.render().strip() for i in validation.warnings),
         )
+
+
+def restore_backup(path: str, backup: str, *, registry: dict, base_dir: str | None = None) -> SaveResult:
+    """
+    Put a backup back as the live profile.
+
+    Validated FIRST: a backup may predate a type or schema change, and restoring it straight over
+    the live file is how a rollback becomes an outage. The write then goes through the same atomic
+    path, which backs up the CURRENT file first — so a restore is itself undoable.
+    """
+    if not os.path.exists(backup):
+        return SaveResult(ok=False, reason=f"no such backup: {backup}")
+    doc = load_json(backup, None)
+    if not isinstance(doc, dict) or not isinstance(doc.get("modes"), dict):
+        return SaveResult(ok=False,
+                          reason=f"{os.path.basename(backup)} is not a profile document")
+    issues = validate_profile(doc["modes"], registry,
+                              base_dir=base_dir or os.path.dirname(os.path.abspath(path)))
+    blocking = [i for i in issues if i.is_error]
+    if blocking:
+        return SaveResult(
+            ok=False,
+            reason=f"{os.path.basename(backup)} does not validate, so nothing was restored",
+            errors=tuple(i.render().strip() for i in blocking))
+    try:
+        report = atomic_write_json(path, doc, backup=True)
+    except (WriteVerificationError, OSError, TypeError, ValueError) as e:
+        return SaveResult(ok=False, reason=f"could not restore: {e}")
+    return SaveResult(ok=True, reason=f"restored {os.path.basename(backup)}",
+                      path=report["path"], sha256=report["sha256"],
+                      backup=report.get("backup") or "",
+                      warnings=tuple(i.render().strip() for i in issues if not i.is_error))
+
+
+def switch_profile(base_dir: str, profile_path: str, registry: dict, *,
+                   config_override: str | None = None) -> SwitchResult:
+    """
+    Make `profile_path` the active profile: validate it, record it in runtime/active_profile.json,
+    and hand back the payload the render loop needs to switch over.
+
+    Refused — with nothing written and nothing applied — when:
+      * the app was started with --config. That flag outranks the recorded profile at every restart,
+        so a switch here would look like it worked and be gone at the next boot: better to say so.
+      * the target is missing or is not a profile.
+      * the profile has validation ERRORS. A switch must not be able to put a broken profile on the
+        wall, which is the same rule the writer follows for edits.
+    """
+    if config_override:
+        return SwitchResult(
+            ok=False,
+            reason=f"this app was started with --config {config_override}, which always wins over "
+                   f"the recorded profile — restart it without --config to switch from here")
+
+    path = (os.path.abspath(profile_path) if os.path.isabs(profile_path)
+            else os.path.abspath(os.path.join(base_dir, profile_path)))
+    if not os.path.exists(path):
+        return SwitchResult(ok=False, reason=f"no such profile file: {path}")
+
+    modes = load_json(path, {}).get("modes")
+    if not isinstance(modes, dict) or not modes:
+        return SwitchResult(ok=False,
+                            reason=f"{os.path.basename(path)} has no 'modes' — not a profile")
+
+    issues = validate_profile(modes, registry, base_dir=base_dir)
+    blocking = [i for i in issues if i.is_error]
+    if blocking:
+        return SwitchResult(
+            ok=False,
+            reason="this profile does not validate, so it was not made active — a switch must not "
+                   "put a broken profile on the wall",
+            errors=tuple(i.render().strip() for i in blocking))
+
+    report = write_active_profile(base_dir, path)
+    return SwitchResult(
+        ok=True,
+        reason=f"{os.path.basename(path)} is now the active profile",
+        profile=report["profile"],
+        profile_abs=path,
+        runtime_file=active_profile_file(base_dir),
+        payload=load_payload(base_dir, path),
+        warnings=tuple(i.render().strip() for i in issues if not i.is_error))
 
 
 def load_payload(base_dir: str, profile_path: str) -> dict:

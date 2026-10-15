@@ -53,6 +53,82 @@ def resolve_config_path(base_dir: str, filename_or_path: str) -> str:
     return os.path.join(base_dir, filename_or_path)
 
 
+# ---------------------------------------------------------------- which profile is active
+#
+# Precedence (design §6.3), one new source inserted into the existing pattern:
+#
+#     --config FILE  >  runtime/active_profile.json  >  registry settings.modes_config_file
+#
+# The panel writes ONLY the runtime file. It never rewrites modes_registry.json to change one
+# string: that file holds entrypoints and the param schemas, it already has an editor (a text
+# editor), and a second writer round-tripping 26 KB to set a name is a divergence bug that dirties
+# git on every switch.
+
+RUNTIME_DIRNAME = "runtime"
+ACTIVE_PROFILE_NAME = "active_profile.json"
+
+
+def active_profile_file(base_dir: str) -> str:
+    """Where the running app records which profile the display should use."""
+    return os.path.join(base_dir, RUNTIME_DIRNAME, ACTIVE_PROFILE_NAME)
+
+
+def read_active_profile(base_dir: str) -> str:
+    """
+    The recorded active profile, as written (relative to base_dir, or absolute), or "".
+
+    Anything malformed reads as "": this file is derived state, and a torn or hand-mangled copy
+    must never be able to stop a kiosk from starting. A missing file is the normal case.
+    """
+    raw = load_json(active_profile_file(base_dir), {})
+    if isinstance(raw, str):
+        value = raw                      # tolerate a bare string if a human wrote one
+    elif isinstance(raw, dict):
+        value = raw.get("profile") or ""
+    else:
+        value = ""
+    return value.strip() if isinstance(value, str) else ""
+
+
+def write_active_profile(base_dir: str, profile: str) -> dict:
+    """
+    Record which profile the display should use from now on. Atomic; no backup (this file is one
+    line of derived state, recreatable by switching again).
+    """
+    from .store import atomic_write_json      # local: keeps this module importable without it
+
+    rel = (os.path.relpath(os.path.abspath(profile), base_dir)
+           if os.path.isabs(profile) else profile)
+    report = atomic_write_json(active_profile_file(base_dir), {"profile": rel})
+    return {**report, "profile": rel}
+
+
+def resolve_active_profile(base_dir: str, config_override: str | None = None):
+    """
+    Which profile the app uses, and why — THE single resolution, used both by the startup loader
+    and by anything that reports or switches profiles. Returns (absolute path, source) with source
+    in {"cli", "runtime", "registry", "default"}.
+    """
+    if config_override:
+        # An explicit CLI request outranks a recorded one: --config means "I know what I want".
+        return os.path.abspath(resolve_config_path(base_dir, config_override)), "cli"
+
+    recorded = read_active_profile(base_dir)
+    if recorded:
+        path = os.path.abspath(resolve_config_path(base_dir, recorded))
+        if os.path.exists(path):
+            return path, "runtime"
+        # A recorded profile that has since been deleted or renamed falls through to the registry
+        # rather than leaving the kiosk unable to start.
+
+    registry = load_json(os.path.join(base_dir, "modes_registry.json"), {})
+    settings = registry.get("settings", {}) if isinstance(registry, dict) else {}
+    name = settings.get("modes_config_file") if isinstance(settings, dict) else None
+    if name:
+        return os.path.abspath(resolve_config_path(base_dir, name)), "registry"
+    return os.path.abspath(resolve_config_path(base_dir, "")), "default"
+
+
 def infer_max_modes_from_config(cfg_dict: dict) -> int:
     if not cfg_dict:
         return DEFAULT_MAX_MODES
@@ -143,6 +219,9 @@ def load_project_config(base_dir: str, config_override: str = None):
     """
     Load registry + modes config (+ optional local override).
 
+    WHICH modes config is decided by resolve_active_profile (one resolution, shared with the panel
+    and the profile switcher): --config > runtime/active_profile.json > registry settings > default.
+
     Returns:
         registry_json (dict): full registry document
         registry (dict):      registry["types"]
@@ -153,10 +232,8 @@ def load_project_config(base_dir: str, config_override: str = None):
     registry_json = load_json(registry_file, {})
     registry = registry_json.get("types", {})
 
-    settings = registry_json.get("settings", {})
-    config_name = config_override or settings.get("modes_config_file", "modes_config.json")
-    config_path = resolve_config_path(base_dir, config_name)
-    print(f"[Config] Using modes config: {config_path}")
+    config_path, source = resolve_active_profile(base_dir, config_override)
+    print(f"[Config] Using modes config: {config_path} (via {source})")
 
     modes_config = load_json(config_path, {}).get("modes", {})
 

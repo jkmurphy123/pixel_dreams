@@ -183,18 +183,13 @@ def discover_profiles(base_dir: str, active_path: str | None = None) -> list[Pro
 
 def resolve_active_profile(base_dir: str, config_override: str | None = None) -> tuple[str, str]:
     """
-    Which profile the running app is using, and why. Same precedence the controller uses:
-        --config FILE  >  registry settings.modes_config_file  >  modes_config.json
-    Returns (absolute path, source) with source in {"cli", "registry", "default"}.
+    Which profile the running app is using, and why.
+        --config FILE  >  runtime/active_profile.json  >  registry settings  >  modes_config.json
+    Returns (absolute path, source) with source in {"cli", "runtime", "registry", "default"}.
+
+    Thin delegate: the resolution itself lives in core.config, next to the loader that must obey
+    it, so the app, the panel and the switcher can never disagree about which profile is active.
     """
-    from .config import resolve_config_path  # local import: keeps this module dependency-light
+    from .config import resolve_active_profile as _resolve   # local import: module stays light
 
-    if config_override:
-        return os.path.abspath(resolve_config_path(base_dir, config_override)), "cli"
-
-    registry = load_json(os.path.join(base_dir, "modes_registry.json"), {})
-    settings = registry.get("settings", {}) if isinstance(registry, dict) else {}
-    name = settings.get("modes_config_file") if isinstance(settings, dict) else None
-    if name:
-        return os.path.abspath(resolve_config_path(base_dir, name)), "registry"
-    return os.path.abspath(resolve_config_path(base_dir, "")), "default"
+    return _resolve(base_dir, config_override)
