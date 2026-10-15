@@ -62,6 +62,21 @@ def infer_max_modes_from_config(cfg_dict: dict) -> int:
     return max(digit_keys) + 1
 
 
+def config_digest(cfg) -> str:
+    """
+    A stable hash of one mode's config.
+
+    Why it exists: after a save the panel wants to say "the wall is showing this config" instead of
+    being taken on trust. The controller records the digest at the moment it BUILDS a mode, so
+    comparing it with the file's proves the running process really did pick up the new values (or
+    still has the old ones).
+    """
+    import hashlib
+
+    blob = json.dumps(cfg if isinstance(cfg, dict) else {}, sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
 def _is_disabled(cfg) -> bool:
     """
     True only for an explicit false. Strict on purpose: `"enabled": "false"` (a string) must not

@@ -168,8 +168,32 @@ class ProfileEditor:
                                 "'enabled' flag in this profile")
         self.edit(number).enabled = bool(enabled)
 
+    def reload_if_changed(self) -> bool:
+        """
+        Re-read the file when it changed underneath us, so a page that is merely DISPLAYING
+        state (the switch, the digest note) does not claim something stale. Staged changes are
+        kept: reload() here would throw away a form the user is half way through, which is why
+        this is a separate method from reload().
+        """
+        if not self.is_stale():
+            return False
+        staged = self.staged
+        self.document = self._read()
+        self.baseline_sha = sha256_file(self.path) if os.path.exists(self.path) else ""
+        self.staged = staged
+        return True
+
     def unstage(self, number) -> None:
         self.staged.pop(int(number), None)
+
+    def cancel_remove(self, number, key: str) -> None:
+        """Undo a staged removal, so 'keep it after all' needs no poking at internals."""
+        state = self.staged.get(int(number))
+        if state is None:
+            return
+        state.removes = [k for k in state.removes if k != key]
+        if state.empty:
+            self.staged.pop(int(number), None)
 
     def revert_all(self) -> None:
         self.staged.clear()

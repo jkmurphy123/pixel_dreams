@@ -121,7 +121,7 @@ async def test_every_value_shape_renders_with_its_widget(tmp_path):
         # identity and provenance
         await p.user.should_see("Everything")
         await p.user.should_see("EveryShape")
-        await p.user.should_see("READ-ONLY")
+        await p.user.should_see("Nothing is written until you press Save")
         # each field label is present
         for label in ("Duration", "Refresh Hz", "Folder", "Weather units", "Show time",
                       "Accent RGB", "Event interval range", "Crypto IDs", "Palette",
@@ -157,18 +157,64 @@ async def test_every_value_shape_renders_with_its_widget(tmp_path):
         await p.user.should_see("secret")
 
 
-async def test_every_field_is_read_only_in_phase_2(tmp_path):
+async def test_only_the_fields_that_must_be_locked_are_locked(tmp_path):
+    """
+    Phase 3 makes the generated fields editors — but NOT every field may be written from here. A
+    secret is never written (it lives in secrets.json), and a mode's own runtime value must not be
+    editable either. Everything else must be live, or the form is useless.
+    """
     ctx = _ctx(tmp_path)
     async with _panel(ctx) as p:
         await p.user.open("/mode/0")
         fields = []
         for el in p.user.find().elements:
             for m in (getattr(el, "_markers", None) or []):
-                if m.startswith("param-widget-") or m.endswith("-min") or m.endswith("-max"):
-                    fields.append((m, el))
+                if m.startswith("param-widget-"):
+                    fields.append((m[len("param-widget-"):], el))
         assert fields, "no field widgets found at all"
-        editable = [name for name, el in fields if not _readonly(el)]
-        assert editable == [], f"Phase 2 must be read-only; these are editable: {editable}"
+        locked = sorted(name for name, el in fields if _readonly(el))
+        editable = sorted(name for name, el in fields if not _readonly(el))
+        # api_key is a secret: it has no widget of its own and is never written from the panel
+        assert locked == [], f"the secret has no widget, so nothing should be locked: {locked}"
+        assert "api_key" not in fields
+        assert editable, "no editable fields at all"
+        for name in ("duration", "refresh_hz", "folder", "show_time", "palette", "devices"):
+            assert name in editable, f"{name} should be editable"
+
+
+async def test_save_buttons_are_present(tmp_path):
+    """The page must actually offer the actions, and say which one touches the running app."""
+    ctx = _ctx(tmp_path)
+    async with _panel(ctx) as p:
+        await p.user.open("/mode/0")
+        await p.user.should_see("Save & Apply")
+        await p.user.should_see("Save only")
+        await p.user.should_see("Revert changes")
+        await p.user.should_see("Reload from disk")
+        await p.user.should_see("Refresh this mode now")
+        await p.user.should_see("No staged changes")
+
+
+async def test_derived_and_override_fields_render_read_only_with_a_reason(tmp_path):
+    """
+    A derived value (the mode computes it) and a value the local override supplies must be shown
+    but not editable here — and each must say WHY, because a greyed-out box with no explanation
+    is what makes people stop trusting a panel.
+    """
+    registry = json.loads(json.dumps(ALL_SHAPES_REGISTRY))
+    registry["types"]["everyshape"]["params"]["duration"] = {"derived": True}
+    registry["types"]["everyshape"]["optional"].append("override_me")
+    modes = json.loads(json.dumps(ALL_SHAPES))
+    modes["0"]["override_me"] = "from-the-override"
+    base = _project(tmp_path, registry=registry, modes=modes)
+    with open(os.path.join(base, "modes_config.local.json"), "w") as fh:
+        fh.write(json.dumps({"modes": {"0": {"override_me": "from-the-override"}}}) + "\n")
+
+    ctx = PageContext(base_dir=base, bus=ControlBus(), bind="127.0.0.1")
+    async with _panel(ctx) as p:
+        await p.user.open("/mode/0")
+        await p.user.should_see("the mode computes this at runtime")
+        await p.user.should_see("modes_config.local.json supplies this value")
 
 
 async def test_secret_value_never_reaches_the_page(tmp_path):

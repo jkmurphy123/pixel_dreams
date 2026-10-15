@@ -30,6 +30,7 @@ sys.path.insert(0, BASE_DIR)
 from core import profiles as profiles_mod
 from core.bus import ControlBus, require_loopback_or_token
 from core.config import (
+    enabled_mode_indices,
     infer_max_modes_from_config,
     list_configured_modes,
     load_project_config,
@@ -38,6 +39,7 @@ from core.config import (
 from core.hardware import RotaryHardware
 from core.manager import ModeManager
 from core.playlist import Playlist
+from core.store import sha256_file
 
 
 def _rss_mb() -> float:
@@ -200,17 +202,52 @@ def main(argv=None):
     # ---------------- playlist / manager ----------------
 
     single_mode_lock = args.play is not None
+    # The rotation honours each mode's "enabled" flag from the first frame, not only after a
+    # panel save: disabling a mode and restarting must keep it off.
+    allowed_modes, enabled_fell_back = enabled_mode_indices(modes_config)
+    configured = sorted(int(k) for k in modes_config if str(k).isdigit())
+    # The profile's OWN answer, which is not the same as the rotation's when every mode is
+    # disabled and the fallback kicks in. Reporting both is what lets the panel say "this profile
+    # disables everything, so the app is ignoring the flag to avoid a blank wall".
+    disabled_modes = [i for i in configured
+                      if modes_config.get(str(i), {}).get("enabled") is False]
     if single_mode_lock:
         playlist = Playlist.single(args.play % max_modes)
         print(f"[Controller] Single-mode lock: mode {args.play % max_modes}")
     else:
         playlist = Playlist(max_modes, shuffle=args.shuffle,
-                            start_index=args.start % max_modes)
+                            start_index=args.start % max_modes, allowed=allowed_modes)
+        if enabled_fell_back:
+            print("[Controller] WARNING: every mode is disabled in this profile — playing them "
+                  "all anyway so the wall does not go blank")
+        elif disabled_modes:
+            print(f"[Controller] Rotation: {len(allowed_modes)} of {len(configured)} mode(s) "
+                  f"enabled (disabled: {disabled_modes})")
 
     manager = ModeManager(screen, registry, modes_config, max_modes, secrets)
     manager.start(initial_index=playlist.current)
-    bus.update_status(display="windowed" if args.windowed else "fullscreen",
-                      mode_index=manager.mode_index)
+    bus.update_status(
+        display="windowed" if args.windowed else "fullscreen",
+        mode_index=manager.mode_index,
+        # What this process is actually running, so the panel can say whether the file on disk is
+        # what is on the wall (and spot a save that has not been applied).
+        applied_config_path=config_path,
+        applied_config_sha256=sha256_file(config_path) if os.path.exists(config_path) else "",
+        enabled_modes=allowed_modes,
+        disabled_modes=disabled_modes,
+        enabled_fell_back=enabled_fell_back,
+        applied_rotation=playlist.entries if not single_mode_lock else [playlist.current],
+        # The mode's identity and the digest of the config it was built from, present from the
+        # first frame: a consumer must never have to guess whether a missing key means "not yet".
+        mode_type=type(manager.current_mode).__name__ if manager.current_mode else None,
+        mode_name=(modes_config.get(str(manager.mode_index), {}).get("name")
+                   or modes_config.get(str(manager.mode_index), {}).get("title") or ""),
+        mode_config_digest=manager.last_build_digest,
+        mode_build_index=manager.last_build_index,
+        # Present from the first frame so a consumer never has to guess a default
+        applies_count=0,
+        refresh_count=0,
+    )
 
     # ---------------- hardware input (optional) ----------------
 
@@ -244,6 +281,7 @@ def main(argv=None):
     clock = pygame.time.Clock()
     elapsed_in_mode = 0.0
     queued_delta = 0
+    pending_refresh = False
     last_gc = time.time()
 
     # Panel plumbing, all of it inside the frame loop:
@@ -266,6 +304,10 @@ def main(argv=None):
             mode_index=manager.mode_index,
             mode_type=type(mode).__name__ if mode is not None else None,
             mode_name=(cfg.get("name") or cfg.get("title") or "") if isinstance(cfg, dict) else "",
+            # Proof of WHICH config the mode on screen was built from: after a refresh this must
+            # match the profile file, and the panel says so on the status card.
+            mode_config_digest=manager.last_build_digest,
+            mode_build_index=manager.last_build_index,
         )
 
     def _panel_ping(_cmd) -> None:
@@ -273,7 +315,63 @@ def main(argv=None):
         pongs = bus.status("pong_count", 0) or 0
         bus.update_status(pong_count=int(pongs) + 1)
 
-    handlers = {"ping": _panel_ping}
+    def _apply_config(cmd) -> None:
+        """
+        The panel wrote the files and sent the finished dicts; the loop only swaps references.
+
+        Rebuilds the rotation from the new config's enabled set, so disabling a mode takes effect
+        without a restart. If the mode on screen is no longer in the rotation it fades away like a
+        normal switch would, and `refresh` rebuilds the mode on screen so edited parameters appear.
+        """
+        nonlocal playlist, pending_refresh
+        new_modes = cmd.get("modes_config") or {}
+        if not isinstance(new_modes, dict) or not new_modes:
+            print("[Panel] apply ignored: the payload carried no modes")
+            return
+
+        max_modes = cmd.get("max_modes") or infer_max_modes_from_config(new_modes)
+        report = manager.apply_config(registry=cmd.get("registry") or manager.registry,
+                                     modes_config=new_modes, max_modes=max_modes)
+        allowed, fell_back = enabled_mode_indices(new_modes)
+
+        if not single_mode_lock:
+            start = min(manager.mode_index, max(0, max_modes - 1))
+            playlist = Playlist(max_modes, shuffle=args.shuffle, start_index=start, allowed=allowed)
+            if playlist.current != manager.mode_index:
+                manager.request_switch(playlist.current)
+
+        applies = (bus.status("applies_count", 0) or 0) + 1
+        all_indices = sorted(int(k) for k in new_modes if str(k).isdigit())
+        bus.update_status(
+            applies_count=applies,
+            applied_config_path=cmd.get("config_path") or "",
+            applied_config_sha256=cmd.get("config_sha256") or "",
+            max_modes=max_modes,
+            enabled_modes=allowed,
+            # The profile's own answer, not the rotation's: when every mode is disabled the
+            # fallback plays them all, and both facts have to be visible or the panel would claim
+            # the flag was respected when it was deliberately overridden.
+            disabled_modes=[i for i in all_indices
+                            if (new_modes.get(str(i)) or {}).get("enabled") is False],
+            enabled_fell_back=fell_back,
+            last_apply_at=time.time(),
+            applied_rotation=playlist.entries if not single_mode_lock else [playlist.current],
+        )
+        if fell_back:
+            print("[Panel] WARNING: every mode is disabled — keeping them all so the wall keeps "
+                  "showing something")
+        print(f"[Panel] applied {os.path.basename(cmd.get('config_path') or '?')}: "
+              f"{len(allowed)} enabled mode(s)"
+              + (f", max_modes={max_modes}" if report.get("max_modes_changed") else ""))
+        if cmd.get("refresh"):
+            pending_refresh = True
+
+    def _refresh_mode(_cmd) -> None:
+        """Queue a rebuild of the mode on screen (done at the next frame that is not fading)."""
+        nonlocal pending_refresh
+        pending_refresh = True
+
+    handlers = {"ping": _panel_ping, "apply_config": _apply_config, "refresh_mode": _refresh_mode}
 
     if args.auto:
         print(f"[Controller] Auto-cycle every {args.auto:.1f}s. ESC quits.")
@@ -291,6 +389,16 @@ def main(argv=None):
             frame += 1
 
             bus.dispatch(handlers)
+
+            # A refresh requested while a fade was in flight waits here instead of landing
+            # mid-transition (and is never silently dropped).
+            if pending_refresh and not manager.is_transitioning():
+                pending_refresh = False
+                manager.refresh_current()
+                refreshes = (bus.status("refresh_count", 0) or 0) + 1
+                bus.update_status(refresh_count=refreshes, last_refresh_at=time.time(),
+                                  refreshed_mode=manager.mode_index)
+                print(f"[Panel] refreshed mode {manager.mode_index} from the live config")
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
