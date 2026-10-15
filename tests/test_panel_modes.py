@@ -354,7 +354,7 @@ async def test_every_mode_page_of_every_real_profile_renders(tmp_path):
             for number in modes:
                 await p.user.open(f"/mode/{number}?profile={profile_name}")
                 await p.user.should_see("Parameters")
-                await p.user.should_see("READ-ONLY")
+                await p.user.should_see("Nothing is written until you press Save")
                 rendered += 1
     assert rendered >= 160, f"expected to render every real mode, did {rendered}"
 

@@ -37,8 +37,20 @@ from nicegui import app, context, ui
 
 from core import profiles as profiles_mod
 from core.bus import APP_NAME, APP_VERSION, ControlBus, is_loopback
-from core.config import config_digest, enabled_mode_indices, infer_max_modes_from_config
-from core.editor import EditorRefused, ProfileEditor, load_payload
+from core.config import (
+    config_digest,
+    enabled_mode_indices,
+    infer_max_modes_from_config,
+    read_active_profile,
+)
+from core.editor import (
+    EditorRefused,
+    ProfileEditor,
+    list_backups,
+    load_payload,
+    restore_backup,
+    switch_profile,
+)
 from core.params import GROUPS, group_params, resolve_params, validate_param_value
 from core.store import sha256_file
 
@@ -140,6 +152,131 @@ def _rotation_text(snap: dict) -> str:
     return text
 
 
+def _render_switch_button(container, ctx: PageContext, state: dict, info, is_active: bool,
+                          after) -> None:
+    """
+    The one control that changes what the display is showing: make the inspected profile active.
+
+    Not offered when the profile is already active, and replaced by an explanation when the app was
+    started with --config — that flag outranks the record at every restart, so a switch here would
+    look like it worked and be gone after a reboot.
+
+    The outcome is kept in `state` and rendered on the next build, because a successful switch
+    re-renders this container (the mode list changes with the profile) and would otherwise wipe the
+    message just before the user could read it.
+    """
+    container.clear()
+    if info is None:
+        return
+    with container:
+        prior = state.get("switch_outcome")
+        if prior:
+            text, colour = prior
+            ui.label(text).classes(f"text-xs {colour}").mark("switch-outcome")
+
+        if is_active:
+            ui.label("This profile is active.").classes("text-xs opacity-60")
+            return
+        if ctx.config_override:
+            ui.label(f"--config {ctx.config_override} pins the profile at every restart; restart "
+                     f"without it to switch from here.") \
+                .classes("text-xs text-orange-300").mark("switch-blocked")
+            return
+
+        def do_switch() -> None:
+            result = switch_profile(ctx.base_dir, info.path, _load_registry(ctx.base_dir),
+                                    config_override=ctx.config_override)
+            if not result.ok:
+                detail = " ".join([result.reason] + list(result.errors))
+                state["switch_outcome"] = (detail, "text-red-400")
+            else:
+                ctx.bus.post(_apply_payload(ctx, result.profile_abs, refresh=True))
+                state["switch_outcome"] = (
+                    f"Switched: {result.profile} is now the active profile, recorded in "
+                    f"runtime/active_profile.json, and the running app was told to reload it — "
+                    f"no restart.", "text-green-400")
+            after(result)
+
+        ui.button(f"Switch the display to {info.rel}", on_click=do_switch) \
+            .props("color=primary").mark("switch-profile")
+        ui.label("Writes runtime/active_profile.json (one line, gitignored) and reloads the "
+                 "running app. It refuses a profile that does not validate.") \
+            .classes("text-xs opacity-50")
+
+
+def _render_backups(container, ctx: PageContext, state: dict, after) -> None:
+    """
+    Restore a previous version of the profile being inspected.
+
+    Two-step on purpose: the first click asks, the second does it. A restore replaces a live config,
+    and one mis-click next to a list of timestamps is not a good way to make that decision.
+    """
+    container.clear()
+    path, _ = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+    shown = state.get("view") or ""
+    infos = profiles_mod.discover_profiles(ctx.base_dir, path)
+    target = next((p for p in infos if p.rel == shown), None) or \
+        next((p for p in infos if p.path == path), None)
+    with container:
+        if target is None:
+            ui.label("No profile selected.").classes("text-xs opacity-60")
+            return
+        backups = list_backups(target.path)
+        ui.label(f"{len(backups)} backup(s) of {target.rel} — taken automatically before every "
+                 f"save, newest first.").classes("text-xs opacity-60")
+        if not backups:
+            ui.label("None yet: a backup appears the first time this profile is saved from here.") \
+                .classes("text-xs opacity-50")
+            return
+
+        pending = state.get("pending_restore")
+
+        def do_restore(backup: dict) -> None:
+            result = restore_backup(target.path, backup["path"],
+                                    registry=_load_registry(ctx.base_dir), base_dir=ctx.base_dir)
+            if not result.ok:
+                state["backup_outcome"] = (" ".join([result.reason] + list(result.errors)),
+                                           "text-red-400")
+            else:
+                ctx.bus.post(_apply_payload(ctx, target.path, refresh=True))
+                state["backup_outcome"] = (
+                    f"Restored {backup['name']} ({backup['when']}) and reloaded the running app. "
+                    f"The version it replaced was itself backed up, so this is undoable.",
+                    "text-green-400")
+            state["pending_restore"] = None
+            after(None)
+
+        outcome = state.get("backup_outcome")
+        if outcome:
+            ui.label(outcome[0]).classes(f"text-xs {outcome[1]}").mark("backup-outcome")
+
+        for backup in backups[:20]:
+            with ui.row().classes("w-full items-center gap-3 py-1 border-b border-white/5"):
+                ui.label(backup["when"]).classes("font-mono text-xs w-44")
+                ui.label(f"{backup['bytes']} bytes").classes("text-xs opacity-50 w-24")
+                ui.label(backup["sha256"][:10]).classes("text-xs opacity-40 font-mono")
+                if pending == backup["name"]:
+                    def confirm(entry=backup) -> None:
+                        do_restore(entry)
+
+                    def cancel() -> None:
+                        state["pending_restore"] = None
+                        after(None)
+
+                    ui.label("Restore this over the live profile?") \
+                        .classes("text-xs text-amber-300 ml-auto")
+                    ui.button("Yes, restore", on_click=confirm).props("color=primary dense") \
+                        .mark("confirm-restore")
+                    ui.button("No", on_click=cancel).props("flat dense")
+                else:
+                    def ask(name=backup["name"]) -> None:
+                        state["pending_restore"] = name
+                        after(None)
+
+                    ui.button("restore", on_click=ask).props("flat dense ml-auto") \
+                        .mark(f"restore-{backup['stamp']}")
+
+
 def _commands_text(snap: dict) -> str:
     text = f"{snap.get('commands_applied', 0)} applied"
     if snap.get("last_command"):
@@ -201,15 +338,19 @@ def _chrome(subtitle: str) -> None:
             ui.label("control panel").classes("text-sm opacity-70")
             ui.label(f"v{APP_VERSION}").classes("text-xs opacity-50")
         with ui.row().classes("gap-4 text-sm"):
-            ui.link("Modes", "/").classes("text-inherit")
+            ui.link("Modes", "/").classes("text-inherit").mark("nav-modes")
+            ui.link("Raw JSON", "/raw").classes("text-inherit").mark("nav-raw")
     with ui.column().classes("w-full max-w-5xl mx-auto px-4 py-2 gap-1"):
         ui.label(subtitle).classes("text-sm opacity-70")
 
 
 def _footer() -> None:
     ui.label(
-        "Phase 2: the parameter form is generated and READ-ONLY — nothing on this page writes a "
-        "file. Saving, mode enable/disable, Refresh and profile switching arrive in Phases 3-4."
+        "Edit and Save & Apply writes the profile and reloads the running app; the switch in the "
+        "profile card changes which profile plays; Refresh rebuilds the current mode. Nothing here "
+        "writes a file without a click, every save keeps a backup (see the Backups section), and a "
+        "file that changed underneath you (another tab, an ssh edit) is refused rather than "
+        "overwritten."
     ).classes("text-xs opacity-50")
 
 
@@ -309,6 +450,63 @@ def register_pages(ctx: PageContext) -> None:
         ctx.bus.post({"cmd": "refresh_mode"})
         return {"ok": True, "queued": True, "pending": ctx.bus.pending()}
 
+    @app.post("/api/profile")
+    async def api_profile(request: Request):
+        """
+        Make a profile the active one: validate it, record it in runtime/active_profile.json, and
+        tell the running app to switch over. The same thing the "Switch the display to this
+        profile" button does, for scripts and the acceptance runs.
+
+        Refusals are explicit rather than half-done: 404 when there is no such profile, 409 when
+        the switch was refused (a broken profile, or an app started with --config, which outranks
+        the record at every restart).
+        """
+        if not _authorised(ctx, request):
+            return PlainTextResponse("token required", status_code=403)
+
+        body = {}
+        raw = await request.body()
+        if raw:
+            try:
+                body = json.loads(raw)
+            except ValueError:
+                return JSONResponse({"ok": False, "reason": "body must be JSON"}, status_code=400)
+            if not isinstance(body, dict):
+                return JSONResponse({"ok": False, "reason": "body must be a JSON object"},
+                                    status_code=400)
+
+        rel = str(body.get("profile") or "").strip()
+        if not rel:
+            return JSONResponse({"ok": False, "reason": "a 'profile' is required"}, status_code=400)
+
+        result = switch_profile(ctx.base_dir, rel, _load_registry(ctx.base_dir),
+                               config_override=ctx.config_override)
+        if not result.ok:
+            status = 404 if "no such profile file" in result.reason else 409
+            return JSONResponse({"ok": False, "reason": result.reason,
+                                 "errors": list(result.errors)}, status_code=status)
+
+        refresh = bool(body.get("refresh", True))
+        payload = _apply_payload(ctx, result.profile_abs, refresh=refresh)
+        ctx.bus.post(payload)
+        return {
+            "ok": True, "profile": result.profile, "runtime_file": result.runtime_file,
+            "applied": True, "refresh": refresh,
+            "config_sha256": payload["config_sha256"], "enabled_modes": payload["enabled"],
+            "warnings": list(result.warnings),
+        }
+
+    @app.get("/api/profiles")
+    def api_profiles(request: Request):
+        """Every profile, which one is active, and why — the machine-readable form of the picker."""
+        if not _authorised(ctx, request):
+            return PlainTextResponse("token required", status_code=403)
+        active_path, source = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+        return {"active": os.path.relpath(active_path, ctx.base_dir), "source": source,
+                "switchable": not ctx.config_override,
+                "recorded": read_active_profile(ctx.base_dir),
+                "profiles": _profile_rows(ctx)}
+
     @ui.page("/")
     def modes_page() -> None:
         if not _authorised(ctx, context.client.request):
@@ -336,30 +534,47 @@ def register_pages(ctx: PageContext) -> None:
             select = ui.select(options={}, value=None, label="Profile to inspect") \
                 .classes("w-full max-w-2xl").mark("profile-select")
             notice = ui.label().classes("text-sm").mark("profile-notice")
+            switch_row = ui.row().classes("w-full gap-2 items-center mt-1")
             rows = ui.column().classes("w-full gap-0 mt-2")
+
+            def active_now() -> tuple:
+                """Re-resolve every time: a switch changes the answer, and this page must follow."""
+                return profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
 
             def render_rows() -> None:
                 """Rebuild the mode list for the profile currently selected."""
-                infos = profiles_mod.discover_profiles(ctx.base_dir, active_path)
+                current_path, current_source = active_now()
+                infos = profiles_mod.discover_profiles(ctx.base_dir, current_path)
                 info = next((p for p in infos if p.rel == state["view"]), None)
                 is_active = info is not None and info.active
-                notice.set_text(
-                    f"This is the profile on the display now (chosen via {active_source})."
-                    if is_active else
-                    "PREVIEW only — this is not the profile on the display "
-                    "(profile switching arrives in Phase 4)."
-                )
+                if is_active:
+                    notice.set_text(f"This is the profile on the display now (chosen via "
+                                    f"{current_source}).")
+                elif ctx.config_override:
+                    notice.set_text(
+                        f"PREVIEW — this app was started with --config {ctx.config_override}, "
+                        f"which pins the profile at every restart, so it cannot be switched here.")
+                else:
+                    notice.set_text("PREVIEW — not the profile on the display. Switching to it "
+                                    "changes what plays, with no restart.")
                 _render_mode_rows(rows, info, ctx.base_dir)
+                _render_switch_button(switch_row, ctx, state, info, is_active, after_switch)
 
             def reload_from_disk() -> None:
-                infos = profiles_mod.discover_profiles(ctx.base_dir, active_path)
+                current_path, _ = active_now()
+                infos = profiles_mod.discover_profiles(ctx.base_dir, current_path)
                 options = {p.rel: _profile_option_label(p) for p in infos}
                 if state["view"] not in options:
-                    state["view"] = _initial_view(ctx.base_dir, active_path, infos)
+                    state["view"] = _initial_view(ctx.base_dir, current_path, infos)
                 select.options = options
                 select.value = state["view"]
                 select.update()
                 render_rows()
+
+            def after_switch(result) -> None:
+                """A switch happened (or was explained): re-render everything that depends on it."""
+                reload_from_disk()
+                _refresh_status(ctx, labels)
 
             def on_view_change() -> None:
                 state["view"] = select.value
@@ -376,18 +591,161 @@ def register_pages(ctx: PageContext) -> None:
                 ui.button("Reload from disk", on_click=reload_from_disk).props("flat")
                 ui.button("Ping the render loop", on_click=ping).props("outline")
 
+            with ui.expansion("Backups — restore a previous version of the inspected profile") \
+                    .classes("w-full mt-3"):
+                backup_box = ui.column().classes("w-full gap-1")
+
+                def refresh_backups() -> None:
+                    def after_backup(_result) -> None:
+                        reload_from_disk()
+                        refresh_backups()
+
+                    _render_backups(backup_box, ctx, state, after_backup)
+
+                refresh_backups()
+                # the list follows the picker: a different profile has different backups
+                select.on_value_change(lambda _e: refresh_backups())
+
         ui.timer(REFRESH_SECONDS, lambda: _refresh_status(ctx, labels))
         _refresh_status(ctx, labels)
+        _footer()
+
+    @ui.page("/raw")
+    def raw_page() -> None:
+        """
+        The whole profile file, as JSON, editable.
+
+        For what the generated form cannot express: copy a mode block, paste three at once, fix a
+        nested value by hand. It goes through the SAME editor as everything else — same validation,
+        same atomic write, same backup, same conflict refusal — so it is another view of one write
+        path, not a second write path.
+        """
+        if not _authorised(ctx, context.client.request):
+            _render_refusal()
+            return
+
+        active_path, active_source = profiles_mod.resolve_active_profile(
+            ctx.base_dir, ctx.config_override)
+        view = _initial_view(ctx.base_dir, active_path, requested=_requested_profile(ctx))
+        infos = profiles_mod.discover_profiles(ctx.base_dir, active_path)
+        info = next((p for p in infos if p.rel == view), None)
+
+        _chrome(f"Raw JSON — {view}")
+        if info is None:
+            ui.label(f"Profile not found: {view}").classes("text-sm")
+            _footer()
+            return
+
+        editor = ProfileEditor(ctx.base_dir, info.path, _load_registry(ctx.base_dir))
+        box = {"text": json.dumps(editor.document, indent=2, ensure_ascii=False) + "\n"}
+
+        with ui.card().classes("w-full mt-2 gap-2"):
+            ui.label(info.rel).classes("text-base font-semibold")
+            ui.label(f"{os.path.relpath(info.path, ctx.base_dir)} — the whole document, including "
+                     f"the optional \"profile\" block. Saving validates the entire profile, writes "
+                     f"atomically and keeps a backup, exactly like the generated form.") \
+                .classes("text-xs opacity-60")
+            if not editor.mode_in_file(0) and not editor.modes():
+                ui.label("This file has no modes.").classes("text-xs text-orange-300")
+
+            outcome = ui.label().classes("text-xs").mark("raw-outcome")
+
+            area = ui.textarea(value=box["text"]) \
+                .props("rows=28 spellcheck=false").classes("w-full font-mono text-xs") \
+                .mark("raw-textarea")
+            area.on_value_change(lambda e: box.update(text=e.value))
+
+            def say(text: str, kind: str = "info") -> None:
+                outcome.set_text(text)
+                outcome.classes(replace="text-xs " + {"good": "text-green-400",
+                                                     "bad": "text-red-400"}.get(kind, "opacity-70"))
+
+            def parse():
+                try:
+                    return json.loads(box["text"]), ""
+                except ValueError as e:
+                    return None, f"not valid JSON: {e}"
+
+            def stage_from_box() -> str:
+                doc, err = parse()
+                if err:
+                    say(err, "bad")
+                    return err
+                try:
+                    editor.stage_document(doc)
+                except EditorRefused as e:
+                    say(str(e), "bad")
+                    return str(e)
+                return ""
+
+            def do_validate() -> None:
+                if stage_from_box():
+                    return
+                problems = editor.validate()
+                if problems.ok:
+                    changed = editor.changed_modes()
+                    say(f"Valid. " + (f"Mode(s) whose values differ: {changed}."
+                                      if changed else "Nothing differs from the file on disk."),
+                        "good")
+                else:
+                    say("Not valid: " + " | ".join(problems.messages()), "bad")
+
+            def do_save() -> None:
+                if stage_from_box():
+                    return
+                result = editor.save()
+                if not result.ok:
+                    extra = f" On disk now: {editor.conflict_detail()}" if result.conflict else ""
+                    say(f"{result.reason}.{' ' + ' | '.join(result.errors) if result.errors else ''}"
+                        f"{extra}", "bad")
+                    return
+                if not result.wrote_anything:
+                    say("Nothing differs — nothing was written.", "info")
+                    return
+                ctx.bus.post(_apply_payload(ctx, info.path, refresh=True))
+                box["text"] = json.dumps(editor.document, indent=2, ensure_ascii=False) + "\n"
+                area.value = box["text"]
+                area.update()
+                say(f"Saved ({result.reason}) and applied to the running app."
+                    + (f" Backup: {os.path.basename(result.backup)}" if result.backup else "")
+                    + (f" | {' | '.join(result.warnings)}" if result.warnings else ""), "good")
+
+            def do_reload() -> None:
+                editor.reload()
+                box["text"] = json.dumps(editor.document, indent=2, ensure_ascii=False) + "\n"
+                area.value = box["text"]
+                area.update()
+                say("Re-read from disk.", "info")
+
+            def do_format() -> None:
+                doc, err = parse()
+                if err:
+                    say(err, "bad")
+                    return
+                box["text"] = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
+                area.value = box["text"]
+                area.update()
+                say("Re-indented (not saved).", "info")
+
+            with ui.row().classes("gap-2"):
+                ui.button("Validate", on_click=do_validate).props("outline").mark("raw-validate")
+                ui.button("Save & Apply", on_click=do_save).props("color=primary") \
+                    .mark("raw-save")
+                ui.button("Re-indent", on_click=do_format).props("flat").mark("raw-format")
+                ui.button("Reload from disk", on_click=do_reload).props("flat").mark("raw-reload")
+            ui.label("Editing here writes the WHOLE document, so it is the tool for restructuring; "
+                     "the generated form is the tool for tuning one mode.") \
+                .classes("text-xs opacity-50")
         _footer()
 
     @ui.page("/mode/{number}")
     def mode_page(number: str) -> None:
         """
-        The generated form for one mode in one profile.
+        The generated parameter form for one mode in one profile: edit, Save & Apply, enable or
+        disable the mode, Refresh it, or edit the mode's JSON by hand.
 
-        Phase 2 renders it READ-ONLY: every field shows its current value so you can see what
-        the panel understands, and nothing on this page writes a file. Phase 3 turns the same
-        fields into editors with Save & Apply.
+        Fields the panel must not write (secrets, values the local override supplies, values the
+        mode computes at runtime) still render read-only, each saying why on the page.
         """
         if not _authorised(ctx, context.client.request):
             _render_refusal()
@@ -496,6 +854,9 @@ def _refresh_status(ctx: PageContext, labels: dict) -> None:
     )
     labels["commands"].set_text(_commands_text(snap))
     labels["rotation"].set_text(_rotation_text(snap))
+    # Re-resolved every poll, so a profile switch (from this page or another) shows up here.
+    active_path, source = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+    labels["profile"].set_text(f"{os.path.relpath(active_path, ctx.base_dir)} (via {source})")
 
 
 # ---------------------------------------------------------------- data for pages
@@ -580,7 +941,9 @@ def _mode_header(ctx: PageContext, info, entry, active_source: str) -> None:
                 ui.badge("LIVE NOW").props("color=green").classes("text-xs").mark("live-badge")
         ui.label(
             f"profile {info.rel}" + (f" (on the display, chosen via {active_source})"
-                                     if info.active else " (PREVIEW — not on the display)")
+                                     if info.active else
+                                     " (PREVIEW — not on the display; the profile card on the "
+                                     "Modes page can switch to it)")
         ).classes("text-xs opacity-60")
         if entry.override_keys:
             ui.badge(f"modes_config.local.json supplies: {', '.join(entry.override_keys)}") \
@@ -767,8 +1130,9 @@ class _ModeEditor:
         """(text, colour) describing whether the wall is showing what this file says."""
         snap = self.ctx.bus.snapshot()
         if not self.info.active:
-            return ("This profile is not on the display, so applying it will only update the "
-                    "config in memory (profile switching arrives in Phase 4).", "opacity-60")
+            return ("This profile is not on the display, so applying it updates the config in "
+                    "memory only — use the profile card on the Modes page to switch the display "
+                    "to it.", "opacity-60")
         if snap.get("display") == "off":
             return ("No display process is attached to this panel, so nothing is on the wall to "
                     "refresh.", "text-orange-300")

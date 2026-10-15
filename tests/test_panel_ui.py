@@ -133,7 +133,8 @@ async def test_previewing_another_profile_is_labelled_as_not_active(tmp_path):
     ctx = _ctx(tmp_path)
     async with _panel(ctx) as p:
         await p.user.open("/?profile=configs/modes_config_portrait.json")
-        await p.user.should_see("PREVIEW only")
+        await p.user.should_see("PREVIEW")
+        await p.user.should_see("Switching to it")
         await p.user.should_see("Cyberart")
         await p.user.should_not_see("SystemInformation")
 
