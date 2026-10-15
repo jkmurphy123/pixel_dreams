@@ -208,6 +208,31 @@ async def test_token_in_query_string_opens_the_page(tmp_path):
         await p.user.should_see("SystemInformation")
 
 
+async def test_a_token_in_the_url_is_remembered_for_the_next_click(tmp_path):
+    """
+    Regression: "?token=..." used to authorise exactly ONE request, so the first click after it
+    403'd — which is not what the panel's own instructions tell the user will happen.
+    """
+    ctx = _ctx(tmp_path, bind="0.0.0.0", token="s3cret-token")
+    async with _panel(ctx) as p:
+        first = await p.client.get("/?token=s3cret-token")
+        assert first.status_code == 200
+        assert COOKIE_NAME in first.headers.get("set-cookie", ""), "token was not remembered"
+
+        p.client.cookies.set(COOKIE_NAME, "s3cret-token")
+        second = await p.client.get("/mode/0")            # no token in the URL this time
+        assert second.status_code == 200
+
+
+async def test_a_header_token_is_not_remembered(tmp_path):
+    """The header form is a deliberate per-request credential; it must not install a cookie."""
+    ctx = _ctx(tmp_path, bind="0.0.0.0", token="s3cret-token")
+    async with _panel(ctx) as p:
+        r = await p.client.get("/api/status", headers={"x-panel-token": "s3cret-token"})
+        assert r.status_code == 200
+        assert COOKIE_NAME not in r.headers.get("set-cookie", "")
+
+
 async def test_status_endpoint_is_gated_too(tmp_path):
     """A page guard is not protection for a route someone can call directly."""
     ctx = _ctx(tmp_path, bind="0.0.0.0", token="s3cret-token")

@@ -640,13 +640,24 @@ def _install_token_gate(ctx: PageContext) -> None:
 
     @app.middleware("http")
     async def token_gate(request, call_next):
-        if request.url.path == AUTH_PATH or _authorised(ctx, request):
+        if request.url.path == AUTH_PATH:
             return await call_next(request)
-        return PlainTextResponse(
-            "token required: open " + AUTH_PATH + "?token=<panel_token> once, "
-            "or send an X-Panel-Token header\n",
-            status_code=403,
-        )
+        if not _authorised(ctx, request):
+            return PlainTextResponse(
+                "token required: open " + AUTH_PATH + "?token=<panel_token> once, "
+                "or send an X-Panel-Token header\n",
+                status_code=403,
+            )
+        response = await call_next(request)
+        # A valid token that arrived in the URL is REMEMBERED, so the very next click (which
+        # carries no token) still works. Without this, "?token=..." authorised exactly one
+        # request and every follow-up 403'd — which is not what the instructions say, and
+        # clicking through the panel is the whole point.
+        # A header is deliberately NOT remembered: that form is a per-request credential for
+        # scripts, and it should not quietly install a cookie in whatever made the request.
+        if request.query_params.get("token") and not request.cookies.get(COOKIE_NAME):
+            response.set_cookie(COOKIE_NAME, ctx.token, httponly=True, samesite="lax")
+        return response
 
 
 def _register_auth_route(ctx: PageContext) -> None:
