@@ -580,6 +580,53 @@ was never shown by it, and disabling everything kept the wall alive with a warni
 
 ---
 
+### 10.4 Phase 4 — implementation record (DONE, 2026-10-15)
+
+**What shipped.** The profile loop closes: the panel can make a different profile active, live, and
+the choice survives a restart. Plus the two safety nets a config-writing panel deserves — restore a
+backup, and edit the raw file — and service packaging.
+
+**One resolution, obeyed by everyone.** `resolve_active_profile` lives in `core/config.py` next to
+the loader that must obey it, and `load_project_config` now calls it instead of reading the
+registry's `settings.modes_config_file` directly. Before this the panel *reported* the active
+profile through one path while the app *loaded* its config through another, and they agreed by
+luck: a switch that changed the report but not the loaded config would have been worse than no
+switch. `core/profiles.resolve_active_profile` is now a delegate.
+
+**The record is derived state, so it can never break a boot.** A missing `runtime/active_profile.json`
+is normal; malformed content reads as empty; a recorded profile that has since been deleted falls
+through to the registry. The panel writes only this file — never the registry, which has an editor
+already and holds the entrypoints and schemas.
+
+**Refusals, because a switch changes what is on the wall:**
+- a profile that does not validate is not made active (same rule as writing);
+- an app started with `--config` cannot be switched from the panel, because that flag outranks the
+  record at every restart and the switch would silently vanish on reboot;
+- a missing or non-profile file is refused with a 404 rather than a traceback.
+
+**Restoring a backup validates before it overwrites** (a backup may predate a type change) and then
+writes through the atomic path, which backs the current file up first — so a restore is itself
+undoable. The UI asks twice, because a restore replaces a live config and one mis-click next to a
+list of timestamps is not a good way to make that decision.
+
+**`/raw` is a view of the same write path, not a second one.** Whole-document staging
+(`ProfileEditor.stage_document`) goes through the same validation, atomic write, backup and conflict
+refusal as the generated form; it exists for restructuring and for what the form cannot express.
+It supersedes per-mode staging on purpose: half-editing a file two ways means nobody can say what
+is being saved. The mode page's JSON box stays read-only (the `/raw` page covers that need, and a
+per-mode box would be a second path to the same staging).
+
+**Packaging** (`deploy/`): two example user units matching the host's existing style — the kiosk with
+the embedded panel, and `--panel-only` for tuning with no display — plus the install/log/token notes.
+`systemd-analyze --user verify` passes on both; neither is installed or enabled.
+
+**Numbers.** 444 tests (was 410). Live verification: a switch moved the running app from landscape
+to portrait (its rotation, its mode's build digest and its applied file all changed, no restart),
+the record survived a fresh process, and switching back restored the previous state.
+
+
+---
+
 ## 11. Risks and non-goals
 
 Risks:
@@ -626,6 +673,15 @@ Phase 3 raised five more, all settled during implementation:
 | Q9 | Is there a scripted form of Save & Apply? | **Yes** — `POST /api/apply` (re-read a profile from disk and apply) and `POST /api/refresh`, token-gated, read-only on disk, same code path as the buttons | Buttons only (the apply path could then only be exercised with a browser) |
 | Q10 | A refresh arriving mid-fade? | **Queued** and done at the next clean frame, and counted when it happens | Drop it (silent failure), or interrupt the fade (visible glitch) |
 | Q11 | How does the panel know the change reached the wall? | **The controller publishes `mode_config_digest`** — a hash of the config the live mode was BUILT from — and the page compares it with the file | Assume it applied (unfalsifiable) |
+
+Phase 4 raised four more:
+
+| # | Question | Decision | Runner-up (recorded, not pursued) |
+|---|---|---|---|
+| Q12 | Where does the active profile live? | **`runtime/active_profile.json`**, one line, gitignored, atomic, written only by the panel. Precedence `--config > runtime > registry settings` | Write `settings.modes_config_file` in the registry (a second writer round-tripping 26 KB to change one string, dirtying git on every switch) |
+| Q13 | Panel switch when `--config` was used? | **Refused, with the reason.** That flag outranks the record at every restart, so a switch would look like it worked and be gone on reboot | Allow it silently, or allow it with a warning (both leave a trap) |
+| Q14 | Is restore a separate write path? | **No** — validate the backup, then write through the same atomic path, which backs up what it replaces so a restore is undoable. Two-step in the UI | Copy the file over the live one (one mis-click from an outage) |
+| Q15 | Two units or one? | **Two**, in `deploy/`: the kiosk with the panel, and `--panel-only` for no-display tuning. The app needs a graphical session; the panel deliberately does not | One unit (simpler, but the panel-only case then needs a hand-run command) |
 
 If any of these turns out wrong once you are using it, the doc is the place the reversal gets
 written — not the transcript.

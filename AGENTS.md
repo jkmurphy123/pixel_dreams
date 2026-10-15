@@ -128,12 +128,16 @@ Rules, each one a bug class already avoided:
 Commands the loop understands (`core/bus.py` + `pixel_dreams.py`): `ping`, `apply_config` (swap in
 freshly read registry/modes, rebuild the rotation, optionally rebuild the mode on screen) and
 `refresh_mode` (rebuild the mode on screen from the config already in memory). A refresh that
-arrives mid-fade is queued to the next clean frame, never dropped.
+arrives mid-fade is queued to the next clean frame, never dropped. A profile switch is an
+`apply_config` with the other profile's dicts — plus a write of `runtime/active_profile.json`, which
+the PANEL thread does (it owns disk I/O; the loop never touches a file).
 
 Writing a config goes through `core/editor.py` and nowhere else. It stages, validates the whole
 profile, refuses what it can prove wrong, refuses to clobber a file that changed since it was read,
 and writes atomically with a backup. The rules it applies are in `core/validation.py`, which is
 also what `validate_configs.py` uses — do not add a second copy of those checks anywhere.
+`core/editor.py` also owns switching (`switch_profile`) and restoring a backup (`restore_backup`),
+for the same reason: one writer, one set of refusals.
 
 A non-loopback `--panel-bind` requires `panel_token` in `secrets.json`; without a token the
 controller refuses to start rather than exposing an unauthenticated control surface. A loopback
@@ -177,6 +181,18 @@ Structural per-instance keys, which are not type parameters: `type`, `name`, `ti
 Same shape. Shallow-merged per mode number on top of `modes_config.json`.
 Use it for per-host paths (image folders, device names) so the versioned
 config stays portable. See `modes_config.local.example.json`.
+
+### `runtime/active_profile.json` (gitignored)
+Which profile the display should use, as one line:
+```json
+{ "profile": "configs/modes_config_portrait.json" }
+```
+Written ONLY by the panel (`core.config.write_active_profile`, atomic). Precedence for choosing the
+active profile is `--config FILE` > this file > `modes_registry.json`'s
+`settings.modes_config_file` > `modes_config.json`. It is derived state: a missing file is normal,
+malformed content reads as empty, and a recorded profile that has been deleted falls through — none
+of which may stop a kiosk from starting. Never edit `settings.modes_config_file` from code; the
+registry has an editor already (a text editor) and holds entrypoints and schemas.
 
 Merge order for a mode's effective config:
 `registry type_config` -> `modes_config.json` instance -> `modes_config.local.json` instance

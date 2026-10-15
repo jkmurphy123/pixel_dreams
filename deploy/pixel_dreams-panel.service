@@ -1,0 +1,29 @@
+[Unit]
+Description=pixel_dreams — control panel only (no display)
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/ssd
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/ssd/projects/pixel_dreams
+Environment=PYTHONUNBUFFERED=1
+# --panel-only never initialises pygame, so this unit works with no display, no
+# graphical session and no XAUTHORITY. It is the one to run when you want the panel
+# available for preparing or inspecting profiles while the wall is driven by something
+# else (or is off). The status card then reports "no display process attached", which is
+# the truth: this process has no render loop to command.
+ExecStart=/mnt/ssd/projects/pixel_dreams/.venv/bin/python \
+          /mnt/ssd/projects/pixel_dreams/pixel_dreams.py \
+          --panel-only --panel-port 8090 --panel-bind 0.0.0.0
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

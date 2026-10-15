@@ -1,0 +1,36 @@
+[Unit]
+Description=pixel_dreams — kiosk display with the live-tuning control panel
+# Ordering only, so a panel-less or display-less start is still possible.
+After=network-online.target
+Wants=network-online.target
+# The project lives on the NVMe SSD; wait for the mount and fail clearly without it.
+RequiresMountsFor=/mnt/ssd
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/ssd/projects/pixel_dreams
+Environment=PYTHONUNBUFFERED=1
+# A graphical session's display. If the kiosk boots into a desktop as user ubuntu,
+# this is the display to draw on; adjust if your session uses another one.
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/ubuntu/.Xauthority
+# SDL keeps its audio/display sane on a Jetson with no sound card attached.
+Environment=SDL_AUDIODRIVER=dummy
+# The panel is opt-in and this is the useful setting for tuning from a laptop:
+# bound to the LAN, which REQUIRES panel_token in secrets.json — without a token the
+# controller refuses to start rather than exposing an unauthenticated control surface.
+# Use "127.0.0.1" here to keep the panel on the kiosk itself.
+ExecStart=/mnt/ssd/projects/pixel_dreams/.venv/bin/python \
+          /mnt/ssd/projects/pixel_dreams/pixel_dreams.py \
+          --panel-port 8090 --panel-bind 0.0.0.0 --auto 30
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

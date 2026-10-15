@@ -43,9 +43,39 @@ without fastapi/uvicorn loaded at all).
 | `--panel-only` | serve the panel without initialising pygame — for preparing a profile offline |
 | `--frames N` | exit after N frames (used by the verification tests) |
 
-Pages: `/` (active profile + its mode list + live status) and `/mode/<n>?profile=<rel>`, the
-generated parameter form for one mode. See `designs/PIXEL_DREAMS_DESIGN.md`; the source of truth
-for what is actually built is that doc's per-phase implementation records.
+Pages: `/` (active profile + its mode list + live status + the profile switch + backups), `/raw`
+(the whole profile document as editable JSON) and `/mode/<n>?profile=<rel>`, the generated parameter
+form for one mode. See `designs/PIXEL_DREAMS_DESIGN.md`; the source of truth for what is actually
+built is that doc's per-phase implementation records.
+
+### Switching profile from the panel
+
+The profile card on `/` shows the profile being inspected (choose it in the dropdown). If it is not
+the one on the display, **Switch the display to <profile>** makes it active: the target is validated,
+`runtime/active_profile.json` is recorded, and the running app is told to reload — the wall changes
+profile with no restart, and the choice is what the next start loads.
+
+WHICH profile is active, in order: `--config FILE` (a command-line pin), then
+`runtime/active_profile.json` (what the panel writes, one line, gitignored), then
+`modes_registry.json` → `settings.modes_config_file`. An app started with `--config` cannot be
+switched from the panel and says so, because that flag would win again at the next restart.
+
+### Backups and the raw editor
+
+Every save keeps a timestamped copy of the profile in `.backups/` (newest 20 per file). The
+**Backups** section on `/` lists them for the inspected profile and restores one — in two steps, and
+the restore itself is undoable because the version it replaces is backed up first.
+
+`/raw` edits the whole profile document as JSON. It is the tool for restructuring (copying a mode
+block, pasting several), and it goes through the same validation, atomic write, backup and
+conflict refusal as the form: it is another view of one write path, not a second one.
+
+### Running it as a service
+
+`deploy/` has two example user units (the kiosk with the embedded panel, and `--panel-only` for
+tuning with no display) plus install, log and token notes. Neither is installed or enabled — see
+`deploy/README.md`.
+
 
 ### Tuning a mode while the kiosk runs
 
@@ -68,17 +98,22 @@ registry but absent from the file — editing it adds the key, `unset` removes o
 If the file changed underneath you (another tab, an ssh edit), Save is refused and the page says
 what changed, until you press `Reload from disk`. Nothing is written that you did not see.
 
-Scripted equivalents, both token-gated and read-only on disk:
+Scripted equivalents, all token-gated and (except the profile record) read-only on disk:
 
 ```bash
+curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/status
+curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/profiles
+curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/refresh
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/apply \
      -H 'Content-Type: application/json' -d '{"profile": "configs/modes_config_portrait.json", "refresh": true}'
-curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/refresh
-curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/status
+curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/profile \
+     -H 'Content-Type: application/json' -d '{"profile": "configs/modes_config_portrait.json"}'
 ```
 
 `/api/apply` re-reads a profile from disk and applies it (the same path the button takes, minus the
-write) — handy after editing a file by hand or pulling a commit.
+write) — handy after editing a file by hand or pulling a commit. `/api/profile` is the switch: it
+validates, records and applies, and answers 404 for an unknown profile or 409 when it refuses (a
+broken profile, or an app started with `--config`).
 
 Panel reach: loopback by default. To open it from another machine, add
 `"panel_token": "<long random string>"` to `secrets.json` (gitignored — see
