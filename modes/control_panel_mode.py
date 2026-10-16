@@ -112,7 +112,7 @@ class ControlPanelMode:
                   f"mode={layout.mode}{art} "
                   f"({len(layout.panels)} panels, {len(layout.controls)} controls, "
                   f"{len(self.controls)} animated)")
-        except (SkinError, LayoutError) as e:
+        except Exception as e:                       # a kiosk shows the reason, it does not vanish
             # kiosk-friendly: log once, show the reason on screen
             self._error = str(e)
             self.compositor = None

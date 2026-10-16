@@ -73,18 +73,44 @@ class LampControl(Control):
         pygame.draw.circle(surface, core, (cx, cy), r_core)
 
 
+def _fraction(value, span: int) -> float:
+    """
+    A size value as a fraction of `span` pixels.
+
+    The "size" key carries two meanings and both must work: the lamp family's fraction of the box
+    (0.30, or the rectangles' [0.60, 0.35]) and the layout's pixel size ([160, 160], which is what the
+    add dialog writes and what every other control uses). They overlap for the rectangles' own default,
+    so the split is by VALUE rather than by type: a fraction is at most 1, a pixel size is at least 1 —
+    a one-pixel control is not a thing, and a fraction of 1 is the whole box.
+
+    Getting this wrong is not cosmetic: float([160, 160]) raised inside the mode's enter(), and the
+    whole panel went black over one newly added lamp.
+    """
+    number = float(value)
+    return number / max(1, span) if number > 1.0 else number
+
+
+def _glow_half(size, w: int, h: int) -> float:
+    """Half the glow's extent in pixels, from either form of the size value."""
+    shorter = min(w, h)
+    if isinstance(size, (list, tuple)):
+        return _fraction(size[0], shorter) * shorter / 2.0
+    return float(size) * shorter / 2.0
+
+
 class SquareLampControl(LampControl):
     """
     Square indicator lamp. Same blink/fade behavior as LampControl, but the
     glow is drawn as a centered square.
 
-    Layout overrides: signal, color_rgb, center, size.
+    Layout overrides: signal, color_rgb, center, size (a fraction of the shorter side, or the
+    layout's pixel [w, h] — see _glow_half).
     """
 
     def __init__(self, placed, ctx):
         super().__init__(placed, ctx)
         _, _, w, h = self.rect
-        self.half = max(1, int(float(self.spec.get("size", 0.30)) * min(w, h) / 2))
+        self.half = max(1, int(_glow_half(self.spec.get("size", 0.30), w, h)))
 
     def draw_overlay(self, surface):
         if self.level < 0.02:
@@ -108,15 +134,20 @@ class RectLampControl(LampControl):
     the glow is drawn as a centered rectangle whose aspect ratio matches the
     sprite footprint.
 
-    Layout overrides: signal, color_rgb, center, size.
+    Layout overrides: signal, color_rgb, center, size (either [frac_w, frac_h] of the box, or
+    the layout's pixel [w, h]).
     """
 
     def __init__(self, placed, ctx):
         super().__init__(placed, ctx)
         _, _, w, h = self.rect
         size = self.spec.get("size", [0.60, 0.35])
-        self.half_w = max(1, int(float(size[0]) * w / 2))
-        self.half_h = max(1, int(float(size[1]) * h / 2))
+        if isinstance(size, (list, tuple)):
+            frac_w, frac_h = _fraction(size[0], w), _fraction(size[1], h)
+        else:
+            frac_w = frac_h = float(size)
+        self.half_w = max(1, int(frac_w * w / 2))
+        self.half_h = max(1, int(frac_h * h / 2))
 
     def draw_overlay(self, surface):
         if self.level < 0.02:

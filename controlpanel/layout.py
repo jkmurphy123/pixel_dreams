@@ -263,7 +263,13 @@ def _load_freeform(name, data, sprite_defs, background_override=None):
         # size: explicit "size" [w, h] px wins; otherwise the sprite's
         # natural footprint scaled by "scale" (default 1.0)
         if "size" in c:
-            w, h = int(c["size"][0]), int(c["size"][1])
+            box = c["size"]
+            if not isinstance(box, (list, tuple)) or len(box) != 2:
+                raise LayoutError(
+                    f"{where}: 'size' must be [w, h] in pixels — a freeform control needs a box "
+                    f"to be placed in (the lamp family also reads a bare number as ITS glow "
+                    f"fraction, which gives the layout no box at all)")
+            w, h = int(box[0]), int(box[1])
         else:
             geo = sprite_defs[sprite_id]
             scale = float(c.get("scale", 1.0))
