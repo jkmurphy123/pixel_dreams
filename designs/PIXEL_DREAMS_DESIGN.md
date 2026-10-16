@@ -1030,6 +1030,38 @@ whether a shape fills the corner of its OWN bounding box — a circle never does
 always does — and that is now the test, so the three types are pinned by geometry rather than by name:
 the round lamp 144px across with empty corners, `lamp_square` a 96x96 square, `lamp_rect` 180x104.
 
+### 10.17 Fix — one added overlay blacked out the panel: the "size" key means two things (DONE, 2026-10-16)
+
+Reported from the wall: a square lamp was added and the whole control panel went black. The log named it
+exactly: `enter() error: float() argument must be a string or a real number, not 'list'`.
+
+Every control in a layout takes its box from `size`: [w, h] in PIXELS, which is what the add dialog
+writes. The lamp family also reads `size` as ITS own fraction of the shorter side, and
+SquareLampControl did float([160, 160]) on the list. That TypeError escaped the mode's enter() — which
+caught only SkinError and LayoutError — so the panel died with nothing on the screen. One overlay, no
+panel, and every other mode of that layout lost with it.
+
+Three guards, at the three levels that were wrong:
+
+  * the lamps read BOTH forms. The split is by VALUE, not by type: a fraction is at most 1, a pixel size
+    is at least 1 (a one-pixel control is not a thing, and a fraction of 1 is the whole box). It cannot be
+    by type, because the rectangular lamps' own default is the LIST [0.60, 0.35] — fractions — so "a list
+    means pixels" is wrong for exactly the case this started from. My first attempt at the fix made that
+    mistake and the existing shape test caught it, which is the shape test earning its keep a second time.
+  * the freeform loader refuses a bare number where it needs a box, in words, rather than raising
+    TypeError from inside int(c["size"][0]).
+  * the mode catches ANY failure in enter() and draws the reason on the screen. That fallback already had
+    this intent — "kiosk-friendly: log once, show the reason on screen" — it simply had a narrower net
+    than the intent. A black kiosk has told the operator nothing, which is how this arrived as "the whole
+    mode display went black" instead of as an error message.
+
+Above them sits the guard that should have existed first: tests/test_control_sizes.py builds and draws
+EVERY type in the catalogue with the layout's pixel size present. That is the contract the add dialog
+relies on, and it is the test that would have caught this before the wall did. A related test of mine was
+also wrong and is gone: it asserted against Scifi.json, a file the user edits whenever he likes. A test
+may not depend on content; the catalogue-wide guard covers the same ground generically, and his
+layouts are verified by running the app against them instead.
+
 ## 11. Risks and non-goals
 
 Risks:
