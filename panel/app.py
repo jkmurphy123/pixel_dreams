@@ -57,6 +57,7 @@ from core.editor import (
 from core.layout_edit import (
     LayoutEditor,
     backgrounds_dir,
+    resolve_background,
     create_freeform,
     list_backgrounds,
     list_layouts,
@@ -1401,6 +1402,57 @@ def _layout_key(name) -> str:
 # file cannot be tuned.
 
 
+def _open_layout(name: str):
+    """A LayoutEditor for a layout name or path, or None when it cannot be opened."""
+    from controlpanel.layout import LayoutError
+    try:
+        return LayoutEditor(name)
+    except LayoutError:
+        return None
+
+
+def _artwork_in_use(ctx: PageContext, rel: str, number, editor) -> tuple:
+    """
+    (artwork path, canvas [w, h], where it came from) — what the boxes must be drawn over.
+
+    The MODE owns the picture and the layout file's background_image is only its default, so reading
+    the layout document alone can draw the boxes over a picture the wall is not using — which makes
+    every position on this page a lie. Order of authority:
+
+      1. the LIVE mode, when the display is showing this layout: it reports the artwork it is
+         actually drawing and the canvas it is working in, and nothing beats that;
+      2. this mode's background_image parameter — resolved by asking the package to load the layout
+         WITH the override, so the artwork and the canvas (which the artwork decides when the layout
+         declares none) both come from the one authority instead of a rule re-implemented here;
+      3. the layout file's own field, for a panel being prepared but not shown.
+    """
+    live = ctx.bus.snapshot().get("layout_report")
+    if isinstance(live, dict) and _layout_key(live.get("layout_file")) == _layout_key(editor.name):
+        artwork = str(live.get("background_image") or "")
+        canvas = [int(v) for v in (live.get("canvas") or [])]
+        if artwork and len(canvas) == 2:
+            return artwork, canvas, "the live display"
+
+    document = load_json(os.path.join(ctx.base_dir, rel), {})
+    modes = document.get("modes") if isinstance(document, dict) else None
+    entry = (modes or {}).get(str(number)) if isinstance(modes, dict) else None
+    override = str((entry or {}).get("background_image") or "").strip() \
+        if isinstance(entry, dict) else ""
+    if override:
+        from controlpanel.layout import LayoutError, layout_from_data
+        try:
+            loaded = layout_from_data(json.loads(json.dumps(editor.document)), name=editor.name,
+                                      background_override=override)
+        except LayoutError as e:
+            return resolve_background(override), list(editor.canvas()), \
+                   f"this mode's background_image ({e})"
+        return str(loaded.background_image or ""), [int(v) for v in loaded.design_resolution], \
+               "this mode's background_image parameter"
+
+    own = str(editor.document.get("background_image") or "").strip()
+    return (resolve_background(own) if own else ""), list(editor.canvas()), "the layout file"
+
+
 def _first_controlpanel_slot(modes: dict) -> int | None:
     for slot in sorted(modes, key=lambda k: int(k) if str(k).isdigit() else 10 ** 9):
         entry = modes.get(slot)
@@ -1448,8 +1500,8 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
         return
 
     state: dict = {"selected": None, "outcome": None, "step": 1, "pending_remove": None}
-    cw, ch = editor.canvas()
-    background = str(editor.document.get("background_image") or "")
+    background, canvas, artwork_source = _artwork_in_use(ctx, rel, number, editor)
+    cw, ch = canvas[0], canvas[1]
 
     def live_report() -> dict:
         report = ctx.bus.snapshot().get("layout_report")
@@ -1475,6 +1527,9 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
             ui.label(f"{editor.name}").classes("text-base font-semibold")
             ui.badge(f"{editor.mode}").props("outline").classes("text-xs")
             ui.label(f"{cw}x{ch} · {len(editor.controls())} overlays").classes("text-xs opacity-60")
+            ui.label(f"artwork: {os.path.basename(str(background)) or '(none)'} — from "
+                     f"{artwork_source}").classes("text-xs opacity-60") \
+                .mark("layout-artwork-source")
             ui.link("raw JSON →", f"/layout/raw?layout={layout_name}&profile={rel}"
                     + (f"&mode={number}" if number is not None else "")) \
                 .classes("text-xs ml-auto").mark("layout-raw-link")
@@ -1537,8 +1592,9 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
                 with ui.element("div").classes("relative w-full").style(
                         f"max-width: 820px; aspect-ratio: {cw} / {ch};"):
                     if background:
-                        ui.image(f"/api/asset/background?name={background}") \
-                            .classes("absolute inset-0 w-full h-full")
+                        ui.image(f"/api/asset/background?layout={editor.name}&profile={rel}"
+                                 + (f"&mode={number}" if number is not None else "")) \
+                            .classes("absolute inset-0 w-full h-full").mark("layout-artwork")
                     for i, _control in enumerate(editor.controls()):
                         rect = editor.rect_of(i) or (0, 0, 0, 0)
                         chosen = i == selected()
@@ -2025,23 +2081,34 @@ def _register_layout_route(app, ctx: PageContext) -> None:
         _layout_page(ctx, rel, int(mode) if mode is not None else None)
 
     @app.get("/api/asset/background")
-    def asset_background(name: str = ""):
+    def asset_background(name: str = "", layout: str = "", profile: str = "",
+                         mode: int | None = None):
         """
-        Serve a background PNG to the page's <img>.
+        Serve the artwork the alignment page draws its boxes over.
 
-        Restricted to the backgrounds directory — a path that resolves outside it is refused, so this
-        cannot be used to read anything else on the machine — and behind the usual token gate, which
-        an <img> satisfies through the cookie (the page itself is behind the middleware).
+        Two ways in, and neither can be turned into a reader of arbitrary files. A bare `name` stays
+        restricted to the backgrounds directory. A `layout` is resolved EXACTLY as the page resolved
+        it — through the same _artwork_in_use, including the mode parameter that overrides it — so
+        the bytes handed back are the ones the app itself decided to draw rather than a path the
+        caller invented. The extension check is stock: only files the renderer could load anyway.
         """
         from fastapi.responses import FileResponse
 
-        wanted = os.path.basename(str(name or ""))
-        target = os.path.join(backgrounds_dir(), wanted)
-        if not wanted or not os.path.isfile(target):
+        if layout:
+            editor = _open_layout(layout)
+            if editor is None:
+                return PlainTextResponse("no such layout", status_code=404)
+            path, _canvas, _source = _artwork_in_use(ctx, profile, mode, editor)
+        else:
+            wanted = os.path.basename(str(name or ""))
+            path = os.path.join(backgrounds_dir(), wanted) if wanted else ""
+            if path and os.path.dirname(os.path.abspath(path)) != os.path.abspath(backgrounds_dir()):
+                return PlainTextResponse("refused", status_code=403)
+        if not path or not os.path.isfile(path):
             return PlainTextResponse("no such background", status_code=404)
-        if os.path.dirname(os.path.abspath(target)) != os.path.abspath(backgrounds_dir()):
+        if os.path.splitext(path)[1].lower() not in (".png", ".jpg", ".jpeg", ".bmp", ".gif"):
             return PlainTextResponse("refused", status_code=403)
-        return FileResponse(target, media_type="image/png")
+        return FileResponse(path, media_type="image/png")
 
 
 def _align_link(ctx: PageContext, info, entry) -> None:

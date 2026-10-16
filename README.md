@@ -262,6 +262,10 @@ panel, type the path, press Save. Two things are worth knowing, because otherwis
 `modes/control_panel_mode.py` documents the mode's config keys, and `tests/test_background_param.py`
 pins the resolution rules and the refusals.
 
+The alignment page draws its boxes over the SAME artwork the display is drawing, and says which
+one that is and where it came from. If the two ever disagreed, every position on that page would
+be measured against the wrong picture.
+
 ### Editing a layout as JSON, and picking a layout instead of typing it
 
 A layout is a JSON file, and the params page now offers the layouts on disk as a dropdown — with the

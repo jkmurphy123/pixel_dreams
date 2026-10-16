@@ -91,6 +91,17 @@ class LayoutSaveResult:
 _MINIMAL_CONTROL = ("type", "sprite")
 
 
+def resolve_background(value: str) -> str:
+    """
+    The file a background_image value points at, by the loader's own rule: a bare name lives under
+    the package's backgrounds directory, and a path with a separator (or absolute) is used as given.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    return str(_paths().resolve_under(_paths().BACKGROUNDS_DIR, raw))
+
+
 def resolve_layout_path(name_or_path: str) -> str:
     """A layout file by bare name (under the package's layouts dir) or by path."""
     return str(_paths().resolve_under(_paths().LAYOUTS_DIR, name_or_path, ".json"))
@@ -360,8 +371,8 @@ def create_freeform(name: str, background: str, seed_from: str | None = None) ->
     # actually has are usually in a folder of their own, not in this tree — offering only the
     # shipped files hides precisely the case this flow exists for.
     bg_value = str(background or "").strip()
-    bg_path = _paths().resolve_under(_paths().BACKGROUNDS_DIR, bg_value) if bg_value else None
-    if bg_path is None or not bg_path.exists():
+    bg_path = resolve_background(bg_value)
+    if not bg_path or not os.path.exists(bg_path):
         available = ", ".join(list_backgrounds()) or "none found"
         return {"ok": False, "reason": f"no such background image in "
                                       f"{_paths().BACKGROUNDS_DIR.name}/: {bg_value!r} "

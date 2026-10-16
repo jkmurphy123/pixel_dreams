@@ -941,6 +941,28 @@ One existing expectation changed with the picker: a text field WITH known values
 rather than an Input. The shape is unchanged (still text), and the test that maps values to widgets
 records the new rule rather than the old widget.
 
+### 10.14 Fix — the page and the wall must draw the same picture (DONE, 2026-10-16)
+
+Reported from use: the mode showed the PNG from its background_image parameter while the alignment page
+drew the boxes over the layout file's own artwork. The page was reading the layout document's field and
+calling it done — a small line with a large consequence, since the boxes are only meaningful over the
+picture the wall is using, and every position on the page would have been measured against the wrong
+image.
+
+The rule now lives in one place (_artwork_in_use) and the asset route that feeds the page's <img> calls
+it too, so page and route cannot drift apart. Its order of authority is deliberate: the LIVE display
+first, because when it is showing that layout its own report is the truth (artwork and canvas both);
+then the mode's parameter, resolved by asking the PACKAGE to load the layout with the override, so the
+artwork and the canvas — which the artwork decides when the layout declares none — both come from the
+loader rather than from a rule re-implemented in the panel; then the layout file's own field, which is
+what a panel being prepared but not yet displayed needs.
+
+The route stopped accepting an arbitrary caller-supplied path. It resolves the artwork itself, from the
+layout (plus the profile and mode whose parameter may override it), so it can only hand back artwork the
+app decided to draw; the extension check is stock, and the original bare-name form stays restricted to
+the backgrounds directory. The page also states which artwork it is showing and where it came from,
+because a picture with no provenance is exactly how this went unnoticed.
+
 ## 11. Risks and non-goals
 
 Risks:
