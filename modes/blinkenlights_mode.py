@@ -132,7 +132,7 @@ class BlinkenlightsPanelMode:
             if int((now * 1000) / 90) != int(((now - dt) * 1000) / 90):
                 self._burst_walk_pos = (self._burst_walk_pos + 1) % 8
 
-        for idx in range(len(self.status_states)):
+        for idx in range(len(self._status_states)):
             if random.random() < self.status_probability_per_sec * dt * 0.25:
                 self._status_states[idx] = not self._status_states[idx]
             self._status_phases[idx] += dt * random.uniform(0.8, 1.6)

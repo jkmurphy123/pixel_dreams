@@ -797,6 +797,20 @@ config. that way i can have variations of the mode with different parameters."
 - Suite: 521 passed.
 
 
+### 10.9 A mode bug the panel exposed (DONE, 2026-10-15)
+
+Not a feature and not part of any phase: found by stepping through the real rotation with the new
+Next/Prev buttons on a live instance. `modes/blinkenlights_mode.py` reads `self.status_states` in
+`update()` while the attribute it sets (and uses everywhere else, lines 75/137/299) is
+`self._status_states` — so that mode raised an AttributeError on EVERY frame, which the manager's
+per-mode handler swallows into the log, leaving the mode effectively frozen while the file floods with
+`[Mode] update() error: 'BlinkenlightsPanelMode' object has no attribute 'status_states'`.
+
+Fixed by using the name that exists, and verified by driving the mode headlessly — `enter()`, 180
+frames of `update()` + `render()`, `exit()` — with no exception. It is the kind of bug that only shows
+up when someone actually plays every mode, which is exactly what the manual controls are for.
+
+
 ## 11. Risks and non-goals
 
 Risks:
