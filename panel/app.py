@@ -1937,6 +1937,8 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
         ui.label("It is appended at the centre of the artwork and written to the file straight away, "
                  "so the mode can be rebuilt with it — a control that exists only on screen could "
                  "not be tuned.").classes("text-xs opacity-60")
+        _CATALOGUE = {}
+        type_options, sprite_options = [], []
         try:
             from controlpanel.controls import CONTROL_CLASSES as _CATALOGUE
             from controlpanel.layout import load_sprite_defs as _sprite_defs
@@ -1952,6 +1954,10 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
                                          in sprite_options else None),
                                   label="sprite", with_input=True).classes("w-64") \
             .mark("layout-add-sprite")
+        type_note = ui.label().classes("text-xs opacity-60 w-full").mark("layout-add-type-note")
+        type_select.on_value_change(lambda _: type_note.set_text(
+            _control_blurb(type_select.value, _CATALOGUE)))
+        type_note.set_text(_control_blurb(type_select.value, _CATALOGUE))
         add_outcome = ui.label().classes("text-xs").mark("layout-add-outcome")
 
         def do_add() -> None:
@@ -2227,6 +2233,26 @@ def _register_layout_route(app, ctx: PageContext) -> None:
         if os.path.splitext(path)[1].lower() not in (".png", ".jpg", ".jpeg", ".bmp", ".gif"):
             return PlainTextResponse("refused", status_code=403)
         return FileResponse(path, media_type="image/png")
+
+
+def _control_blurb(type_key: str, catalogue: dict) -> str:
+    """
+    One line about a control type, taken from the class's OWN docstring, plus its override keys.
+
+    The catalogue is 24 types and their names do not say what they look like: "lamp", "lamp_square"
+    and "lamp_rect" are only obvious once you have read the code, and a reader who cannot tell what
+    exists will ask for a control that is already there. The classes already carry the sentence and
+    the override list — this surfaces them instead of asking anyone to guess.
+    """
+    cls = catalogue.get(type_key)
+    if cls is None:
+        return ("a decorative static sprite: no animation, no colours of its own"
+                if type_key == "plate" else "")
+    paragraphs = [p.strip() for p in (cls.__doc__ or "").split("\n\n") if p.strip()]
+    summary = " ".join(paragraphs[0].split()) if paragraphs else ""
+    overrides = next((" ".join(p.split()) for p in paragraphs
+                      if "overrides" in p.lower()), "")
+    return summary + (f"  [{overrides}]" if overrides else "")
 
 
 def _align_link(ctx: PageContext, info, entry) -> None:

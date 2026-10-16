@@ -306,3 +306,19 @@ code):
 `color` is the universal key and wins over all the others. Setting one writes immediately and rebuilds
 the mode, for the same reason a copy does: a control resolves its colours when it is built. `default`
 clears the key and hands the colour back to the control.
+
+### What each control type looks like
+
+The add-overlay dialog describes the type you have selected, in the class's own words, plus the keys
+that type lets you override. That matters more than it sounds: the catalogue is 24 types and the names
+do not say what their shapes are. The lamp family, for instance:
+
+    lamp          a round glow (halo + bright core)
+    lamp_square   the same lamp, drawn as a square glow
+    lamp_rect     the same lamp, drawn as a rectangle wider than it is tall
+    lamp_bank, led_matrix   grids of lamps
+
+All three lamps blink and fade identically, take `color_rgb` (and the universal `color`), and add
+`size`; only the drawn shape differs. Proved by measuring them rather than by name —
+`tests/test_lamp_shapes.py` draws each one alone and asks whether it fills its own bounding box's corner,
+which a circle never does.

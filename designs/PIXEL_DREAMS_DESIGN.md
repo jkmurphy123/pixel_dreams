@@ -1009,6 +1009,27 @@ regexes were wrong twice in a way that still compiled, and the repair script wro
 one-key entries — a parenthesised string, not a one-element tuple, so the table briefly contained the
 characters l, c, o, r. Both were caught by the suite rather than by reading. )_
 
+### 10.16 "Exactly like Lamp but square" — it already existed; the dialog now says so (DONE, 2026-10-16)
+
+Asked for a new control, identical to Lamp but square. It is `lamp_square`, and it has been there all
+along: `SquareLampControl` subclasses `LampControl` and overrides only `draw_overlay`, so the blink, the
+fade, the signal handling, `color_rgb` and `color` are literally the same code, and it adds `size`.
+`lamp_rect` is the rectangular sibling. Nothing needed building; the docstrings even say it.
+
+What was missing was any way to find that out. The add dialog offered 24 type names and nothing else, so
+a reader who could not tell that `lamp_square` means the square glow — and why would they, with
+`lamp_square` and `lamp_rect` sitting next to `lamp` — would reasonably conclude the control did not exist
+and ask for it. The dialog now describes the selected type: its summary and its override keys, both taken
+from the class's own docstring, so the catalogue explains itself and cannot drift from the code it
+describes.
+
+Verifying the shapes was worth the trouble of getting wrong first. The first probe sampled fixed offsets
+from the centre and "proved" the square lamp was not square: 55px out is inside the round lamp's halo
+(radius 40 x 1.8) and outside the square one's (half 30 x 1.6). The measurement that means something asks
+whether a shape fills the corner of its OWN bounding box — a circle never does, a square or rectangle
+always does — and that is now the test, so the three types are pinned by geometry rather than by name:
+the round lamp 144px across with empty corners, `lamp_square` a 96x96 square, `lamp_rect` 180x104.
+
 ## 11. Risks and non-goals
 
 Risks:
