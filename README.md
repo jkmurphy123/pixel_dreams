@@ -129,6 +129,34 @@ registry but absent from the file — editing it adds the key, `unset` removes o
 If the file changed underneath you (another tab, an ssh edit), Save is refused and the page says
 what changed, until you press `Reload from disk`. Nothing is written that you did not see.
 
+### Making a variant of a mode
+
+Every row in the mode list has a **duplicate** button. It copies that mode into the **next free slot**
+and writes the profile, so you can then open the copy's own params page and change what makes it
+different — a different folder, a different font size, a different palette — without touching the
+original.
+
+What the copy is, exactly:
+
+- **A verbatim copy of every setting**, including whether it is enabled. The one deliberate difference
+  is the name: the copy is called `<name> copy` (then ` copy 2`, ` copy 3` if that is taken), because
+  two identical labels in a list of thirty-odd modes is a trap. A mode with no name is left unnamed —
+  you can see its type in the list anyway.
+- **Written immediately, and applied if it is the profile on the display**, so the copy exists to open
+  straight away. If its source was enabled, the copy is now in the rotation too, playing the same
+  thing twice until you change it — the message says so, and its switch in the list turns it off if
+  you would rather tune it first. If the source was disabled, the copy stays disabled.
+- **One click, no confirmation**, because it is additive and easy to undo: the copy is an ordinary
+  mode you can edit, disable, or remove from its own params page, and every write keeps a backup.
+
+It goes through the same write path as any other change — validated, atomic, backed up — with one
+extra guard: if the slot it was going to use appeared in the file in the meantime (another tab, a hand
+edit), it refuses instead of landing on someone else's mode.
+
+Scripted: `curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/duplicate -H
+'Content-Type: application/json' -d '{"index": 3}'` — add `"profile": "configs/..."` to duplicate in
+a profile other than the active one.
+
 ### Changing modes by hand
 
 Under **Display status** there are two buttons: **◀ Prev** and **Next ▶**, one press per mode. Use

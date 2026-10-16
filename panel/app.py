@@ -693,6 +693,59 @@ def register_pages(ctx: PageContext) -> None:
             "warnings": list(result.warnings),
         }
 
+    @app.post("/api/duplicate")
+    async def api_duplicate(request: Request):
+        """
+        Copy a mode into a new slot: {"index": 3, "profile": "configs/..."} — the row button for
+        scripts and the acceptance runs.
+
+        `profile` defaults to the active one. The copy keeps every setting including whether it is
+        enabled, and is named "<name> copy" when it has a name. When the profile being changed is the
+        one on the display, the running app is told to reload it, so the new slot is live at once;
+        the response's `applied` says whether that happened.
+
+        Refused (409) for a mode that is not in the profile, and for a profile that does not validate
+        afterwards — nothing is written in either case.
+        """
+        if not _authorised(ctx, request):
+            return PlainTextResponse("token required", status_code=403)
+        body = {}
+        raw = await request.body()
+        if raw:
+            try:
+                body = json.loads(raw)
+            except ValueError:
+                return JSONResponse({"ok": False, "reason": "body must be JSON"}, status_code=400)
+            if not isinstance(body, dict):
+                return JSONResponse({"ok": False, "reason": "body must be a JSON object"},
+                                    status_code=400)
+        try:
+            index = int(body.get("index"))
+        except (TypeError, ValueError):
+            return JSONResponse({"ok": False, "reason": "index must be a mode number"},
+                                status_code=400)
+
+        active_path, _ = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+        wanted = body.get("profile")
+        path = active_path if not wanted else (
+            os.path.abspath(wanted) if os.path.isabs(str(wanted))
+            else os.path.abspath(os.path.join(ctx.base_dir, str(wanted))))
+        if not os.path.exists(path):
+            return JSONResponse({"ok": False, "reason": f"no such profile: {wanted}"}, status_code=404)
+
+        try:
+            result, applied = _duplicate_into(ctx, path, index)
+        except EditorRefused as e:
+            return JSONResponse({"ok": False, "reason": str(e)}, status_code=409)
+        if not result.ok:
+            return JSONResponse({"ok": False, "reason": result.reason,
+                                 "errors": list(result.errors)}, status_code=409)
+        return {
+            "ok": True, "slot": result.slot, "label": result.label, "renamed": result.renamed,
+            "enabled": result.enabled, "applied": applied,
+            "profile": os.path.relpath(path, ctx.base_dir),
+        }
+
     @app.post("/api/profile")
     async def api_profile(request: Request):
         """
@@ -801,7 +854,7 @@ def register_pages(ctx: PageContext) -> None:
                 else:
                     notice.set_text("PREVIEW — not the profile on the display. Switching to it "
                                     "changes what plays, with no restart.")
-                _render_mode_rows(rows, info, ctx.base_dir)
+                _render_mode_rows(rows, info, ctx, state, reload_from_disk)
                 _render_switch_button(switch_row, ctx, state, info, is_active, after_switch)
 
             def reload_from_disk() -> None:
@@ -1141,17 +1194,45 @@ def _refresh_transport(labels: dict, snap: dict) -> None:
 
 # ---------------------------------------------------------------- data for pages
 
-def _render_mode_rows(container, info, base_dir: str) -> None:
+def _duplicate_into(ctx: PageContext, profile_path: str, number: int) -> tuple:
+    """
+    Copy a mode into a new slot, and apply it when that profile is the one on the display.
+
+    Shared by the row button and the endpoint so there is one behaviour, not two. A fresh editor per
+    call on purpose: the row shows the FILE, so the copy is made from the file, and there is no
+    half-finished form to reconcile. Raises EditorRefused for a refusal that is nobody's error.
+    """
+    editor = ProfileEditor(ctx.base_dir, profile_path, _load_registry(ctx.base_dir))
+    result = editor.duplicate_mode(number)
+    applied = False
+    if result.ok:
+        active_path, _ = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+        if os.path.realpath(active_path) == os.path.realpath(profile_path):
+            # The slot is in the file now; without this the wall would keep playing the old rotation
+            # until something else triggered an apply.
+            ctx.bus.post(_apply_payload(ctx, profile_path, refresh=False))
+            applied = True
+    return result, applied
+
+
+def _render_mode_rows(container, info, ctx: PageContext, state: dict, after_change) -> None:
     """Rebuild the mode list for the profile being inspected."""
     container.clear()
     with container:
+        # The outcome of a duplicate lives in `state`, not in this container: rebuilding the list
+        # clears everything in here, including the message the user has not read yet.
+        prior = state.get("duplicate_outcome")
+        if prior:
+            text, colour = prior
+            ui.label(text).classes(f"text-xs whitespace-pre-line {colour}").mark("duplicate-outcome")
+
         if info is None:
             ui.label("Profile not found.").classes("text-sm")
             return
         if info.error:
             ui.label(f"{info.rel}: {info.error}").classes("text-sm")
 
-        local_modes = profiles_mod.load_local_overrides(base_dir)
+        local_modes = profiles_mod.load_local_overrides(ctx.base_dir)
         modes, _meta = profiles_mod.profile_modes(info.path)
         merged, overridden = profiles_mod.merge_local_override(modes, local_modes)
         entries = profiles_mod.mode_entries(merged, overridden)
@@ -1159,6 +1240,36 @@ def _render_mode_rows(container, info, base_dir: str) -> None:
         if not entries:
             ui.label("No modes in this profile.").classes("text-sm")
             return
+
+        def duplicator(number: int):
+            """One handler per row, closing over that row's number (not over the loop variable)."""
+            def do_duplicate() -> None:
+                """
+                Copy this mode into a new slot. One click, no confirmation: it is additive and
+                reversible — the copy is an ordinary mode you can edit, disable or remove from its
+                own params page — and the point of it is speed while tuning.
+                """
+                try:
+                    result, applied = _duplicate_into(ctx, info.path, number)
+                except EditorRefused as e:
+                    state["duplicate_outcome"] = (f"Not copied: {e}", "text-red-400")
+                    after_change()
+                    return
+                if not result.ok:
+                    state["duplicate_outcome"] = (f"Not copied: {result.reason}", "text-red-400")
+                    after_change()
+                    return
+                note = f"Copied mode {number} to mode {result.slot}"
+                if result.renamed:
+                    note += f", named '{result.label}' so the two are distinguishable in this list"
+                note += ". Edit the copy on its own params page; the original is untouched."
+                if applied:
+                    note += (" It is in the rotation from now on — flip its switch in the list below "
+                             "if you would rather tune it first." if result.enabled else
+                             " It is disabled, so it stays out of the rotation until you enable it.")
+                state["duplicate_outcome"] = (note, "text-green-400")
+                after_change()
+            return do_duplicate
 
         ui.label(f"{len(entries)} mode(s)").classes("text-xs opacity-60")
         for e in entries:
@@ -1177,6 +1288,9 @@ def _render_mode_rows(container, info, base_dir: str) -> None:
                     ui.label(f"{len(e.params)} params").classes("text-xs opacity-50")
                 ui.link("params →", f"/mode/{e.number}?profile={info.rel}") \
                     .classes("text-xs ml-auto").mark(f"open-mode-{e.number}")
+                ui.button("duplicate", on_click=duplicator(e.number)) \
+                    .props("flat dense size=sm no-caps").classes("text-xs") \
+                    .mark(f"duplicate-mode-{e.number}")
 
 
 def _load_registry(base_dir: str) -> dict:

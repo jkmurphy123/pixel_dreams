@@ -150,6 +150,46 @@ class SaveResult:
         return self.ok and bool(self.sha256)
 
 
+@dataclass
+class DuplicateResult:
+    """The outcome of copying a mode into a new slot."""
+
+    ok: bool
+    reason: str = ""
+    slot: int = -1
+    label: str = ""                    # the name given to the copy, if it had one
+    renamed: bool = False              # whether a name had to be invented at all
+    enabled: bool = True               # therefore: is the copy in the rotation?
+    staged_along: tuple = ()           # modes whose other staged edits were saved with it
+    saved: "SaveResult | None" = None
+    errors: tuple = ()
+
+
+def _distinct_label(entry: dict, modes: dict, suffix: str = " copy") -> str:
+    """
+    Name the copy so it cannot be confused with the mode it came from, and return that name.
+
+    The label is what a human reads in the mode list, so a duplicate that keeps the original's name
+    makes two rows indistinguishable. `<name> copy`, then ` copy 2`, ` copy 3` while those are taken.
+    A mode with no name at all is left alone: the list already falls back to showing its type, and
+    inventing a name for it would be adding a setting nobody asked for.
+    """
+    key = next((k for k in ("name", "title") if isinstance(entry.get(k), str) and entry[k].strip()),
+               None)
+    if key is None:
+        return ""
+    taken = {m.get(k) for m in modes.values() if isinstance(m, dict)
+             for k in ("name", "title") if isinstance(m.get(k), str)}
+    base = entry[key]
+    candidate = base + suffix
+    counter = 2
+    while candidate in taken:
+        candidate = f"{base}{suffix} {counter}"
+        counter += 1
+    entry[key] = candidate
+    return candidate
+
+
 class ProfileEditor:
     """
     One editing session over one profile file.
@@ -166,6 +206,10 @@ class ProfileEditor:
         self.document = self._read()
         self.baseline_sha = sha256_file(self.path) if os.path.exists(self.path) else ""
         self.staged: dict[int, StagedEdit] = {}
+        #: Slots created by duplicate_mode(), as {slot key: entry}. Separate from `staged` because
+        #: staging edits an existing mode while this ADDS one — but it rides in `prospective()`, so a
+        #: duplicate is written by the same save path as everything else.
+        self.added: dict[str, dict] = {}
         self.last_backup = ""
         #: Set by stage_document() (the raw-JSON editor): it replaces the document wholesale.
         self.document_override = None
@@ -274,6 +318,7 @@ class ProfileEditor:
 
     def revert_all(self) -> None:
         self.staged.clear()
+        self.added.clear()
         self.document_override = None
 
     def reload(self) -> None:
@@ -281,6 +326,59 @@ class ProfileEditor:
         self.document = self._read()
         self.baseline_sha = sha256_file(self.path) if os.path.exists(self.path) else ""
         self.staged.clear()
+        self.added.clear()
+
+    # ---------------------------------------------------------------- duplicating a mode
+
+    def duplicate_mode(self, number) -> "DuplicateResult":
+        """
+        Copy a mode into a NEW slot and write the profile — the button for making a variation.
+
+        The copy starts as an exact copy of every setting, including whether it is enabled, so the
+        difference between the two is whatever you change afterwards and nothing else. The single
+        deliberate difference is the NAME (see `_distinct_label`), because two identical labels in a
+        list of thirty-something modes is a trap.
+
+        Written immediately rather than staged: the mode does not exist until it is in the file, so a
+        pending copy would be a mode you cannot open yet. It therefore rides through `prospective()`
+        into the ordinary `save()` — same validation, same conflict refusal, same atomic write and
+        backup — which also means any edits you had staged are written along with it; the result says
+        so when that happens.
+        """
+        if self.document_override is not None:
+            raise EditorRefused(
+                "the raw JSON editor has replaced the whole document in this session — save or "
+                "revert that first, or the copy would be made from a document nobody is editing")
+        number = int(number)
+        if not self.mode_in_file(number):
+            raise EditorRefused(f"mode {number} is not in this profile, so there is nothing to copy")
+
+        current = self.prospective()               # includes staged edits: copy what is on screen
+        modes = current.get("modes") or {}
+        source = modes.get(str(number))
+        if not isinstance(source, dict) or not source:
+            raise EditorRefused(f"mode {number} has no settings to copy")
+        others = [int(k) for k in modes if str(k).isdigit()]
+        if len(others) >= 999:
+            raise EditorRefused("this profile already has 999 modes — that is the ceiling")
+
+        slot = max(others + [-1]) + 1              # the next free number, gaps and all
+        entry = copy.deepcopy(source)
+        label = _distinct_label(entry, modes)
+        self.added[str(slot)] = entry
+
+        saved = self.save()
+        return DuplicateResult(
+            ok=saved.ok,
+            reason=saved.reason,
+            slot=slot,
+            label=label,
+            renamed=bool(label),
+            enabled=entry.get("enabled") is not False,   # strict: only an explicit False disables
+            staged_along=saved.modes if saved.ok else (),
+            saved=saved,
+            errors=saved.errors,
+        )
 
     # ---------------------------------------------------------------- what would be written
 
@@ -309,13 +407,15 @@ class ProfileEditor:
                 else:
                     cfg["enabled"] = False
             modes[key] = cfg
+        for key, cfg in self.added.items():
+            modes[key] = copy.deepcopy(cfg)
         return doc
 
     def is_dirty(self, number=None) -> bool:
         if self.document_override is not None:
             return self.document_override != self.document
         if number is None:
-            return any(not s.empty for s in self.staged.values())
+            return bool(self.added) or any(not s.empty for s in self.staged.values())
         return not self.staged.get(int(number), StagedEdit(int(number))).empty
 
     def changed_modes(self) -> list:
@@ -324,14 +424,18 @@ class ProfileEditor:
             keys = set(before) | set(after)
             return sorted((int(k) for k in keys if str(k).isdigit()
                            and before.get(k) != after.get(k)))
-        return sorted(n for n, s in self.staged.items() if not s.empty)
+        staged = [n for n, s in self.staged.items() if not s.empty]
+        return sorted(set(staged) | {int(k) for k in self.added if str(k).isdigit()})
 
     def staged_summary(self) -> str:
         if self.document_override is not None:
             changed = self.changed_modes()
             return (f"the whole document was replaced (modes changed: {changed})"
                     if changed else "the whole document was replaced (no mode values differ)")
-        return "; ".join(f"mode {n}: {self.staged[n].describe()}" for n in self.changed_modes())
+        parts = [f"mode {int(k)}: added as a copy" for k in sorted(self.added)]
+        parts += [f"mode {n}: {self.staged[n].describe()}" for n in self.changed_modes()
+                  if n in self.staged and not self.staged[n].empty]
+        return "; ".join(parts)
 
 
     def is_stale(self) -> bool:
@@ -412,6 +516,17 @@ class ProfileEditor:
                        "overwrite someone else's change — reload and re-apply",
                 )
 
+        # A pending duplicate must never land on a slot that has appeared in the file since it was
+        # created: the copy would silently REPLACE someone else's mode rather than be added. (The
+        # file can gain slots underneath us — another tab, a hand edit, a reload.)
+        clash = sorted(k for k in self.added if k in self.modes())
+        if clash:
+            return SaveResult(
+                ok=False,
+                reason=f"mode {', '.join(clash)} appeared in the file since this copy was made, and "
+                       f"saving would replace it — revert and duplicate again",
+                conflict=True)
+
         validation = self.validate()
         if validation.errors:
             return SaveResult(ok=False, reason="validation failed — nothing was written",
@@ -435,6 +550,7 @@ class ProfileEditor:
         self.baseline_sha = report["sha256"]
         self.last_backup = report.get("backup") or ""
         self.staged.clear()
+        self.added.clear()
 
         return SaveResult(
             ok=True,

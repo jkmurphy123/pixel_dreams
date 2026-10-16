@@ -133,13 +133,17 @@ def test_next_and_prev_move_one_mode_each_way(kiosk):
     assert code == 200 and body["ok"] and body["queued"] == 1
     after = _wait_for(url, lambda s: s["mode_index"] == 1)
     assert after is not None, f"next did not advance:\n{_read(log)}"
-    assert after["last_step"] == "stepped next"
+    assert after["last_step"].startswith("stepped next"), after["last_step"]
 
     code, body = _post(url, "/api/step", {"delta": -1})
     assert code == 200
     back = _wait_for(url, lambda s: s["mode_index"] == 0)
     assert back is not None, f"prev did not go back:\n{_read(log)}"
-    assert back["last_step"] == "stepped prev"
+    # The label says which of the two ways it landed: a press during a fade is queued (and the loop
+    # reports that when the queue drains), so asserting an exact string here made the test depend on
+    # whether a fade happened to be in flight when the request arrived.
+    assert back["last_step"].startswith("stepped prev"), back["last_step"]
+    assert back["pending_steps"] == 0, "the queue did not drain"
     assert proc.poll() is None, "the app restarted instead of switching"
 
 
@@ -297,7 +301,10 @@ def _marked(p, marker):
 def _click(el):
     import inspect
 
-    for entry in (getattr(el, "_event_listeners", {}) or {}).values():
+    # A COPY of the listeners: a handler that rebuilds the page (a duplicate, a switch) clears and
+    # re-creates elements, which mutates this very dict — iterating it live raises
+    # "dictionary changed size during iteration" from inside the test harness rather than the app.
+    for entry in list((getattr(el, "_event_listeners", {}) or {}).values()):
         handler = getattr(entry, "handler", None) or entry
         wants = len(inspect.signature(handler).parameters) if callable(handler) else 0
         handler(SimpleNamespace(sender=el, value=None)) if wants else handler()

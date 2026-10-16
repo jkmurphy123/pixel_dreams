@@ -761,6 +761,42 @@ Asked for next: "create a new config file with all known modes and add it to the
   Suite: 504 passed.
 
 
+### 10.8 Addition after the phases — Duplicate a mode (DONE, 2026-10-15)
+
+Asked for next: "a Duplication button on each mode line that would duplicate the mode and add it to the
+config. that way i can have variations of the mode with different parameters."
+
+- **`duplicate` on every mode row.** It copies the mode into the next free slot and writes the profile;
+  the copy then has its own params page, which is the whole point — variations of one mode.
+- **The copy is verbatim**, including whether it is enabled, with one deliberate exception: the name
+  becomes `<name> copy` (` copy 2`, ` copy 3` when taken). Two identical labels in a thirty-row list is
+  a trap; a mode with no name is left unnamed rather than given an invented one.
+- **It is a SAVE, not a special case.** The new slot rides through `prospective()` into the ordinary
+  `save()`: same validation, same conflict refusal, same atomic write with a backup. Written
+  immediately rather than staged because a pending copy would be a mode you cannot open yet.
+- **New guard, for a real hazard**: a pending copy is a slot number chosen when it was made, and the
+  file can gain that slot before the save lands (another tab, a hand edit, a reload). Without a check
+  it would silently REPLACE that mode instead of adding one, so `save()` refuses and says which slot.
+- **In the rotation only if its source was**: an enabled source means the copy plays immediately (twice,
+  until you change it — the message says so), and a disabled source gives a disabled copy. Applied to
+  the running display when the profile being changed is the one on the screen; a PREVIEW-ed profile is
+  written without touching the wall.
+- **`POST /api/duplicate`** — `{"index": 3}` plus optional `"profile"` — returns the new slot, the name
+  given, whether it is enabled and whether it was applied. 400 for a junk index, 409 for a mode that is
+  not in the profile or a refusal, nothing written in either case.
+- **Verified**: 17 tests (`tests/test_duplicate.py`). The one that matters is
+  `test_editing_the_copy_leaves_the_original_untouched`: duplicate, change the copy, save, then compare
+  the ORIGINAL's entry with what it was — that is what makes "variations" true rather than hopeful.
+  Also: next-free-slot with gaps, uniqueness of the generated names, a disabled source, the
+  appeared-on-disk refusal, the raw-document refusal, a real `slideshow` type through the real registry,
+  the row buttons, the preview case, and two process-level runs (the copy joins the rotation; a
+  disabled copy does not; junk and absent modes raise 400/409 and write nothing).
+- **Harness bug found and fixed**: the UI tests' `_click` helper iterated an element's listener dict
+  live, and a handler that rebuilds the page (as duplicate does) mutates it — so the fix is a snapshot
+  of the listeners. The failure looked like an app bug and was not one.
+- Suite: 521 passed.
+
+
 ## 11. Risks and non-goals
 
 Risks:

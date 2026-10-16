@@ -480,8 +480,11 @@ def main(argv=None):
                 manager.request_switch(playlist.current)
                 elapsed_in_mode = 0.0
                 # Keep the panel's view of pending steps honest: it shows "N queued" while a burst
-                # is working through, and a stale count would make the buttons look stuck.
-                bus.update_status(pending_steps=queued_delta, mode_index=manager.mode_index)
+                # is working through, and a stale count would make the buttons look stuck. `last_step`
+                # is refreshed too, or the hint would still be saying "queued" after the step landed.
+                bus.update_status(
+                    pending_steps=queued_delta, mode_index=manager.mode_index,
+                    last_step=f"stepped {'next' if step > 0 else 'prev'} (queued mid-fade)")
 
             # Auto-cycle
             if (args.auto is not None and not single_mode_lock
