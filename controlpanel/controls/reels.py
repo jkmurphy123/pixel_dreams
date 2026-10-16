@@ -20,17 +20,38 @@ class TapeReelControl(Control):
     def __init__(self, placed, ctx):
         super().__init__(placed, ctx)
         self.spoke_rgb = self._color("spoke_rgb", ctx.accent_rgb)
-        x, y, w, h = self.rect
-        # two reels side by side in the sprite
-        self.reels = [
-            {"center": (x + 0.28 * w, y + 0.5 * h), "r": 0.20 * min(w, h),
-             "speed": 0.9, "angle": ctx.rng.uniform(0, math.tau)},
-            {"center": (x + 0.72 * w, y + 0.5 * h), "r": 0.20 * min(w, h),
-             "speed": -0.7, "angle": ctx.rng.uniform(0, math.tau)},
+        # two reels side by side in the sprite; where they sit comes from the rect (see the hook)
+        self._reel_defs = [
+            {"at": (0.28, 0.5), "r": 0.20, "speed": 0.9},
+            {"at": (0.72, 0.5), "r": 0.20, "speed": -0.7},
         ]
+        self.reels = []
+        self._recompute_geometry()
         speed_scale = float(self.spec.get("speed", 1.0))
         for reel in self.reels:
             reel["speed"] *= speed_scale
+            reel["angle"] = ctx.rng.uniform(0, math.tau)
+
+    def _recompute_geometry(self):
+        """
+        Reel centres and radii follow the rect.
+
+        Angles and speeds are animation STATE and are deliberately left alone: a nudge must move the
+        reels, not restart them spinning.
+        """
+        defs = getattr(self, "_reel_defs", None)
+        if defs is None:
+            return                          # base __init__ ran before __init__ set them up
+        x, y, w, h = self.rect
+        for i, spec in enumerate(defs):
+            centre = (x + spec["at"][0] * w, y + spec["at"][1] * h)
+            radius = spec["r"] * min(w, h)
+            if i < len(self.reels):
+                self.reels[i]["center"] = centre
+                self.reels[i]["r"] = radius
+            else:
+                self.reels.append({"center": centre, "r": radius, "speed": spec["speed"],
+                                   "angle": 0.0})
 
     def update(self, dt: float):
         for reel in self.reels:
@@ -61,12 +82,15 @@ class RadarControl(Control):
         self.blip_rate = float(self.spec.get("blip_rate", 0.8))  # spawns/sec
         self.color = self._color("trace_rgb", ctx.trace_rgb)
         self.rng = ctx.rng
-        x, y, w, h = self.rect
-        self.center = (x + w / 2, y + h / 2)
-        self.radius = 0.44 * min(w, h)
         self.angle = self.rng.uniform(0, math.tau)
         # blips: (angle, dist_frac, brightness)
         self.blips = []
+
+    def _recompute_geometry(self):
+        # sweep centre + radius follow the rect
+        x, y, w, h = self.rect
+        self.center = (x + w / 2, y + h / 2)
+        self.radius = 0.44 * min(w, h)
 
     def update(self, dt: float):
         prev = self.angle
@@ -109,6 +133,9 @@ class ClockControl(Control):
         self.t = now.tm_hour * 3600 + now.tm_min * 60 + now.tm_sec
         self.hand_rgb = self._color("hand_rgb", (220, 224, 228))
         self.accent = ctx.accent_rgb
+
+    def _recompute_geometry(self):
+        # dial centre + radius follow the rect
         x, y, w, h = self.rect
         self.center = (x + w / 2, y + h / 2)
         self.radius = 0.42 * min(w, h)

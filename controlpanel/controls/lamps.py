@@ -32,10 +32,14 @@ class LampControl(Control):
         self.signal = build_signal(self.spec.get("signal"), ctx.rng,
                                    default_kind="square")
         self.color = self._resolve_color(ctx)
+        self.level = 0.0  # smoothed 0..1 intensity
+
+    def _recompute_geometry(self):
+        super()._recompute_geometry()
+        # centre + glow radius follow the rect (see Control._recompute_geometry)
         self.center = self._anchor("center", (0.5, 0.5))
         _, _, w, h = self.rect
         self.radius = float(self.spec.get("radius", 0.20)) * min(w, h)
-        self.level = 0.0  # smoothed 0..1 intensity
 
     def _resolve_color(self, ctx):
         # generic "color" wins, then the lamp-specific "color_rgb",

@@ -46,6 +46,10 @@ class ToggleSwitchControl(_DiscreteStateControl):
         super().__init__(placed, ctx, states=max(2, min(3, positions)),
                          dwell_range=tuple(placed.raw.get("dwell_range", [3.0, 9.0])))
         self.lever_rgb = self._color("lever_rgb", ctx.accent_rgb)
+
+    def _recompute_geometry(self):
+        super()._recompute_geometry()
+        # pivot + lever length follow the rect
         self.pivot = self._anchor("pivot", (0.5, 0.62))
         _, _, w, h = self.rect
         self.lever_len = 0.30 * min(w, h)
@@ -76,6 +80,10 @@ class RotaryKnobControl(_DiscreteStateControl):
                          dwell_range=tuple(placed.raw.get("dwell_range", [2.5, 8.0])),
                          ease=4.0)
         self.pointer_rgb = self._color("pointer_rgb", ctx.accent_rgb)
+
+    def _recompute_geometry(self):
+        super()._recompute_geometry()
+        # knob centre + radius follow the rect
         self.center = self._anchor("center", (0.5, 0.5))
         _, _, w, h = self.rect
         self.radius = 0.30 * min(w, h)
@@ -115,6 +123,10 @@ class PushButtonControl(Control):
         self.interval = (float(lo), float(hi))
         self.timer = self.rng.uniform(*self.interval)
         self.pressed = 0.0  # seconds remaining in the press
+
+    def _recompute_geometry(self):
+        super()._recompute_geometry()
+        # cap centre + radius follow the rect
         self.center = self._anchor("center", (0.5, 0.5))
         _, _, w, h = self.rect
         self.radius = 0.26 * min(w, h)

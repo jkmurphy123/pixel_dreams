@@ -33,6 +33,9 @@ class GaugeControl(Control):
         self.needle_rgb = self._color("needle_rgb", ctx.accent_rgb)
         self.hub_rgb = tuple(self.spec.get("hub_rgb", (30, 32, 36)))
 
+    def _recompute_geometry(self):
+        super()._recompute_geometry()
+        # pivot, needle length/width and hub follow the rect
         x, y, w, h = self.rect
         self.pivot = self._anchor("pivot", self.pivot_default)
         self.needle_len = 0.40 * min(w, h)

@@ -46,6 +46,42 @@ class Control:
         # pixel rect on the design canvas — computed by the layout loader
         # for both grid (cells -> px) and freeform (explicit px) modes
         self.rect = placed.rect_px
+        self._recompute_geometry()
+
+    # ---------------------------------------------------------------- layout editing (design §Phase 6)
+
+    def _recompute_geometry(self):
+        """
+        Recompute anything DERIVED from self.rect. Called from __init__ and from set_rect().
+
+        Why this exists: a control that computes its centre/pivot/radius from the rect once and caches
+        it will NOT move when something assigns `self.rect` — measured on the real freeform layouts,
+        assigning the rect alone left 13/13 and 12/12 controls drawing in their old position, so a
+        layout editor that did that would look broken while doing everything "right".
+
+        Contract for subclasses: if you cache a value derived from the rect, override this, recompute
+        it here, and call super()._recompute_geometry() first (the base handles self.window). Depend
+        only on what base __init__ sets (`self.rect`, `self.spec`, class constants) OR guard with
+        getattr — base __init__ calls this BEFORE your own __init__ body runs, and call it again at
+        the end of your __init__ if you need something set there.
+        tests/test_layout_align.py::test_every_control_class_survives_a_move enforces this.
+        """
+        # any control that draws through _window() gets its window kept in step automatically
+        if "_window_default" in self.__dict__:
+            self.window = self._window()
+        return None
+
+    def set_rect(self, rect):
+        """
+        Move and/or resize a LIVE control, the way the alignment editor's nudges do.
+
+        Preserves animation state on purpose: the overlay keeps animating in its new place, which is
+        what you want while judging alignment. (Replacing the control object would work too, but a
+        lamp, readout or scope draws nothing until it has been updated — it would blink blank on every
+        single button press.)
+        """
+        self.rect = tuple(int(v) for v in rect)
+        self._recompute_geometry()
 
     def _color(self, key: str, default):
         """
@@ -69,8 +105,13 @@ class Control:
         Sub-rect of the sprite to draw into, as fractions
         (fx, fy, fw, fh) — used by scopes/readouts. Overridable via
         the layout's "window" key.
+
+        The default is REMEMBERED the first time it is used, so _recompute_geometry() can keep the
+        window in step with the rect without every subclass having to declare its default twice.
         """
-        fx, fy, fw, fh = self.spec.get("window", default)
+        if "_window_default" not in self.__dict__:
+            self._window_default = default
+        fx, fy, fw, fh = self.spec.get("window", self._window_default)
         x, y, w, h = self.rect
         return (x + fx * w, y + fy * h, fw * w, fh * h)
 
