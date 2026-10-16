@@ -15,7 +15,12 @@ Environment=PYTHONUNBUFFERED=1
 # A graphical session's display. If the kiosk boots into a desktop as user ubuntu,
 # this is the display to draw on; adjust if your session uses another one.
 Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/ubuntu/.Xauthority
+# The X auth file is NOT at ~/.Xauthority on this host. The GNOME/GDM session keeps it in the
+# runtime dir, so %t (the user unit's own runtime dir) is the portable spelling of the path that
+# actually exists here: /run/user/1000/gdm/Xauthority.
+# To find the right one on any host, ask the running session rather than guessing:
+#   tr '\0' '\n' < /proc/$(pgrep -u $USER -f gnome-shell | head -1)/environ | grep XAUTHORITY
+Environment=XAUTHORITY=%t/gdm/Xauthority
 # SDL keeps its audio/display sane on a Jetson with no sound card attached.
 Environment=SDL_AUDIODRIVER=dummy
 # The panel is opt-in and this is the useful setting for tuning from a laptop:
