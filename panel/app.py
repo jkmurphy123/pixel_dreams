@@ -1395,6 +1395,11 @@ def _layout_key(name) -> str:
 
 # ---------------------------------------------------------------- the alignment page (design Phase 6B)
 #
+#: The nudge steps the alignment page offers, in pixels. Fine steps place an overlay exactly; coarse
+#: ones cross a whole panel in a press or two — a portrait artwork is 800-1400px across, so
+#: stopping at 10 meant a dozen presses to move something from one side to the other.
+_LAYOUT_STEPS = (1, 5, 10, 25, 50, 100)
+
 # The page holds the DOCUMENT and edits it; the wall follows through the bus; Save writes the file.
 # That split is the whole design: nudging is dozens of presses per overlay, so a press must not be a
 # write — but a structural change (add/remove) is one deliberate act, and it writes immediately, the
@@ -1776,7 +1781,7 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
 
                 with ui.row().classes("items-center gap-1"):
                     ui.label("step").classes("text-xs opacity-60")
-                    for step in (1, 5, 10):
+                    for step in _LAYOUT_STEPS:
                         ui.button(f"{step}px", on_click=lambda _=None, s=step: set_step(s)) \
                             .props("flat dense no-caps" +
                                    (" color=primary" if state["step"] == step else "")) \

@@ -191,6 +191,8 @@ async def test_the_page_offers_duplicate_and_the_colours_of_the_selected_control
         after = json.loads(target.read_text())["controls"]
 
     assert len(after) == len(before) + 1, "the copy must be written, not just staged"
+
+
     # WHICH control, not just that one appeared: pressing a row's button and getting the bottom row
     # copied is what happened when this lambda closed over the loop variable instead of the row.
     source, copy = before[gauge], after[gauge + 1]
@@ -201,3 +203,33 @@ async def test_the_page_offers_duplicate_and_the_colours_of_the_selected_control
     last = before[-1].get("type")
     assert [c.get("type") for c in after].count(last) == [c.get("type") for c in before].count(last), \
         "the LAST control was copied instead of the selected one"
+
+
+async def test_the_pad_offers_coarse_steps_and_they_move_that_far(tmp_path, monkeypatch):
+    """
+    Fine steps place an overlay exactly; coarse ones cross a panel in a press or two. Both belong, and
+    the button has to actually move by the number on it — a step that is offered but rounds elsewhere
+    would be worse than not offering it.
+    """
+    from panel.app import _LAYOUT_STEPS
+
+    _copy_layout(tmp_path, monkeypatch)
+    editor = LayoutEditor("editme")
+    project = tmp_path / "proj"
+    (project / "configs").mkdir(parents=True)
+    (project / "modes_config.json").write_text(json.dumps({"modes": {
+        "0": {"type": "controlpanel", "layout_file": "editme"}}}, indent=2) + "\n")
+    index = 0
+    start_x = editor.rect_of(index)[0]
+
+    async with _panel(PageContext(base_dir=str(project), bus=_bus(), bind="127.0.0.1")) as p:
+        await p.user.open("/layout")
+        _click(_marked(p, f"layout-select-{index}"))
+        for step in (25, 50, 100):
+            assert step in _LAYOUT_STEPS
+            await p.user.should_see(f"{step}px")
+        _click(_marked(p, "layout-step-100"))
+        _click(_marked(p, "layout-right"))
+        moved = _marked(p, "layout-field-x").value
+
+    assert moved == start_x + 100, f"a 100px step must move 100px, moved {moved - start_x}"

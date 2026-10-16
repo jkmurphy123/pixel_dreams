@@ -860,7 +860,7 @@ freeform layout over a PNG of mine" flow from Q1.
 ### 10.11 Phase 6B — the alignment page, and the way into it (DONE, 2026-10-16)
 
 The page the mode needed: /layout lists every overlay of a control panel's layout, shows the artwork
-with a clickable box per overlay, and offers a nudge pad (1/5/10px steps, arrows, W/H, direct entry,
+with a clickable box per overlay, and offers a nudge pad (1/5/10/25/50/100px steps, arrows, W/H, direct entry,
 centre), add/remove, freeze, Save/Reload, and "new freeform layout over a PNG". Nudges edit an
 in-memory DOCUMENT and post ONE bus command, so dozens of presses stay live and cost no writes;
 structural changes (add/remove) write immediately and rebuild, like the enable switch and duplicate,
