@@ -355,11 +355,16 @@ def create_freeform(name: str, background: str, seed_from: str | None = None) ->
                                       "underscores only"}
     stem = raw
 
-    bg_name = os.path.basename(str(background or "").strip())
-    if not bg_name or not (_paths().BACKGROUNDS_DIR / bg_name).exists():
+    # Resolved exactly the way the loader resolves it (paths.resolve_under): a bare name lives under
+    # the backgrounds directory, a path with a separator is used as given. The panels an author
+    # actually has are usually in a folder of their own, not in this tree — offering only the
+    # shipped files hides precisely the case this flow exists for.
+    bg_value = str(background or "").strip()
+    bg_path = _paths().resolve_under(_paths().BACKGROUNDS_DIR, bg_value) if bg_value else None
+    if bg_path is None or not bg_path.exists():
         available = ", ".join(list_backgrounds()) or "none found"
         return {"ok": False, "reason": f"no such background image in "
-                                      f"{_paths().BACKGROUNDS_DIR.name}/: {bg_name!r} "
+                                      f"{_paths().BACKGROUNDS_DIR.name}/: {bg_value!r} "
                                       f"(available: {available})"}
 
     path = _paths().LAYOUTS_DIR / f"{stem}.json"
@@ -368,9 +373,9 @@ def create_freeform(name: str, background: str, seed_from: str | None = None) ->
 
     try:
         import pygame
-        width, height = pygame.image.load(str(_paths().BACKGROUNDS_DIR / bg_name)).get_size()
+        width, height = pygame.image.load(str(_paths().BACKGROUNDS_DIR / bg_value)).get_size()
     except Exception as e:
-        return {"ok": False, "reason": f"cannot read {bg_name}: {e}"}
+        return {"ok": False, "reason": f"cannot read {bg_value}: {e}"}
 
     controls, seed_note = [], ""
     if seed_from:
@@ -404,7 +409,7 @@ def create_freeform(name: str, background: str, seed_from: str | None = None) ->
         "name": stem,
         "mode": "freeform",
         "design_resolution": [width, height],
-        "background_image": bg_name,
+        "background_image": bg_value,
         "controls": controls,
     }
     try:
@@ -417,5 +422,5 @@ def create_freeform(name: str, background: str, seed_from: str | None = None) ->
         return {"ok": False, "reason": f"could not write {path}: {e}"}
 
     return {"ok": True, "name": stem, "path": str(path), "canvas": [width, height],
-            "background": bg_name, "controls": len(controls), "seeded": seed_note,
+            "background": bg_value, "controls": len(controls), "seeded": seed_note,
             "sha256": report["sha256"]}

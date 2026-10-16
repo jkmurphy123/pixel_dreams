@@ -384,3 +384,34 @@ async def test_a_layout_that_cannot_be_read_is_reported_on_the_link(tmp_path):
     async with _panel(PageContext(base_dir=root, bus=_bus(), bind="127.0.0.1")) as p:
         await p.user.open("/mode/0?profile=modes_config.json")
         await p.user.should_see("could not be read")
+
+
+def test_a_new_panel_can_be_created_over_artwork_outside_the_assets_tree(tmp_path, monkeypatch):
+    """
+    The panels an author has live in a folder of their own. The artwork resolves like the loader
+    resolves it — a bare name under backgrounds/, a path used as given — and the created layout
+    remembers exactly what was given, so a path stays a path.
+    """
+    import pygame
+
+    directory = tmp_path / "layouts"
+    directory.mkdir()
+    shutil.copy2(cp_paths.LAYOUTS_DIR / f"{REAL_LAYOUT}.json", directory / f"{REAL_LAYOUT}.json")
+    monkeypatch.setattr(cp_paths, "LAYOUTS_DIR", directory)
+    art = tmp_path / "elsewhere" / "panel.png"
+    art.parent.mkdir()
+    pygame.image.save(pygame.Surface((400, 900)), str(art))            # portrait artwork
+
+    result = create_freeform("new_panel", str(art), seed_from=REAL_LAYOUT)
+    assert result["ok"], result
+    written = json.loads((directory / "new_panel.json").read_text())
+    assert written["background_image"] == str(art)
+    assert written["design_resolution"] == [400, 900]                  # the artwork sets the canvas
+
+
+def test_a_new_panel_still_refuses_artwork_that_is_not_there(tmp_path, monkeypatch):
+    directory = tmp_path / "layouts"
+    directory.mkdir()
+    monkeypatch.setattr(cp_paths, "LAYOUTS_DIR", directory)
+    result = create_freeform("nope", "missing_panel.png")
+    assert result["ok"] is False and "missing_panel.png" in result["reason"]

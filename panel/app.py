@@ -536,6 +536,7 @@ def register_pages(ctx: PageContext) -> None:
         _register_auth_route(ctx)
 
     _register_layout_route(app, ctx)
+    _register_layout_raw_route(app, ctx)
 
     @app.get("/api/status")
     def api_status(request: Request):
@@ -1474,7 +1475,10 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
             ui.label(f"{editor.name}").classes("text-base font-semibold")
             ui.badge(f"{editor.mode}").props("outline").classes("text-xs")
             ui.label(f"{cw}x{ch} · {len(editor.controls())} overlays").classes("text-xs opacity-60")
-            ui.link("mode params →", f"/mode/{number}?profile={rel}").classes("text-xs ml-auto")
+            ui.link("raw JSON →", f"/layout/raw?layout={layout_name}&profile={rel}"
+                    + (f"&mode={number}" if number is not None else "")) \
+                .classes("text-xs ml-auto").mark("layout-raw-link")
+            ui.link("mode params →", f"/mode/{number}?profile={rel}").classes("text-xs")
         live_line = ui.label().classes("text-xs").mark("layout-live")
         ui.label("The page edits the document; the wall follows live; Save writes the file. "
                  "Nudges are refused unless the display is showing THIS layout, so an edit can never "
@@ -1803,14 +1807,17 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
     create_dialog = ui.dialog()
     with create_dialog, ui.card().classes("w-full max-w-2xl gap-2"):
         ui.label("New freeform layout over a PNG").classes("text-base font-semibold")
-        ui.label("Drop your artwork in assets/control_panel/backgrounds/, then name a layout here. "
-                 "Seeding copies the controls from an existing layout so you start with the right "
-                 "set of overlays and only have to place them.").classes("text-xs opacity-60")
+        ui.label("Name the artwork and the layout: a bare file name is looked up under "
+                 "assets/control_panel/backgrounds/, a path (like /mnt/ssd/projects/images/panels/"
+                 "panel.png) is used as given. Seeding copies the controls from an existing layout "
+                 "so you start with the right set of overlays and only have to place them.") \
+            .classes("text-xs opacity-60")
         name_input = ui.input("Layout name", placeholder="livingroom_panel").classes("w-full") \
             .mark("layout-create-name")
-        background_select = ui.select(list_backgrounds(),
-                                      value=(list_backgrounds()[0] if list_backgrounds() else None),
-                                      label="background PNG").classes("w-72") \
+        _bg_names = list_backgrounds()
+        background_select = ui.select(list(_bg_names), value=(_bg_names[0] if _bg_names else ""),
+                                      with_input=True, new_value_mode="add-unique",
+                                      label="artwork (name or path)").classes("w-96") \
             .mark("layout-create-background")
         seed_select = ui.select(["none"] + list_layouts(), value="none", label="seed from") \
             .classes("w-72").mark("layout-create-seed")
@@ -1845,6 +1852,167 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
     _footer()
 
     render_all()
+
+
+def _register_layout_raw_route(app, ctx: PageContext) -> None:
+    # A NiceGUI page, not a FastAPI route: a FastAPI route returns a response and has no slot to
+    # build UI in (see _register_layout_route).
+    @ui.page("/layout/raw")
+    def layout_raw_page(layout: str | None = None, profile: str | None = None,
+                        mode: int | None = None) -> None:
+        """
+        One layout file as JSON, editable.
+
+        For what the boxes on the alignment page cannot express: paste a whole panel in, fix an id by
+        hand, move three overlays one line each. It goes through the SAME writer as that page
+        (core.layout_edit.LayoutEditor), so it is another view of one write path rather than a second
+        one — validated by the package's own loader, written atomically with a timestamped backup, and
+        refused if the file changed underneath.
+        """
+        if not _authorised(ctx, context.client.request):
+            _render_refusal()
+            return
+        from controlpanel.layout import LayoutError            # on demand: it imports pygame
+
+        rel = (profile or "").strip()
+        back = "/layout?" + (f"profile={rel}&" if rel else "") + \
+               (f"mode={mode}" if mode is not None else "")
+        name = (layout or "").strip()
+        _chrome(f"Raw JSON — layout {name or '(none given)'}")
+        if not name:
+            ui.label("No layout given. Open this page from a control panel's alignment page.") \
+                .classes("text-sm")
+            _footer()
+            return
+
+        try:
+            editor = LayoutEditor(name)
+            cw, ch = editor.canvas()
+        except LayoutError as e:
+            ui.label(f"Could not open layout {name!r}: {e}").classes("text-sm text-red-400")
+            ui.link("Back to the alignment page", back).classes("text-xs")
+            _footer()
+            return
+
+        shown = str(getattr(editor, "path", name))
+        try:
+            shown = os.path.relpath(shown, ctx.base_dir)
+        except ValueError:
+            pass
+
+        with ui.card().classes("w-full mt-2 gap-1"):
+            with ui.row().classes("items-center gap-2 w-full"):
+                ui.label(editor.name).classes("text-base font-semibold")
+                ui.badge(str(editor.mode)).props("outline").classes("text-xs")
+                ui.label(f"{cw}x{ch} · {len(editor.controls())} overlays") \
+                    .classes("text-xs opacity-60")
+                ui.link("back to aligning →", back).classes("text-xs ml-auto")
+            ui.label(f"{shown} — the whole layout document. Saving validates it with the package's "
+                     f"own loader, writes atomically and keeps a backup; nothing is written unless "
+                     f"every check passes.").classes("text-xs opacity-60")
+
+        note = ui.label().classes("text-sm").mark("raw-layout-note")
+
+        def say(text: str, kind: str = "info") -> None:
+            colour = {"good": "text-green-400", "bad": "text-red-400"}.get(kind, "opacity-60")
+            note.classes(replace=f"text-sm {colour}")
+            note.set_text(text)
+
+        area = ui.textarea(value=json.dumps(editor.document, indent=2, ensure_ascii=False) + "\n") \
+            .props("rows=24").classes("w-full font-mono text-xs").mark("raw-layout-json")
+
+        def parse() -> tuple:
+            try:
+                doc = json.loads(area.value)
+            except json.JSONDecodeError as e:
+                return None, f"not valid JSON: {e}"
+            if not isinstance(doc, dict):
+                return None, f"a layout must be a JSON object, not {type(doc).__name__}"
+            return doc, ""
+
+        def validate_box() -> tuple:
+            """Try the box's document WITHOUT letting a look change what Save would write."""
+            doc, err = parse()
+            if err:
+                return None, err, ()
+            keep = editor.document
+            editor.document = doc
+            errors, warnings = editor.validate()
+            editor.document = keep
+            return doc, "", (errors, warnings)
+
+        def do_validate() -> None:
+            doc, err, checked = validate_box()
+            if err:
+                say(err, "bad")
+                return
+            errors, warnings = checked
+            if errors:
+                say("Not valid: " + " | ".join(errors), "bad")
+                return
+            say("Valid — the loader accepts it." + (f" Note: {warnings[0]}" if warnings else ""),
+                "good")
+
+        def do_save() -> None:
+            doc, err, checked = validate_box()
+            if err:
+                say(err, "bad")
+                return
+            errors, _ = checked
+            if errors:
+                say("Not valid: " + " | ".join(errors), "bad")
+                return
+            editor.document = doc
+            result = editor.save()
+            if not result.ok:
+                say(f"{result.reason}." + (f" {' | '.join(result.errors)}" if result.errors else ""),
+                    "bad")
+                return
+            if result.reason == "nothing to save":
+                say("Nothing differs — nothing was written.", "info")
+                return
+            live = ctx.bus.snapshot().get("layout_report")
+            showing = isinstance(live, dict) and \
+                _layout_key(live.get("layout_file")) == _layout_key(editor.name)
+            if showing:
+                # the same rebuild the alignment page does after an add or a removal: the geometry,
+                # not just a nudge, may have changed
+                ctx.bus.post({"cmd": "refresh_mode"})
+            area.value = json.dumps(editor.document, indent=2, ensure_ascii=False) + "\n"
+            area.update()
+            backup = f" (backup: {os.path.basename(result.backup)})" if result.backup else ""
+            say(f"Saved {result.rel}{backup}."
+                + (" The display is rebuilding the mode so the change shows there." if showing
+                   else " The display is not on this layout, so nothing was rebuilt."), "good")
+
+        def do_reload() -> None:
+            try:
+                editor.reload()
+            except LayoutError as e:
+                say(f"could not reload: {e}", "bad")
+                return
+            area.value = json.dumps(editor.document, indent=2, ensure_ascii=False) + "\n"
+            area.update()
+            say("Re-read from disk — unsaved changes dropped.", "info")
+
+        def do_format() -> None:
+            doc, err = parse()
+            if err:
+                say(err, "bad")
+                return
+            area.value = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
+            area.update()
+            say("Re-indented (not saved).", "info")
+
+        with ui.row().classes("gap-2 mt-2"):
+            ui.button("Validate", on_click=do_validate).props("outline").mark("raw-layout-validate")
+            ui.button("Save & rebuild", on_click=do_save).props("color=primary") \
+                .mark("raw-layout-save")
+            ui.button("Re-read from disk", on_click=do_reload).props("flat") \
+                .mark("raw-layout-reload")
+            ui.button("Re-indent", on_click=do_format).props("flat").mark("raw-layout-format")
+
+        _footer()
 
 
 def _register_layout_route(app, ctx: PageContext) -> None:
@@ -2440,6 +2608,16 @@ def _editable_widget(state: _ModeEditor, p, notice, on_change, initial) -> None:
         return
 
     if p.widget == "text":
+        options = _suggestions_for(p, extra=(value,))
+        if options:
+            # A dropdown you can type into. The known values are offered and a path stays a legal
+            # answer, because "what is on disk" is not the whole set — and a closed set would hide
+            # every layout that lives outside the assets tree.
+            ui.select(options=list(options), value=value if value in options else None,
+                      with_input=True, new_value_mode="add-unique",
+                      on_change=lambda e: on_change(e.value)) \
+                .classes("w-full max-w-md").mark(marker)
+            return
         ui.input(value="" if value is None else str(value),
                  on_change=lambda e: on_change(e.value)).classes("w-full text-sm").mark(marker)
         if p.suggestions:
@@ -2527,6 +2705,33 @@ def _editable_widget(state: _ModeEditor, p, notice, on_change, initial) -> None:
                 on_change=lambda e: (_loads(e.value)[0] and on_change(_loads(e.value)[1])
                                      or notice.set_text(_loads(e.value)[1]))) \
         .classes("w-full font-mono text-xs").mark(marker)
+
+
+def _suggestions_for(p, extra=()) -> tuple:
+    """
+    The values a field should offer: what the schema knows, plus a NAMED source resolved here.
+
+    The name-to-values step lives in the panel rather than in core.params because this is where
+    the asset paths are known — the schema module must not read the disk. A source that cannot be
+    read yields nothing instead of failing the page: the controlpanel package may not be present at
+    all (the test sandboxes copy core/ without it), and a missing picker is not an error.
+
+    The CURRENT value is always included. A layout named by path, or a file deleted since it was
+    chosen, must stay selectable — otherwise merely opening the page would change what is set.
+    """
+    values = [str(v) for v in (getattr(p, "suggestions", ()) or ())]
+    source = getattr(p, "suggestions_from", "")
+    try:
+        if source == "layouts":
+            values += [str(v) for v in list_layouts()]
+        elif source == "backgrounds":
+            values += [os.path.basename(str(v)) for v in list_backgrounds()]
+    except Exception:                                      # no package, no assets, no picker
+        pass
+    for value in extra:
+        if value not in (None, "") and str(value) not in values:
+            values.append(str(value))
+    return tuple(values)
 
 
 def _help_line(p) -> None:

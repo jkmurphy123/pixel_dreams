@@ -113,6 +113,7 @@ class ParamSpec:
     step: float | None = None
     choices: tuple = ()
     suggestions: tuple = ()        # known-but-not-closed values: keep the field free text
+    suggestions_from: str = ""     # a NAMED source the UI resolves (e.g. "layouts", "backgrounds")
     item: str = ""                 # element type for list widgets
     derived: bool = False          # the mode computes its own value at runtime
     secret: bool = False
@@ -326,6 +327,10 @@ def _apply_schema(spec: ParamSpec, entry: dict) -> ParamSpec:
         # known values offered. Turning comparison-only code evidence into a dropdown would
         # hide every value the code never happened to compare against.
         spec.suggestions = tuple(entry["suggestions"])
+    if entry.get("suggestions_from"):
+        # The NAME of a source, turned into values by the UI, which is where the asset paths are
+        # known: this module would have to read the disk otherwise, and it stays pure.
+        spec.suggestions_from = str(entry["suggestions_from"])
     for bound in ("min", "max", "step"):
         if bound in entry and isinstance(entry[bound], (int, float)):
             setattr(spec, bound, entry[bound])

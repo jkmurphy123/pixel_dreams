@@ -137,8 +137,11 @@ async def test_every_value_shape_renders_with_its_widget(tmp_path):
 
         # the mapping table, as rendered
         expected = {
-            "duration": "Number", "refresh_hz": "Number", "folder": "Input",
-            "weather_units": "Input", "show_time": "Switch", "accent_rgb": "Input",
+            "duration": "Number", "refresh_hz": "Number",
+            # a text field WITH known values is a picker you can type into, not a bare input: the
+            # known answers are offered and anything else (a path, a name not on disk) is accepted
+            "folder": "Select", "weather_units": "Select",
+            "show_time": "Switch", "accent_rgb": "Input",
             "crypto_ids": "Textarea", "palette": "Textarea", "devices": "Textarea",
             # a range renders as two number fields, [min, max]
             "event_interval_range-min": "Number", "event_interval_range-max": "Number",

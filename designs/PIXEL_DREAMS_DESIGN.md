@@ -907,6 +907,40 @@ it changes the coordinate space every overlay is measured in. The mode's layout_
 both what the profile asked for and the resolved path in use, so the page and the wall can be shown to
 agree.
 
+### 10.13 Addition after the phases — pickers, and a raw editor for a layout (DONE, 2026-10-16)
+
+Asked for in one breath: make layout_file a dropdown of the layouts that exist, and give a layout the
+same raw-JSON escape hatch the profile has had since Phase 3.
+
+The dropdown is deliberately NOT a closed set. The schema already distinguished options from known
+values ("suggestions": known-but-not-closed, kept free text), and that is exactly the shape of this
+field: the layouts on disk are the obvious answers, and a layout file living anywhere else is still
+legal. So a text field that has known values now renders as a picker you can type into (ui.select with
+new_value_mode), and the known values come from a NAMED source carried in the schema
+("suggestions_from": "layouts" / "backgrounds") that the PANEL resolves — because that is where the
+asset paths are known, while core.params stays free of filesystem access. The current value is always
+offered as well: a layout named by path, or a file deleted since it was chosen, must stay selectable,
+or merely opening the page would change what is set. background_image took the same one-line treatment.
+
+The raw editor (/layout/raw, linked as "raw JSON →" from the alignment page) is a second VIEW of one
+write path, not a second write path: it goes through core.layout_edit.LayoutEditor, so the document is
+validated by the package's own loader, written atomically with a timestamped backup, and refused when
+the file changed underneath. Two behaviours are worth recording: Validate never changes what Save would
+write (it validates a candidate without keeping it), and a save rebuilds the live mode only when the
+display is showing that layout — otherwise the page says nothing was rebuilt, because claiming a wall
+changed when it did not is worse than saying nothing.
+
+Building it turned up a real gap in the flow it belongs to: create_freeform resolved its artwork with
+basename() against the backgrounds directory alone, and the dialog offered a closed list of the three
+shipped files — so "new panel over my own PNG" was impossible for exactly the user it was built for,
+whose panels are a folder of ComfyUI PNGs elsewhere on disk. Both now resolve the way the loader
+resolves artwork (a bare name under backgrounds/, a path as given), and the created layout records what
+was given, so a path stays a path.
+
+One existing expectation changed with the picker: a text field WITH known values renders as a Select
+rather than an Input. The shape is unchanged (still text), and the test that maps values to widgets
+records the new rule rather than the old widget.
+
 ## 11. Risks and non-goals
 
 Risks:

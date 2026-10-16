@@ -3110,10 +3110,13 @@
         },
         "background_image": {
           "default": "",
-          "help": "Artwork to draw the overlays over. Blank = whatever the layout file names. A bare name looks under assets/control_panel/backgrounds/; a path (e.g. /mnt/ssd/pics/panel.png, or ./pics/panel.png) is used as given."
+          "help": "Artwork to draw the overlays over. Blank = whatever the layout file names. A bare name looks under assets/control_panel/backgrounds/; a path (e.g. /mnt/ssd/pics/panel.png, or ./pics/panel.png) is used as given.",
+          "suggestions_from": "backgrounds"
         },
         "layout_file": {
-          "default": ""
+          "suggestions_from": "layouts",
+          "default": "",
+          "help": "Which layout to draw. The dropdown lists the layouts in assets/control_panel/layouts/; a path to a layout file anywhere can be typed in its place."
         },
         "scale_mode": {
           "widget": "choice",

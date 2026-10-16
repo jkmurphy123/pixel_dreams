@@ -261,3 +261,21 @@ panel, type the path, press Save. Two things are worth knowing, because otherwis
 
 `modes/control_panel_mode.py` documents the mode's config keys, and `tests/test_background_param.py`
 pins the resolution rules and the refusals.
+
+### Editing a layout as JSON, and picking a layout instead of typing it
+
+A layout is a JSON file, and the params page now offers the layouts on disk as a dropdown — with the
+box still accepting a typed path, because a layout may live anywhere:
+
+    layout_file   dropdown of assets/control_panel/layouts/  +  any path you type
+    background_image   dropdown of assets/control_panel/backgrounds/  +  any path you type
+
+A field only becomes a picker when the schema names where its known values come from, so this stays
+opt-in per key rather than a guess about which strings are paths.
+
+For what the boxes and the nudge pad cannot express — pasting a whole panel in, fixing a sprite id,
+moving three overlays one line each — every layout page has a "raw JSON →" link. That editor goes
+through the same writer as the page it came from: validated by the package's own loader, written
+atomically with a backup, and refused if the file changed underneath. Validate never changes what Save
+would write, and if the display is showing that layout the mode is rebuilt after a save; if it is not,
+the page says so rather than pretending.
