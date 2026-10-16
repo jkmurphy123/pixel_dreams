@@ -342,3 +342,45 @@ async def test_the_page_says_when_the_mode_is_not_a_control_panel(tmp_path):
     async with _panel(PageContext(base_dir=root, bus=_bus(), bind="127.0.0.1")) as p:
         await p.user.open("/layout")
         await p.user.should_see("No control panel mode")
+
+
+async def test_the_mode_page_offers_the_alignment_link(tmp_path):
+    """The way in: a control panel's params page links to the overlay page, scoped to that mode."""
+    root = _ui_project(tmp_path)
+    async with _panel(PageContext(base_dir=root, bus=_bus(), bind="127.0.0.1")) as p:
+        await p.user.open("/mode/0?profile=modes_config.json")
+        await p.user.should_see("Overlay alignment")
+        await p.user.should_see("position overlays")
+        await p.user.should_see("nudge it live")          # a freeform layout can be nudged live
+
+
+async def test_another_kind_of_mode_gets_no_alignment_link(tmp_path):
+    """Scoped, not decoration: a mode that has no overlays must not offer to align them."""
+    root = _ui_project(tmp_path)
+    (tmp_path / "proj" / "modes_config.json").write_text(json.dumps({"modes": {
+        "0": {"type": "systeminformation"}}}) + "\n")
+    async with _panel(PageContext(base_dir=root, bus=_bus(), bind="127.0.0.1")) as p:
+        await p.user.open("/mode/0?profile=modes_config.json")
+        await p.user.should_not_see("Overlay alignment")
+        await p.user.should_not_see("position overlays")
+
+
+async def test_a_grid_layout_says_so_before_you_click_through(tmp_path):
+    """The grid flavour has no pixel positions to nudge — said on the link, not after the click."""
+    root = _ui_project(tmp_path)
+    (tmp_path / "proj" / "modes_config.json").write_text(json.dumps({"modes": {
+        "0": {"type": "controlpanel", "layout_file": "demo_console"}}}) + "\n")
+    async with _panel(PageContext(base_dir=root, bus=_bus(), bind="127.0.0.1")) as p:
+        await p.user.open("/mode/0?profile=modes_config.json")
+        await p.user.should_see("is a grid layout")
+        await p.user.should_see("whole 128px cells")
+
+
+async def test_a_layout_that_cannot_be_read_is_reported_on_the_link(tmp_path):
+    """A broken layout_file is exactly what this link should help you find, so it says so."""
+    root = _ui_project(tmp_path)
+    (tmp_path / "proj" / "modes_config.json").write_text(json.dumps({"modes": {
+        "0": {"type": "controlpanel", "layout_file": "no_such_layout"}}}) + "\n")
+    async with _panel(PageContext(base_dir=root, bus=_bus(), bind="127.0.0.1")) as p:
+        await p.user.open("/mode/0?profile=modes_config.json")
+        await p.user.should_see("could not be read")

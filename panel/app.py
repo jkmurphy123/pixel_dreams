@@ -1187,6 +1187,7 @@ def register_pages(ctx: PageContext) -> None:
         state = _ModeEditor(ctx, info, entry, registry, overridden)
 
         _mode_header(ctx, info, entry, active_source)
+        _align_link(ctx, info, entry)
         _enable_card(state)
         if state.editor.mode_in_file(entry.number):
             _editable_mode_form(state)
@@ -1873,6 +1874,44 @@ def _register_layout_route(app, ctx: PageContext) -> None:
         if os.path.dirname(os.path.abspath(target)) != os.path.abspath(backgrounds_dir()):
             return PlainTextResponse("refused", status_code=403)
         return FileResponse(target, media_type="image/png")
+
+
+def _align_link(ctx: PageContext, info, entry) -> None:
+    """
+    A way into the alignment page from the mode that needs it.
+
+    Only for a control panel, and it says up front when the layout is the GRID flavour — that one has
+    no pixel positions to nudge, and finding that out after the click is a poor welcome. Errors while
+    reading the layout are shown rather than swallowed, because a broken layout_file is exactly the
+    kind of thing this link should help you find.
+    """
+    if normalize_type(entry.type) != "controlpanel":
+        return
+    params = entry.params if isinstance(entry.params, dict) else {}
+    layout_name = str(params.get("layout_file") or "").strip()
+    flavour, note = "", ""
+    if not layout_name:
+        note = "This mode has no layout_file set, so there is nothing to align yet."
+    else:
+        try:
+            flavour = LayoutEditor(layout_name).mode
+        except Exception as e:                                  # unreadable/absent layout
+            note = f"'{layout_name}' could not be read: {e}"
+
+    with ui.card().classes("w-full mt-2 gap-1"):
+        ui.label("Overlay alignment").classes("text-base font-semibold")
+        if note:
+            ui.label(note).classes("text-xs text-orange-300")
+        elif flavour == "grid":
+            ui.label(f"'{layout_name}' is a grid layout: its controls sit in whole 128px cells "
+                     f"inside panels, so there is no pixel position to nudge. Point layout_file at a "
+                     f"freeform layout — or create one over your own PNG — to align overlays on the "
+                     f"artwork.").classes("text-xs text-orange-300")
+        else:
+            ui.label(f"Put each overlay of '{layout_name}' where it belongs on the artwork: nudge it "
+                     f"live on the display, then save.").classes("text-xs opacity-60")
+        ui.link("position overlays →", f"/layout?profile={info.rel}&mode={entry.number}") \
+            .classes("text-sm").mark("align-overlays")
 
 
 def _load_registry(base_dir: str) -> dict:
