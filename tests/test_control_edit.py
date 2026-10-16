@@ -186,9 +186,18 @@ async def test_the_page_offers_duplicate_and_the_colours_of_the_selected_control
         _click(_marked(p, f"layout-select-{gauge}"))            # pick the gauge
         await p.user.should_see("needle_rgb")                   # its colours are offered
         await p.user.should_see("hub_rgb")
-        with open(target) as fh:
-            before = len(json.load(fh)["controls"])
+        before = json.loads(target.read_text())["controls"]
         _click(_marked(p, f"layout-duplicate-{gauge}"))
-        with open(target) as fh:
-            after = json.load(fh)["controls"]
-    assert len(after) == before + 1, "the copy must be written, not just staged"
+        after = json.loads(target.read_text())["controls"]
+
+    assert len(after) == len(before) + 1, "the copy must be written, not just staged"
+    # WHICH control, not just that one appeared: pressing a row's button and getting the bottom row
+    # copied is what happened when this lambda closed over the loop variable instead of the row.
+    source, copy = before[gauge], after[gauge + 1]
+    assert (copy.get("type"), copy.get("sprite")) == (source.get("type"), source.get("sprite")), \
+        "the copy must be a copy of the control you pressed"
+    assert copy.get("at") != source.get("at"), "and nudged clear of it"
+    assert after[gauge].get("type") == before[gauge].get("type"), "the source must be untouched"
+    last = before[-1].get("type")
+    assert [c.get("type") for c in after].count(last) == [c.get("type") for c in before].count(last), \
+        "the LAST control was copied instead of the selected one"

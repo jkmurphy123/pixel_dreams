@@ -1649,7 +1649,11 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
                         ui.button("select", on_click=lambda _=None, index=i: choose(index)) \
                             .props("flat dense size=sm no-caps").classes("text-xs") \
                             .mark(f"layout-select-{i}")
-                        ui.button("duplicate", on_click=lambda _=None, index=i: do_duplicate(i)) \
+                        # index, NOT i: `i` is the loop variable and resolves to its LAST value
+                        # when the button is finally clicked — which is how this shipped
+                        # duplicating the bottom row whatever row you pressed.
+                        ui.button("duplicate",
+                                  on_click=lambda _=None, index=i: do_duplicate(index)) \
                             .props("flat dense size=sm no-caps").classes("text-xs") \
                             .mark(f"layout-duplicate-{i}")
                         pending = state["pending_remove"] == i
