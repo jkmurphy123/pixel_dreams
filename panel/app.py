@@ -746,6 +746,86 @@ def register_pages(ctx: PageContext) -> None:
             "profile": os.path.relpath(path, ctx.base_dir),
         }
 
+    @app.post("/api/layout")
+    async def api_layout(request: Request):
+        """
+        Drive the alignment editor without a browser — the same bus command the page's buttons post,
+        so there is one path and not two.
+
+        Body: {"op": "set_rect", "layout": "steampunk1", "index": 3, "rect": [x, y, w, h]},
+        {"op": "select", "index": 3} (or null to clear), {"op": "freeze", "on": true}.
+
+        Answers 202 with what was queued: the loop applies it on its next frame and reports the
+        outcome in /api/status (`layout_edit`, `layout_report`), which is also where the live rects
+        and the selection state are published. 409 when the mode on screen is not a control panel or
+        is showing a different layout — refused HERE too rather than queued, so a script gets the
+        reason immediately instead of a status line it might not read.
+        """
+        if not _authorised(ctx, request):
+            return PlainTextResponse("token required", status_code=403)
+        body = {}
+        raw = await request.body()
+        if raw:
+            try:
+                body = json.loads(raw)
+            except ValueError:
+                return JSONResponse({"ok": False, "reason": "body must be JSON"}, status_code=400)
+            if not isinstance(body, dict):
+                return JSONResponse({"ok": False, "reason": "body must be a JSON object"},
+                                    status_code=400)
+
+        op = body.get("op")
+        if op not in ("set_rect", "select", "freeze"):
+            return JSONResponse({"ok": False, "reason": "op must be set_rect, select or freeze"},
+                                status_code=400)
+
+        snap = ctx.bus.snapshot()
+        live = snap.get("layout_report")
+        if not isinstance(live, dict):
+            return JSONResponse(
+                {"ok": False, "reason": "the mode on screen is not a control panel (it publishes no "
+                                        "layout), so there is nothing to align"},
+                status_code=409)
+        wanted = body.get("layout")
+        if wanted and _layout_key(wanted) != _layout_key(live.get("layout_file", "")):
+            return JSONResponse(
+                {"ok": False, "reason": f"the control panel on screen is showing "
+                                        f"'{live.get('layout_file')}', not '{wanted}'"},
+                status_code=409)
+
+        cmd: dict = {"cmd": "layout_edit", "op": op}
+        if wanted:
+            cmd["layout"] = wanted
+        if op == "set_rect":
+            try:
+                cmd["index"] = int(body.get("index"))
+                rect = [int(v) for v in (body.get("rect") or [])]
+            except (TypeError, ValueError):
+                return JSONResponse({"ok": False,
+                                     "reason": "set_rect needs an integer index and rect [x, y, w, h]"},
+                                    status_code=400)
+            if len(rect) != 4:
+                return JSONResponse({"ok": False, "reason": "rect must be [x, y, w, h]"},
+                                    status_code=400)
+            cmd["rect"] = rect
+        elif op == "select":
+            index = body.get("index")
+            if index is not None:
+                try:
+                    index = int(index)
+                except (TypeError, ValueError):
+                    return JSONResponse({"ok": False, "reason": "index must be a number or null"},
+                                        status_code=400)
+            cmd["index"] = index
+        else:
+            cmd["on"] = bool(body.get("on", True))
+
+        ctx.bus.post(cmd)
+        return JSONResponse({"ok": True, "queued": cmd,
+                             "note": "the loop applies this on its next frame; read /api/status for "
+                                     "layout_edit and layout_report"},
+                            status_code=202)
+
     @app.post("/api/profile")
     async def api_profile(request: Request):
         """
@@ -1291,6 +1371,12 @@ def _render_mode_rows(container, info, ctx: PageContext, state: dict, after_chan
                 ui.button("duplicate", on_click=duplicator(e.number)) \
                     .props("flat dense size=sm no-caps").classes("text-xs") \
                     .mark(f"duplicate-mode-{e.number}")
+
+
+def _layout_key(name) -> str:
+    """Compare a layout the way a person would: 'steampunk1' == 'assets/.../steampunk1.json'."""
+    base = os.path.basename(str(name or "")).strip()
+    return (base[:-5] if base.lower().endswith(".json") else base).lower()
 
 
 def _load_registry(base_dir: str) -> dict:

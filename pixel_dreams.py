@@ -302,6 +302,10 @@ def main(argv=None):
     def _publish() -> None:
         mode = manager.current_mode
         cfg = manager.modes_config.get(str(manager.mode_index), {})
+        # A control panel publishes what the alignment page needs to know about the LIVE instance:
+        # the page keeps its own working copy of the layout, and this is how it can confirm what the
+        # wall is actually showing rather than trusting that copy.
+        layout = mode.layout_report() if hasattr(mode, "layout_report") else None
         bus.update_status(
             frame=frame,
             fps=fps,
@@ -309,6 +313,7 @@ def main(argv=None):
             mode_index=manager.mode_index,
             mode_type=type(mode).__name__ if mode is not None else None,
             mode_name=(cfg.get("name") or cfg.get("title") or "") if isinstance(cfg, dict) else "",
+            layout_report=layout,
             # Proof of WHICH config the mode on screen was built from: after a refresh this must
             # match the profile file, and the panel says so on the status card.
             mode_config_digest=manager.last_build_digest,
@@ -412,8 +417,71 @@ def main(argv=None):
                           pending_steps=queued_delta)
         print(f"[Panel] step {'next' if delta > 0 else 'prev'} -> mode {playlist.current}")
 
+    def _layout_key(name) -> str:
+        """Compare a layout the way a person would: 'steampunk1' == 'assets/.../steampunk1.json'."""
+        base = os.path.basename(str(name or "")).strip()
+        return (base[:-5] if base.lower().endswith(".json") else base).lower()
+
+    def _layout_edit(cmd) -> None:
+        """
+        Live layout nudges for the alignment page (design Phase 6).
+
+        Applied to the mode ON SCREEN, in memory: no disk write, no compositor rebuild, no mode
+        switch — the panel's numbers and the wall's pixels move together while a button is pressed.
+
+        Refused, loudly, in two cases: the mode on screen is not a control panel at all, or it is
+        showing a DIFFERENT layout than the command names. Without the second check a nudge aimed at
+        the layout you are editing would silently move an overlay in whatever layout happened to be
+        playing — the worst possible failure for a tool whose whole job is "this pixel goes here".
+        The outcome goes into the status so the page can confirm it instead of assuming.
+        """
+        mode = manager.current_mode
+        if not hasattr(mode, "edit_rect"):
+            bus.update_status(layout_edit="refused: the mode on screen is not a control panel")
+            return
+
+        wanted = cmd.get("layout")
+        on_screen = getattr(mode, "layout_file", "")
+        if wanted and _layout_key(wanted) != _layout_key(on_screen):
+            bus.update_status(
+                layout_edit=f"refused: the control panel on screen is showing '{on_screen}', "
+                            f"not '{wanted}' — open the page for the layout that is playing")
+            return
+
+        op = cmd.get("op")
+        try:
+            if op == "set_rect":
+                report = mode.edit_rect(int(cmd.get("index", -1)), tuple(cmd.get("rect") or ()))
+            elif op == "select":
+                index = cmd.get("index")
+                report = mode.select(None if index is None else int(index))
+            elif op == "freeze":
+                report = mode.freeze(bool(cmd.get("on")))
+            else:
+                bus.update_status(layout_edit=f"refused: unknown layout op {op!r}")
+                return
+        except (TypeError, ValueError) as e:
+            bus.update_status(layout_edit=f"refused: bad {op} command: {e}")
+            return
+
+        if not report.get("ok"):
+            bus.update_status(layout_edit="refused: " + str(report.get("reason", "no reason given")))
+            return
+        if op == "set_rect":
+            summary = f"moved #{report['index']} to {report['rect']}"
+        elif op == "select":
+            summary = (f"selected #{report['selected']}" if report["selected"] is not None
+                       else "selection cleared")
+        else:
+            summary = f"freeze {'on' if report['frozen'] else 'off'}"
+        bus.update_status(layout_edit=summary, layout_selected=report.get("selected",
+                                                                        getattr(mode, "selected", None)),
+                          layout_frozen=bool(getattr(mode, "frozen", False)),
+                          layout_report=mode.layout_report())
+        print(f"[Panel] layout {summary}")
+
     handlers = {"ping": _panel_ping, "apply_config": _apply_config, "refresh_mode": _refresh_mode,
-                "step_mode": _step_mode}
+                "step_mode": _step_mode, "layout_edit": _layout_edit}
 
     if args.auto:
         print(f"[Controller] Auto-cycle every {args.auto:.1f}s. ESC quits.")

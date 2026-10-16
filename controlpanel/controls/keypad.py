@@ -31,15 +31,18 @@ class KeypadControl(Control):
         self.accept_rgb = tuple(self.spec.get("accept_rgb", (70, 255, 110)))
         self.reject_rgb = tuple(self.spec.get("reject_rgb", (255, 60, 50)))
 
-        x, y, w, h = self.rect
-        self.entry_rect = (x + 0.10 * w, y + 0.06 * h, 0.80 * w, 0.16 * h)
-        self.grid_origin = (x + 0.12 * w, y + 0.28 * h)
-        self.grid_size = (0.76 * w, 0.66 * h)
-
         self.state = _IDLE
         self.timer = self.rng.uniform(*self.interval)
         self.entry = ""
         self.pressed_key = -1
+
+    def _recompute_geometry(self):
+        super()._recompute_geometry()
+        # entry line and key grid follow the rect (the key rects are derived from these on demand)
+        x, y, w, h = self.rect
+        self.entry_rect = (x + 0.10 * w, y + 0.06 * h, 0.80 * w, 0.16 * h)
+        self.grid_origin = (x + 0.12 * w, y + 0.28 * h)
+        self.grid_size = (0.76 * w, 0.66 * h)
 
     def _key_rect(self, index):
         col, row = index % 3, index // 3

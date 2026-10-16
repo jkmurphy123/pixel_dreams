@@ -54,6 +54,17 @@ class ControlPanelMode:
         self.controls: list = []
         self._error: str | None = None
 
+        # Live layout-editing state, driven by the alignment page through the bus (design Phase 6).
+        # The mode owns it; the panel only ever sees what the loop publishes in the status.
+        self.layout_name = ""
+        self.layout_mode = ""
+        self.canvas_size = (0, 0)
+        self.selected: int | None = None
+        self.frozen = False
+        self._by_index: dict = {}          # the LAYOUT's control index -> live control object
+        self._static_only: list = []       # indices whose type has no animated overlay
+        self._placed: list = []            # the layout's PlacedControl list, for marker geometry
+
     def enter(self, manager):
         self.manager = manager
         self._error = None
@@ -68,10 +79,21 @@ class ControlPanelMode:
 
             ctx = ControlContext(seed=self.seed, accent_rgb=self.accent_rgb,
                                  trace_rgb=self.trace_rgb, lamp_rgb=self.lamp_rgb)
-            for placed in layout.controls:
+            self.layout_name = layout.name
+            self.layout_mode = layout.mode
+            self.canvas_size = tuple(layout.design_resolution)
+            self._placed = list(layout.controls)
+            self._by_index = {}
+            self.selected = None
+            for index, placed in enumerate(layout.controls):
                 control = make_control(placed, ctx)
                 if control is not None:
                     self.controls.append(control)
+                    # Keyed by the LAYOUT's index, not by the position in self.controls: a type with
+                    # no animated overlay returns None, and the two numbering schemes would then drift
+                    # apart — the editor would move the wrong overlay and be believed.
+                    self._by_index[index] = control
+            self._static_only = [i for i in range(len(layout.controls)) if i not in self._by_index]
 
             skin_name = skin.name if skin is not None else "(background image)"
             print(f"[ControlPanel] skin='{skin_name}' layout='{layout.name}' "
@@ -88,18 +110,107 @@ class ControlPanelMode:
         # drop surfaces so GC can reclaim them
         self.compositor = None
         self.controls = []
+        self._by_index = {}
+        self._placed = []
+        self.selected = None
+        self.frozen = False
         self.manager = None
 
     def handle_event(self, event):
         pass
 
+    # ---------------------------------------------------------------- live layout editing (Phase 6)
+    #
+    # The alignment page posts commands on the control bus; the loop calls these on the render
+    # thread. Every one returns a report instead of raising: a refusal here is a fact to publish,
+    # not an exception to throw through a frame. Nothing touches the disk, and nothing rebuilds the
+    # compositor — a nudge is a geometry update on one live object.
+
+    def edit_rect(self, index, rect) -> dict:
+        """
+        Move and/or resize one overlay in the running instance.
+
+        Refusals are explicit and name the reason, because "nothing happened" is the most confusing
+        possible answer: an index this layout does not have, and a static-only type (which draws
+        nothing at all in a freeform layout, so there is no animated overlay to move).
+        """
+        control = self._by_index.get(index)
+        if control is None:
+            if index in self._static_only:
+                return {"ok": False, "index": index, "reason":
+                        f"control #{index} is a static-only type: in a freeform layout it has no "
+                        f"animated overlay, so there is nothing on the wall to move"}
+            return {"ok": False, "index": index, "reason": f"this layout has no control #{index}"}
+        try:
+            control.set_rect(rect)
+        except (TypeError, ValueError) as e:
+            return {"ok": False, "index": index, "reason": f"bad rect {rect!r}: {e}"}
+        return {"ok": True, "index": index, "rect": tuple(int(v) for v in control.rect),
+                "type": type(control).__name__}
+
+    def select(self, index) -> dict:
+        """Mark the control being positioned (it gets the marker on the wall), or clear it."""
+        if index is None:
+            self.selected = None
+            return {"ok": True, "selected": None}
+        index = int(index)
+        if index not in self._by_index and index not in self._static_only:
+            return {"ok": False, "reason": f"this layout has no control #{index}"}
+        self.selected = index
+        return {"ok": True, "selected": index}
+
+    def freeze(self, on) -> dict:
+        """
+        Stop the overlays animating so the thing being positioned holds still.
+
+        Implemented as "skip update()", not as dt=0: several control types advance off the wall clock
+        or on randomness, so a zero timestep does not actually hold them still.
+        """
+        self.frozen = bool(on)
+        return {"ok": True, "frozen": self.frozen}
+
+    def marker_rects(self) -> list:
+        """The (rect, label) pairs the compositor should outline this frame."""
+        if self.selected is None:
+            return []
+        control = self._by_index.get(self.selected)
+        if control is not None:
+            rect = tuple(control.rect)
+        elif 0 <= self.selected < len(self._placed):
+            rect = tuple(self._placed[self.selected].rect_px)
+        else:
+            return []
+        return [(rect, f"#{self.selected}")]
+
+    def layout_report(self) -> dict:
+        """
+        What the alignment page needs to know about the LIVE instance: the layout it is showing, the
+        canvas, how many overlays are animated, the live rects (so the page can confirm what the wall
+        is showing rather than trusting its own copy), and the editor state.
+        """
+        return {
+            "layout_file": self.layout_file,
+            "layout": self.layout_name,
+            "mode": self.layout_mode,
+            "canvas": list(self.canvas_size),
+            "controls": len(self._placed),
+            "animated": len(self._by_index),
+            "static_only": sorted(self._static_only),
+            "selected": self.selected,
+            "frozen": self.frozen,
+            "rects": {str(i): [int(v) for v in c.rect] for i, c in sorted(self._by_index.items())},
+        }
+
     def update(self, dt: float):
+        if self.frozen:
+            # hold still for alignment; see freeze()
+            return
         for control in self.controls:
             control.update(dt)
 
     def render(self, screen: pygame.Surface):
         if self.compositor is not None:
-            self.compositor.render(screen, self.controls)
+            self.compositor.render(screen, self.controls, self.marker_rects())
             return
 
         # error fallback: plain background + one-line reason

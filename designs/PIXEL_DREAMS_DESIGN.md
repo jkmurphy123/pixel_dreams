@@ -811,6 +811,52 @@ frames of `update()` + `render()`, `exit()` — with no exception. It is the kin
 up when someone actually plays every mode, which is exactly what the manual controls are for.
 
 
+## 10.10 Phase 6A — the live alignment mechanism (DONE 2/3, 2026-10-16)
+
+Approved at review with the answers: freeform layouts **plus** a way to start a new freeform layout
+over a supplied PNG (Q1), `set_rect` hook (Q2), marker + freeze on the wall (Q3), a dedicated
+`/layout` page (Q4), explicit Save (Q5).
+
+Landed so far:
+
+* **`Control.set_rect(rect)` + `_recompute_geometry()`** in the controlpanel package, with `__init__`
+  calling the same hook so "geometry from the rect" has one code path. Seven classes moved their
+  cached centre/pivot/radius into the hook; classes that draw through `_window()` needed nothing
+  because `_window()` now remembers its default and the base hook recomputes it; TapeReelControl
+  rebuilds its reel centres while deliberately leaving the angles alone. Found and fixed on the way:
+  `KeypadControl` cached `entry_rect`/`grid_origin`/`grid_size` — the contract test caught that one,
+  after a code review had already missed six similar cases.
+* **Measured, both ways**: assigning `control.rect` moved 0/25 testable controls; `set_rect()` moves
+  25/25. One-control rebuilds also move (57-116 µs against a 16000 µs frame) but a fresh
+  lamp/readout/scope draws nothing until updated, which is why the hook won.
+* **The mode's edit API**: `edit_rect` (with explicit refusals for an unknown index and for a
+  static-only type, which has no animated overlay in a freeform layout), `select`, `freeze` (skip
+  `update()`, because dt=0 does not hold every animation still), `marker_rects()`, `layout_report()`.
+  The marker is drawn by the compositor in DESIGN space before the frame is scaled, so it lands
+  exactly on the control whatever `scale_mode` does.
+* **The bus command and the loop's handler**: `layout_edit`, applied to the mode on screen in memory
+  — no disk, no rebuild, no mode switch — and refused when the mode is not a control panel or is
+  showing a different layout than the command names (a nudge must never move something other than
+  what the person is looking at). The outcome and the live rects are published in the status.
+* **`POST /api/layout`**, the same command the page will post, so the mechanism is drivable and
+  testable without a browser: 202 + the queued command, 400 for junk, 409 for "not a control panel"
+  or "not the layout on screen".
+* **12 tests** (`tests/test_layout_align.py`): the contract test over every catalogue class (any
+  cache under ANY name is caught, by snapshotting the whole `__dict__` rather than a hand-written
+  list of attribute names), the mode's edit/select/freeze/marker/report behaviour on a real layout,
+  the static-only refusal on a synthetic one, and three process-level runs against a real controller
+  on its own port — including the guard that a mismatched layout is refused without moving anything.
+* Suite: 532 passed with one pre-existing test failing under full-suite load
+  (`test_panel_apply.py::test_disabling_a_mode_takes_it_out_of_the_rotation_without_a_restart`, which
+  passes 4/4 in isolation): a timing flake in a process-spawning test, not a regression — it was
+  reproduced after the fact and is on the list to harden.
+
+Remaining for 6A: nothing. Remaining for the phase (6B): the `/layout` page itself — the overlay
+list, the PNG preview with clickable boxes, the nudge pad, add/remove, and Save/Reload through a new
+`core/layout_edit.py` writer that validates with the package's own loader, plus the "start a new
+freeform layout over a PNG of mine" flow from Q1.
+
+
 ## 11. Risks and non-goals
 
 Risks:

@@ -26,6 +26,7 @@ class Compositor:
         self._frame: pygame.Surface | None = None
         self._scaled: pygame.Surface | None = None
         self._scaled_size: tuple[int, int] | None = None
+        self._marker_font: pygame.font.Font | None = None
 
     @property
     def background_rgb(self):
@@ -85,10 +86,14 @@ class Compositor:
         self.canvas = canvas
         self._frame = None
 
-    def render(self, screen: pygame.Surface, controls=()):
+    def render(self, screen: pygame.Surface, controls=(), markers=()):
         """
         Blit the static canvas plus each control's animated overlay,
         scaling to the screen if resolutions differ.
+
+        `markers` are (rect, label) pairs drawn on the frame in DESIGN space, after the overlays — the
+        alignment editor's "this is the one you selected" outline. Drawn before the frame is scaled,
+        so it lands on the control whatever scale_mode does to the frame afterwards.
         """
         screen.fill(self.background_rgb)
         if self.canvas is None:
@@ -99,6 +104,8 @@ class Compositor:
         frame.blit(self.canvas, (0, 0))
         for control in controls:
             control.draw_overlay(frame)
+        for rect, label in markers:
+            self._draw_marker(frame, rect, label)
 
         sw, sh = screen.get_size()
         fw, fh = frame.get_size()
@@ -125,3 +132,28 @@ class Compositor:
             return (tw, th), ((sw - tw) // 2, (sh - th) // 2)
         # legacy "stretch" fills the screen exactly
         return (sw, sh), (0, 0)
+
+    # ---------------------------------------------------------------- alignment marker
+
+    _MARKER_RGB = (255, 210, 60)
+
+    def _draw_marker(self, frame, rect, label=""):
+        """
+        Outline + crosshair for the control being positioned.
+
+        Deliberately thin and unfilled: the point is to judge where the overlay sits ON the artwork,
+        so the marker must not hide the thing you are aligning to. The crosshair marks the centre, and
+        the label the index, because a busy panel makes it easy to lose which control is selected.
+        """
+        x, y, w, h = (int(v) for v in rect)
+        box = pygame.Rect(x, y, w, h)
+        pygame.draw.rect(frame, self._MARKER_RGB, box, 2)
+        cx, cy = box.center
+        arm = max(6, min(w, h) // 6)
+        pygame.draw.line(frame, self._MARKER_RGB, (cx - arm, cy), (cx + arm, cy), 1)
+        pygame.draw.line(frame, self._MARKER_RGB, (cx, cy - arm), (cx, cy + arm), 1)
+        if label:
+            if self._marker_font is None:
+                self._marker_font = pygame.font.Font(None, 20)
+            text = self._marker_font.render(str(label), True, self._MARKER_RGB)
+            frame.blit(text, (x, max(0, y - text.get_height())))
