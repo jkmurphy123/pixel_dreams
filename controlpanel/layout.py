@@ -101,6 +101,22 @@ def _rects_overlap(a, b) -> bool:
             and a[1] < b[1] + b[3] and b[1] < a[1] + a[3])
 
 
+def _check_colour(name, i, key, value):
+    """
+    A colour key may only hold a colour: three whole numbers 0..255.
+
+    Refused here rather than drawn later. A malformed value reaches pygame as a tuple of junk and
+    fails on the WALL, once per frame, where nobody is reading a log — the manager catches it per
+    mode, so the panel simply freezes with a wrong colour instead of saying why.
+    """
+    ok = (isinstance(value, (list, tuple)) and len(value) == 3
+          and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                  and 0 <= v <= 255 and float(v) == int(v) for v in value))
+    if not ok:
+        raise LayoutError(f"layout '{name}' control #{i}: {key} must be three whole numbers "
+                          f"0..255, got {value!r}")
+
+
 def _check_common(name, i, c, sprite_defs):
     """Validate the fields both modes share. Returns (ctype, sprite_id)."""
     where = f"layout '{name}' control #{i}"
@@ -112,6 +128,11 @@ def _check_common(name, i, c, sprite_defs):
     sprite_id = c.get("sprite", CONTROL_TYPES[ctype])
     if sprite_id not in sprite_defs:
         raise LayoutError(f"{where}: unknown sprite '{sprite_id}'")
+    # Colour keys are the "color" key and anything ending in "_rgb": one rule, so a colour set from
+    # the page, typed into the raw editor or copied by hand all face the same check.
+    for key, value in c.items():
+        if isinstance(key, str) and (key == "color" or key.endswith("_rgb")):
+            _check_colour(name, i, key, value)
     return ctype, sprite_id
 
 

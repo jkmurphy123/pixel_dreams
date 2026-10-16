@@ -1610,6 +1610,26 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
 
     # ------------------------------------------------------------------ the list
 
+    def do_duplicate(index: int) -> None:
+        """
+        Add a copy next to the one you picked, written straight away.
+
+        A duplicate is a structural change like add and remove, so it saves immediately and the wall
+        rebuilds: a copy that exists only on screen could not be nudged against what the display is
+        really showing. The copy becomes the selection, because the first thing you do with a copy is
+        move it.
+        """
+        result = editor.duplicate_control(index)
+        if not result["ok"]:
+            say(f"could not duplicate #{index}: {result['reason']}", good=False)
+            render_all()
+            return
+        saved = editor.save()
+        if saved.ok:
+            state["selected"] = result["index"]
+        _after_structural(f"copied #{index} to #{result['index']}", saved)
+        render_all()
+
     def _draw_rows() -> None:
         list_box.clear()
         with list_box:
@@ -1629,6 +1649,9 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
                         ui.button("select", on_click=lambda _=None, index=i: choose(index)) \
                             .props("flat dense size=sm no-caps").classes("text-xs") \
                             .mark(f"layout-select-{i}")
+                        ui.button("duplicate", on_click=lambda _=None, index=i: do_duplicate(i)) \
+                            .props("flat dense size=sm no-caps").classes("text-xs") \
+                            .mark(f"layout-duplicate-{i}")
                         pending = state["pending_remove"] == i
                         ui.button("confirm remove" if pending else "remove",
                                   on_click=lambda _=None, index=i: ask_remove(index)) \
@@ -1647,6 +1670,91 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
 
     # ------------------------------------------------------------------ the nudge pad
 
+    # ------------------------------------------------------------------ colours
+
+    def _draw_colours(index: int) -> None:
+        """
+        The drawn colours this control ACTUALLY reads, one row each.
+
+        The key list comes from the package's own table (controlpanel.controls.COLOUR_KEYS), not from a
+        guess here: a picker for a knob the class ignores is worse than no picker, because it looks
+        like it worked. Setting one is a structural change — a control resolves its colours when it is
+        built — so it is written straight away and the wall rebuilds, exactly like a duplicate.
+        """
+        from controlpanel.controls import COLOUR_KEYS          # on demand: the package imports pygame
+
+        control = editor.controls()[index]
+        ctype = str(control.get("type", ""))
+        keys = COLOUR_KEYS.get(ctype, ())
+        ui.label("Colours").classes("text-sm font-semibold mt-3")
+        if not keys:
+            ui.label(f"'{ctype}' draws no colour of its own: it uses its sprite and the mode's "
+                     f"accent.").classes("text-xs opacity-60")
+            return
+        for key in keys:
+            current = control.get(key)
+            with ui.row().classes("items-center gap-2"):
+                ui.label(key).classes("w-28 font-mono text-xs")
+                if key == "color":
+                    ui.label("wins over the others").classes("text-[10px] opacity-50")
+                ui.color_input(value=_hex_from_rgb(current) if current else None,
+                               on_change=lambda e, k=key: set_colour(k, e.value)) \
+                    .classes("w-36").mark(f"layout-colour-{key}")
+                if current:
+                    ui.badge(str([int(v) for v in current])).props("outline").classes("text-xs")
+                    ui.button("default", on_click=lambda _=None, k=key: clear_colour(k)) \
+                        .props("flat dense size=sm no-caps").classes("text-xs") \
+                        .mark(f"layout-colour-default-{key}")
+                else:
+                    ui.label("not set — the control's own default").classes("text-[10px] opacity-50")
+
+    def _after_structural(what: str, saved) -> None:
+        """
+        What happens after a write the wall has to rebuild for: an add, a removal, a copy, a colour.
+
+        One place, because these differ only in the words — and because the rebuild matters: a
+        structural change that is only in the page's memory cannot be nudged against what the
+        display is really showing.
+        """
+        if not saved.ok:
+            say(f"{what} in the document, but not saved: {saved.reason}", good=False)
+            return
+        if on_screen():
+            ctx.bus.post({"cmd": "refresh_mode"})
+            say(f"{what} and saved. The wall is rebuilding the mode so it shows there too.")
+        else:
+            say(f"{what} and saved {saved.rel}.")
+
+    def _after_colour_change(what: str, saved) -> None:
+        _after_structural(what, saved)
+        if saved.ok:
+            # after the rebuild, not before: a rebuild resets the mode's selection, so the opposite
+            # order would silently drop it
+            post_layout("select", index=selected())
+
+    def set_colour(key: str, text: str) -> None:
+        rgb = _rgb_from_hex(text or "")
+        if not rgb:
+            say(f"{text!r} is not a colour", good=False)
+            return
+        result = editor.set_color(selected(), key, rgb)
+        if not result["ok"]:
+            say(f"could not set {key}: {result['reason']}", good=False)
+            render_all()
+            return
+        _after_colour_change(f"set {key} on #{selected()}", editor.save())
+        render_all()
+
+    def clear_colour(key: str) -> None:
+        result = editor.set_color(selected(), key, None)
+        if not result["ok"]:
+            say(f"could not clear {key}: {result['reason']}", good=False)
+            render_all()
+            return
+        _after_colour_change(f"cleared {key} on #{selected()}", editor.save())
+        render_all()
+
+
     def _draw_pad() -> None:
         pad_box.clear()
         with pad_box:
@@ -1660,6 +1768,7 @@ def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
                 rect = editor.rect_of(index) or (0, 0, 0, 0)
                 ui.label(f"overlay #{index} — {editor.controls()[index].get('type')} "
                          f"{editor.controls()[index].get('sprite')}").classes("text-xs opacity-70")
+                _draw_colours(index)
 
                 with ui.row().classes("items-center gap-1"):
                     ui.label("step").classes("text-xs opacity-60")

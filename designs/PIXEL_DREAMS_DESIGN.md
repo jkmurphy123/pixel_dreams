@@ -963,6 +963,39 @@ app decided to draw; the extension check is stock, and the original bare-name fo
 the backgrounds directory. The page also states which artwork it is showing and where it came from,
 because a picture with no provenance is exactly how this went unnoticed.
 
+### 10.15 Addition after the phases — copy a control, and colour it (DONE, 2026-10-16)
+
+Two asks in one breath: duplicate an overlay from the alignment page, and set the colour of a gauge's
+needle or a clock's hands.
+
+The second turned out to be almost entirely present already: the catalogue has always read per-control
+colour keys (needle_rgb, hub_rgb, hand_rgb, color_rgb, trace_rgb, spoke_rgb, entry_rgb, accept_rgb,
+reject_rgb, lever_rgb, pointer_rgb, ring_rgb) with `color` winning over the type-specific one, and the
+raw editor added earlier can already set any of them. What was missing was the UI — and a UI that offers
+a knob the class ignores is worse than no UI, because it looks like it worked. So the keys live in ONE
+table (controlpanel.controls.COLOUR_KEYS, next to the classes) and a test walks every class and its
+bases to hold that table to the code in both directions. It earned its keep immediately by finding
+accept_rgb and reject_rgb on the keypad, which I had not known about. One asymmetry is documented rather
+than papered over: the table may not offer a key the class or a base never reads, and must offer every
+key the class's OWN code reads — but a base may resolve a colour a subclass never draws (the discrete
+switches share a base with a lever colour), and offering that on a knob would be the dead knob again.
+
+Colour validation moved into the LOADER, where it belongs and where it protects every way in: any key
+that is `color` or ends in `_rgb` must be three whole numbers 0..255, refused with the key named. A
+malformed colour is not caught by the page alone, and its failure mode is the worst kind — pygame gets a
+tuple of junk, the manager catches it per mode, and the panel quietly freezes with a wrong colour while
+nobody is reading a log. The editor's set_color therefore validates the DOCUMENT and lets the loader
+decide, rather than carrying a second opinion that could disagree with it.
+
+Duplicating is modelled on add and remove, which it resembles: the copy is inserted next to its source
+(not appended — a copy that turns up forty rows away is a copy you have to hunt for), offset by 24px and
+CLAMPED inside the canvas, because a control whose box falls outside cannot be nudged back. It is a
+structural change, so it writes immediately and the wall rebuilds, and the copy becomes the selection.
+Both being structural is why colour and duplicate share one _after_structural: those two differ only in
+the words, and the rebuild is the part that matters — a change living only in the page's memory cannot
+be nudged against what the display is really showing. The rebuild is posted BEFORE the selection so the
+mode's selection survives it.
+
 ## 11. Risks and non-goals
 
 Risks:

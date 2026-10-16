@@ -53,3 +53,33 @@ def make_control(placed, ctx: ControlContext):
     if cls is None:
         return None
     return cls(placed, ctx)
+
+#: Colour keys each control type actually READS, for the layout page's colour pickers. One table, next
+#: to the classes it describes, because the alternative (the page guessing) is a picker that offers a
+#: knob the class ignores — and tests/test_control_edit.py walks every class and its bases to prove
+#: this table matches the code, in both directions.
+COLOUR_KEYS = {
+    "gauge_round":     ("color", "needle_rgb", "hub_rgb"),
+    "meter_vu":        ("color", "needle_rgb", "hub_rgb"),
+    "scope":           ("color", "trace_rgb"),
+    "strip_chart":     ("color", "trace_rgb"),
+    "bar_graph":       ("color", "color_rgb"),
+    "led_bar":         (),
+    "lamp":            (),
+    "lamp_square":     (),
+    "lamp_rect":       (),
+    "lamp_bank":       (),
+    "led_matrix":      ("color", "color_rgb"),
+    "push_button":     ("color", "ring_rgb"),
+    "keypad":          ("accept_rgb", "color", "entry_rgb", "reject_rgb"),
+    "toggle_switch":   ("color", "lever_rgb"),
+    "rotary_knob":     ("color", "pointer_rgb"),
+    "selector_switch": ("color", "pointer_rgb"),
+    "digital_readout": ("color", "color_rgb"),
+    "counter":         ("color", "color_rgb"),
+    "nixie":           ("color", "color_rgb"),
+    "tape_reel":       ("color", "spoke_rgb"),
+    "radar":           ("color", "trace_rgb"),
+    "clock":           ("color", "hand_rgb"),
+    "plate":           (),
+}

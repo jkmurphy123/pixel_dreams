@@ -279,6 +279,66 @@ class LayoutEditor:
             return {"ok": False, "reason": f"the loader rejected that control: {errors[0]}"}
         return {"ok": True, "index": len(controls) - 1, "entry": candidate}
 
+    def duplicate_control(self, index: int, offset: int = 24) -> dict:
+        """
+        Copy one control, nudged clear of the original so the copy is visible and grabbable.
+
+        The copy is inserted NEXT TO its source rather than appended: the row list and the canvas are
+        read in the same order, and a copy that turns up forty rows away from the thing it came from
+        is a copy you have to hunt for. It is offset by one small step and then CLAMPED inside the
+        canvas, because a control whose box falls outside cannot be nudged back — the loader refuses
+        it — so an unclamped copy could be born unusable.
+        """
+        controls = self.controls()
+        if not 0 <= index < len(controls):
+            return {"ok": False, "reason": f"this layout has no control #{index}"}
+        duplicate = copy.deepcopy(controls[index])
+        at = duplicate.get("at")
+        if isinstance(at, (list, tuple)) and len(at) == 2:
+            w, h = self.canvas()
+            rect = self.rect_of(index) or (0, 0, 0, 0)
+            duplicate["at"] = [min(max(0, int(at[0]) + offset), max(0, w - rect[2])),
+                               min(max(0, int(at[1]) + offset), max(0, h - rect[3]))]
+        controls.insert(index + 1, duplicate)
+        errors, _ = self.validate()
+        if errors:
+            controls.pop(index + 1)
+            return {"ok": False, "reason": f"the loader rejected the copy: {errors[0]}"}
+        return {"ok": True, "index": index + 1, "entry": duplicate}
+
+    def set_color(self, index: int, key: str, value) -> dict:
+        """
+        Set or clear one drawn colour on one control: [r, g, b] to set, None to fall back.
+
+        The KEY is checked loosely (a colour key is "color" or ends in "_rgb") and the VALUE is not
+        checked here at all: the loader validates every colour key when the document is validated,
+        and this method validates the document, so there is one authority for what a colour may be
+        rather than a second opinion here that could disagree.
+
+        Setting a colour is a STRUCTURAL change, not a nudge: a control resolves its colours when it
+        is built, so the caller saves immediately and rebuilds the mode (as the page does), which is
+        why this does not go through the in-memory path nudges use.
+        """
+        controls = self.controls()
+        if not 0 <= index < len(controls):
+            return {"ok": False, "reason": f"this layout has no control #{index}"}
+        if not isinstance(key, str) or not (key == "color" or key.endswith("_rgb")):
+            return {"ok": False, "reason": f"{key!r} is not a colour key"}
+        control = controls[index]
+        had, previous = key in control, control.get(key)
+        if value is None:
+            control.pop(key, None)
+        else:
+            control[key] = list(value)
+        errors, _ = self.validate()
+        if errors:
+            if had:
+                control[key] = previous
+            else:
+                control.pop(key, None)
+            return {"ok": False, "reason": f"the loader rejected that colour: {errors[0]}"}
+        return {"ok": True, "index": index, "key": key, "value": control.get(key)}
+
     def remove_control(self, index: int) -> dict:
         controls = self.controls()
         if not 0 <= index < len(controls):

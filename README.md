@@ -283,3 +283,24 @@ through the same writer as the page it came from: validated by the package's own
 atomically with a backup, and refused if the file changed underneath. Validate never changes what Save
 would write, and if the display is showing that layout the mode is rebuilt after a save; if it is not,
 the page says so rather than pretending.
+
+### Editing a control: copy it, or colour it
+
+Every row on the alignment page has a **duplicate** button. It copies that overlay, nudges the copy
+24px clear (clamped inside the canvas, because a box outside it cannot be nudged back), inserts it next
+to its source and writes the file straight away — so the wall rebuilds and you can nudge the copy
+against what the display is really showing. The copy becomes the selection, since the first thing you
+do with a copy is move it.
+
+With an overlay selected, **Colours** lists the drawn colours *that control actually reads*, from
+`controlpanel.controls.COLOUR_KEYS` (a test walks every class and its bases to hold that table to the
+code):
+
+    gauge_round / meter_vu   needle_rgb, hub_rgb      clock        hand_rgb
+    scope / strip_chart      trace_rgb                tape_reel    spoke_rgb
+    bar_graph / readouts     color_rgb                keypad       entry_rgb...
+    toggles, knobs, buttons  lever_rgb, pointer_rgb, ring_rgb
+
+`color` is the universal key and wins over all the others. Setting one writes immediately and rebuilds
+the mode, for the same reason a copy does: a control resolves its colours when it is built. `default`
+clears the key and hands the colour back to the control.
