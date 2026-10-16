@@ -998,6 +998,17 @@ mode's selection survives it.
 
 _(Correction inside 10.15: 10.15 shipped with a late-binding bug in the duplicate button's click handler: `on_click=lambda _=None, index=i: do_duplicate(i)` bound `index` as a default but the body called do_duplicate(i) with the LOOP variable, so every press copied the bottom row whatever row you pressed. Found by using it, not by the tests — the test only asked whether a control had appeared, never which one, which is a weak assertion pretending to be a test. The line now passes `index`, and the test asserts the copy carries the pressed control's type and sprite, that the source is untouched, and that the count of the last control's type is unchanged — the assertion that fails against the old line.)_
 
+_(Correction inside 10.15: the colour table shipped with lamps declared as having no colours at all,
+while the engine honoured color_rgb — and the layouts already used it. The table was built by a scan
+that knew two ways of reading a key (_color("k") and spec.get("k")) and lamps read theirs by
+SUBSCRIPTION, spec["color_rgb"], so the scan found nothing and the page said a lamp had no colour to
+set. The scan now knows the four ways, the table is corrected (lamp, lamp_square, lamp_rect gain
+color_rgb; lamp_bank and led_bar gain color), and there is an assertion that the resolved colour is the
+one DRAWN, not merely that a picker exists. Two of my own fresh errors on the way: the scan's escaped
+regexes were wrong twice in a way that still compiled, and the repair script wrote ("color") for
+one-key entries — a parenthesised string, not a one-element tuple, so the table briefly contained the
+characters l, c, o, r. Both were caught by the suite rather than by reading. )_
+
 ## 11. Risks and non-goals
 
 Risks:

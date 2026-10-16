@@ -44,23 +44,41 @@ def _copy_layout(tmp_path, monkeypatch, source=REAL_LAYOUT, name="editme"):
     return directory / f"{name}.json"
 
 
+#: The four ways a control can read a colour key. The first two are what an earlier version of this
+#: scan knew — and lamps read theirs with SUBSCRIPTING, so the table declared them as having no colours
+#: at all while the engine happily honoured color_rgb. A picker is only as honest as this scan.
+def _keys_read_in(source: str) -> set:
+    """
+    The colour keys a class's source READS: `_color("k")`, `spec.get("k")`, `spec["k"]`, or
+    `"k" in self.spec`.
+
+    One trivial regex plus a look at the surrounding text, rather than four escaped patterns: the
+    escaped version was quietly wrong twice (double backslashes that still parse), and this is a test
+    about whether a picker tells the truth, so the scanner had better not lie either.
+    """
+    found = set()
+    for match in re.finditer(r'"([a-z_]*_rgb|color)"', source):
+        key = match.group(1)
+        before = source[max(0, match.start() - 16):match.start()].rstrip()
+        after = source[match.end():match.end() + 16].lstrip()
+        if (before.endswith(("_color(", "spec.get(", "spec["))
+                or after.startswith("in self.spec")):
+            found.add(key)
+    return found
+
+
 def _gui_reads(cls) -> set:
     """Every colour key a class or its bases resolves, read off the source rather than assumed."""
     found = set()
     for base in cls.__mro__:
-        if not getattr(base, "__module__", "").startswith("controlpanel.controls"):
-            continue
-        source = inspect.getsource(base)
-        found |= set(re.findall(r'_color\(\s*"([^"]+)"', source))
-        found |= set(re.findall(r'spec\.get\(\s*"([a-z_]*rgb)"', source))
+        if getattr(base, "__module__", "").startswith("controlpanel.controls"):
+            found |= _keys_read_in(inspect.getsource(base))
     return found
 
 
 def _own_reads(cls) -> set:
     """The colour keys the class's own block reads (not its bases')."""
-    source = inspect.getsource(cls)
-    return (set(re.findall(r'_color\(\s*"([^"]+)"', source))
-            | set(re.findall(r'spec\.get\(\s*"([a-z_]*rgb)"', source)))
+    return _keys_read_in(inspect.getsource(cls))
 
 
 def test_the_colour_key_table_matches_the_code():
@@ -85,6 +103,48 @@ def test_a_gauge_offers_the_needle_and_the_clock_offers_its_hands():
     assert "needle_rgb" in COLOUR_KEYS["gauge_round"]
     assert "hub_rgb" in COLOUR_KEYS["gauge_round"]
     assert "hand_rgb" in COLOUR_KEYS["clock"]
+    assert "color_rgb" in COLOUR_KEYS["lamp"]
+
+
+def _lamp(spec):
+    from controlpanel.controls import ControlContext, make_control
+    from controlpanel.layout import PlacedControl
+
+    placed = PlacedControl("lamp", "LED_LAMP_RED", None, (100, 100), (160, 160), dict(spec),
+                           (100, 100, 160, 160))
+    return make_control(placed, ControlContext(seed=1, accent_rgb=(255, 176, 64),
+                                               trace_rgb=(80, 255, 120), lamp_rgb=(9, 9, 9)))
+
+
+def test_a_lamp_colour_is_the_colour_it_draws():
+    """
+    The reported symptom: color_rgb was settable in the FILE and the page said lamps had no colour to
+    set. The table was built by a scan that only knew _color() and spec.get(); lamps read theirs by
+    subscript, so the page was wrong and the engine was right. This is the assertion that the picker
+    does something rather than merely existing.
+    """
+    assert _lamp({"color_rgb": [10, 20, 30]}).color == (10, 20, 30)
+    assert _lamp({"color_rgb": [10, 20, 30], "color": [1, 2, 3]}).color == (1, 2, 3)   # color wins
+    assert _lamp({}).color == (255, 60, 50)                     # else the sprite's own RED
+
+
+async def test_the_page_offers_a_lamps_colour(tmp_path, monkeypatch):
+    target = _copy_layout(tmp_path, monkeypatch)
+    doc = json.loads(target.read_text())
+    doc["controls"][0] = {"type": "lamp", "sprite": "LED_LAMP_RED", "at": [100, 100],
+                          "size": [160, 160], "color_rgb": [10, 20, 30]}
+    target.write_text(json.dumps(doc, indent=2) + "\n")
+    project = tmp_path / "proj"
+    (project / "configs").mkdir(parents=True)
+    (project / "modes_config.json").write_text(json.dumps({"modes": {
+        "0": {"type": "controlpanel", "layout_file": "editme"}}}, indent=2) + "\n")
+
+    async with _panel(PageContext(base_dir=str(project), bus=_bus(), bind="127.0.0.1")) as p:
+        await p.user.open("/layout")
+        _click(_marked(p, "layout-select-0"))
+        await p.user.should_see("color_rgb")
+        assert _marked(p, "layout-colour-color_rgb"), "the picker must be there"
+        await p.user.should_not_see("draws no colour of its own")
 
 
 def test_duplicating_copies_the_control_next_to_its_original(tmp_path, monkeypatch):

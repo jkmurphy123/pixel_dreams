@@ -300,6 +300,8 @@ code):
     scope / strip_chart      trace_rgb                tape_reel    spoke_rgb
     bar_graph / readouts     color_rgb                keypad       entry_rgb...
     toggles, knobs, buttons  lever_rgb, pointer_rgb, ring_rgb
+    lamp / lamp_square / lamp_rect   color_rgb — the sprite's colour is only the default
+    led_bar, lamp_bank       color
 
 `color` is the universal key and wins over all the others. Setting one writes immediately and rebuilds
 the mode, for the same reason a copy does: a control resolves its colours when it is built. `default`
