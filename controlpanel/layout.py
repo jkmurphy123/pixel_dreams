@@ -264,6 +264,28 @@ def _load_freeform(name, data, sprite_defs):
                   background_image=background_image)
 
 
+def layout_from_data(data, name: str | None = None) -> Layout:
+    """
+    Build and validate a Layout from an in-memory document.
+
+    Split out of load_layout so a CANDIDATE document can be validated before anything is written —
+    the layout editor's only validator is this one, so the editor cannot develop a second opinion
+    about what a valid layout is.
+    """
+    if not isinstance(data, dict):
+        raise LayoutError(f"a layout must be a JSON object, not {type(data).__name__}")
+    name = str(name or data.get("name") or "layout")
+    sprite_defs = load_sprite_defs()["sprites"]
+    mode = str(data.get("mode", "grid")).strip().lower()
+    if mode == "grid":
+        return _load_grid(name, data, sprite_defs)
+    if mode == "freeform":
+        return _load_freeform(name, data, sprite_defs)
+    raise LayoutError(
+        f"layout '{name}': unknown mode '{mode}' (expected 'grid' or 'freeform')"
+    )
+
+
 def load_layout(name_or_path: str) -> Layout:
     """
     Load and fully validate a layout by bare name (under
@@ -279,13 +301,4 @@ def load_layout(name_or_path: str) -> Layout:
     except json.JSONDecodeError as e:
         raise LayoutError(f"invalid JSON in {layout_path}: {e}")
 
-    name = data.get("name", layout_path.stem)
-    sprite_defs = load_sprite_defs()["sprites"]
-    mode = str(data.get("mode", "grid")).strip().lower()
-    if mode == "grid":
-        return _load_grid(name, data, sprite_defs)
-    if mode == "freeform":
-        return _load_freeform(name, data, sprite_defs)
-    raise LayoutError(
-        f"layout '{name}': unknown mode '{mode}' (expected 'grid' or 'freeform')"
-    )
+    return layout_from_data(data, name=data.get("name", layout_path.stem))

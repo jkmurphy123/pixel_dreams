@@ -41,6 +41,8 @@ from core.config import (
     config_digest,
     enabled_mode_indices,
     infer_max_modes_from_config,
+    load_json,
+    normalize_type,
     read_active_profile,
 )
 from core.editor import (
@@ -51,6 +53,13 @@ from core.editor import (
     load_payload,
     restore_backup,
     switch_profile,
+)
+from core.layout_edit import (
+    LayoutEditor,
+    backgrounds_dir,
+    create_freeform,
+    list_backgrounds,
+    list_layouts,
 )
 from core.params import GROUPS, group_params, resolve_params, validate_param_value
 from core.store import sha256_file
@@ -525,6 +534,8 @@ def register_pages(ctx: PageContext) -> None:
     if ctx.token_required:
         _install_token_gate(ctx)
         _register_auth_route(ctx)
+
+    _register_layout_route(app, ctx)
 
     @app.get("/api/status")
     def api_status(request: Request):
@@ -1379,10 +1390,493 @@ def _layout_key(name) -> str:
     return (base[:-5] if base.lower().endswith(".json") else base).lower()
 
 
+# ---------------------------------------------------------------- the alignment page (design Phase 6B)
+#
+# The page holds the DOCUMENT and edits it; the wall follows through the bus; Save writes the file.
+# That split is the whole design: nudging is dozens of presses per overlay, so a press must not be a
+# write — but a structural change (add/remove) is one deliberate act, and it writes immediately, the
+# same way the duplicate button and the enable switch do, because a mode that does not exist in the
+# file cannot be tuned.
+
+
+def _first_controlpanel_slot(modes: dict) -> int | None:
+    for slot in sorted(modes, key=lambda k: int(k) if str(k).isdigit() else 10 ** 9):
+        entry = modes.get(slot)
+        if isinstance(entry, dict) and normalize_type(entry.get("type", "")) == "controlpanel":
+            return int(slot)
+    return None
+
+
+def _layout_page(ctx: PageContext, rel: str, number: int | None) -> None:
+    """The /layout page: pick the overlay, nudge it, see it on the wall, save the file."""
+    from controlpanel.layout import LayoutError        # on demand: it imports pygame
+
+    path = os.path.join(ctx.base_dir, rel)
+    document = load_json(path, {})
+    modes = document.get("modes") if isinstance(document, dict) else None
+    modes = modes if isinstance(modes, dict) else {}
+
+    _chrome("Align a control panel's overlays to its artwork")
+
+    if number is None:
+        number = _first_controlpanel_slot(modes)
+    entry = modes.get(str(number)) if number is not None else None
+    if not isinstance(entry, dict):
+        ui.label(f"No control panel mode in {rel} — mode {number} is not there."
+                 ).classes("text-sm text-orange-300")
+        ui.link("Back to the profile", f"/?profile={rel}").classes("text-xs")
+        _footer()
+        return
+    if normalize_type(entry.get("type", "")) != "controlpanel":
+        ui.label(f"Mode {number} in {rel} is {entry.get('type')!r}, not a controlpanel. Pick a "
+                 f"control panel mode on the profile page, then open its params.") \
+            .classes("text-sm text-orange-300")
+        ui.link("Back to the profile", f"/?profile={rel}").classes("text-xs")
+        _footer()
+        return
+
+    layout_name = str(entry.get("layout_file") or "").strip()
+    try:
+        editor = LayoutEditor(layout_name)
+    except LayoutError as e:
+        ui.label(f"The layout this mode points at could not be opened: {e}") \
+            .classes("text-sm text-red-400")
+        ui.link("Back to the profile", f"/?profile={rel}").classes("text-xs")
+        _footer()
+        return
+
+    state: dict = {"selected": None, "outcome": None, "step": 1, "pending_remove": None}
+    cw, ch = editor.canvas()
+    background = str(editor.document.get("background_image") or "")
+
+    def live_report() -> dict:
+        report = ctx.bus.snapshot().get("layout_report")
+        return report if isinstance(report, dict) else {}
+
+    def on_screen() -> bool:
+        """Is the control panel ON THE WALL showing this layout? Nudges are refused otherwise."""
+        return _layout_key(live_report().get("layout_file")) == _layout_key(layout_name)
+
+    def selected() -> int | None:
+        return state["selected"]
+
+    def post_layout(op: str, **fields) -> None:
+        command = {"cmd": "layout_edit", "op": op, "layout": layout_name}
+        command.update(fields)
+        ctx.bus.post(command)
+
+    def say(text: str, good: bool = True) -> None:
+        state["outcome"] = (text, "text-green-400" if good else "text-red-400")
+
+    with ui.card().classes("w-full mt-2 gap-1"):
+        with ui.row().classes("items-center gap-2 w-full"):
+            ui.label(f"{editor.name}").classes("text-base font-semibold")
+            ui.badge(f"{editor.mode}").props("outline").classes("text-xs")
+            ui.label(f"{cw}x{ch} · {len(editor.controls())} overlays").classes("text-xs opacity-60")
+            ui.link("mode params →", f"/mode/{number}?profile={rel}").classes("text-xs ml-auto")
+        live_line = ui.label().classes("text-xs").mark("layout-live")
+        ui.label("The page edits the document; the wall follows live; Save writes the file. "
+                 "Nudges are refused unless the display is showing THIS layout, so an edit can never "
+                 "move something you cannot see.").classes("text-xs opacity-50")
+
+    if editor.mode != "freeform":
+        with ui.card().classes("w-full mt-2"):
+            ui.label("This is a grid layout.").classes("text-sm text-orange-300")
+            ui.label("Its controls sit in whole 128px cells inside panels and are validated to fit "
+                     "there, so there is no pixel position to align. The alignment editor works on "
+                     "freeform layouts — the ones that put overlays over a background PNG.") \
+                .classes("text-xs opacity-70")
+            ui.link("Back to the profile", f"?profile={rel}").classes("text-xs")
+
+    outcome = ui.label().classes("text-xs whitespace-pre-line").mark("layout-outcome")
+    preview_box = ui.column().classes("w-full")
+    list_box = ui.column().classes("w-full")
+    pad_box = ui.column().classes("w-full")
+
+    def render_all() -> None:
+        if state["outcome"]:
+            text, colour = state["outcome"]
+            outcome.classes(replace=f"text-xs whitespace-pre-line {colour}")
+            outcome.set_text(text)
+        report = live_report()
+        if report:
+            showing = _layout_key(report.get("layout_file")) == _layout_key(layout_name)
+            live_line.set_text(
+                f"on the wall: {report.get('layout_file')}"
+                + ("  (this layout — nudges apply live)" if showing else
+                   "  (a DIFFERENT layout: nudges will be refused, and Save only changes the file)"))
+            live_line.classes(replace="text-xs " + ("text-green-400" if showing
+                                                   else "text-orange-300"))
+        else:
+            live_line.set_text("the mode on screen is not a control panel, so nothing can be "
+                               "nudged live — you can still edit and Save the file")
+            live_line.classes(replace="text-xs opacity-60")
+        _draw_preview()
+        _draw_rows()
+        _draw_pad()
+
+    # ------------------------------------------------------------------ preview
+
+    def _draw_preview() -> None:
+        preview_box.clear()
+        with preview_box:
+            with ui.card().classes("w-full mt-2 gap-1"):
+                ui.label("The artwork").classes("text-base font-semibold")
+                if not background:
+                    ui.label("This layout has no background_image, so there is nothing to align to "
+                             "(a freeform layout normally points at a PNG in "
+                             "assets/control_panel/backgrounds/).").classes("text-xs opacity-70")
+                else:
+                    ui.label("Boxes are geometry from the file, not a render — the wall is the real "
+                             "render. Click one to select that overlay.").classes("text-xs opacity-50")
+                with ui.element("div").classes("relative w-full").style(
+                        f"max-width: 820px; aspect-ratio: {cw} / {ch};"):
+                    if background:
+                        ui.image(f"/api/asset/background?name={background}") \
+                            .classes("absolute inset-0 w-full h-full")
+                    for i, _control in enumerate(editor.controls()):
+                        rect = editor.rect_of(i) or (0, 0, 0, 0)
+                        chosen = i == selected()
+                        box = ui.element("div").classes("absolute cursor-pointer").style(
+                            "border:2px solid %s; background:%s; left:%.4f%%; top:%.4f%%; "
+                            "width:%.4f%%; height:%.4f%%;" % (
+                                "#ffd23c" if chosen else "#7dd3fc",
+                                "rgba(255,210,60,0.18)" if chosen else "rgba(125,211,252,0.10)",
+                                rect[0] / cw * 100, rect[1] / ch * 100,
+                                rect[2] / cw * 100, rect[3] / ch * 100))
+                        box.mark(f"layout-box-{i}")
+                        box.on("click", lambda _=None, index=i: choose(index))
+
+    # ------------------------------------------------------------------ the list
+
+    def _draw_rows() -> None:
+        list_box.clear()
+        with list_box:
+            with ui.card().classes("w-full mt-2 gap-1"):
+                ui.label(f"Overlays ({len(editor.controls())})").classes("text-base font-semibold")
+                for i, control in enumerate(editor.controls()):
+                    rect = editor.rect_of(i) or (0, 0, 0, 0)
+                    with ui.row().classes("w-full items-center gap-2 py-1 "
+                                          "border-b border-white/5"):
+                        ui.label(str(i)).classes("w-8 text-right font-mono text-xs opacity-70")
+                        ui.label(str(control.get("type", "?"))).classes("w-32 truncate text-sm")
+                        ui.label(str(control.get("sprite", ""))).classes("w-44 truncate text-xs opacity-70")
+                        ui.label(f"{rect[0]},{rect[1]}  {rect[2]}x{rect[3]}") \
+                            .classes("font-mono text-xs opacity-70 w-40")
+                        if i == selected():
+                            ui.badge("selected").props("color=amber").classes("text-xs")
+                        ui.button("select", on_click=lambda _=None, index=i: choose(index)) \
+                            .props("flat dense size=sm no-caps").classes("text-xs") \
+                            .mark(f"layout-select-{i}")
+                        pending = state["pending_remove"] == i
+                        ui.button("confirm remove" if pending else "remove",
+                                  on_click=lambda _=None, index=i: ask_remove(index)) \
+                            .props("flat dense size=sm no-caps" +
+                                   (" color=negative" if pending else "")).classes("text-xs") \
+                            .mark(f"layout-remove-{i}")
+                with ui.row().classes("items-center gap-2 mt-1"):
+                    ui.button("Add overlay…", on_click=add_dialog.open).props("outline dense") \
+                        .mark("layout-add")
+                    ui.button("Save", on_click=do_save).props("color=primary dense") \
+                        .mark("layout-save")
+                    ui.button("Reload from disk", on_click=do_reload).props("flat dense") \
+                        .mark("layout-reload")
+                    ui.label("unsaved changes" if editor.is_dirty() else "no changes") \
+                        .classes("text-xs opacity-60").mark("layout-dirty")
+
+    # ------------------------------------------------------------------ the nudge pad
+
+    def _draw_pad() -> None:
+        pad_box.clear()
+        with pad_box:
+            with ui.card().classes("w-full mt-2 gap-2"):
+                ui.label("Position").classes("text-base font-semibold")
+                if selected() is None:
+                    ui.label("Select an overlay above (or click a box on the artwork) to move it.") \
+                        .classes("text-xs opacity-60")
+                    return
+                index = selected()
+                rect = editor.rect_of(index) or (0, 0, 0, 0)
+                ui.label(f"overlay #{index} — {editor.controls()[index].get('type')} "
+                         f"{editor.controls()[index].get('sprite')}").classes("text-xs opacity-70")
+
+                with ui.row().classes("items-center gap-1"):
+                    ui.label("step").classes("text-xs opacity-60")
+                    for step in (1, 5, 10):
+                        ui.button(f"{step}px", on_click=lambda _=None, s=step: set_step(s)) \
+                            .props("flat dense no-caps" +
+                                   (" color=primary" if state["step"] == step else "")) \
+                            .classes("text-xs").mark(f"layout-step-{step}")
+
+                with ui.row().classes("items-center gap-1"):
+                    ui.button("←", on_click=lambda _=None: nudge(-state["step"], 0)) \
+                        .props("dense").mark("layout-left")
+                    ui.button("→", on_click=lambda _=None: nudge(state["step"], 0)) \
+                        .props("dense").mark("layout-right")
+                    ui.button("↑", on_click=lambda _=None: nudge(0, -state["step"])) \
+                        .props("dense").mark("layout-up")
+                    ui.button("↓", on_click=lambda _=None: nudge(0, state["step"])) \
+                        .props("dense").mark("layout-down")
+                    ui.button("W+", on_click=lambda _=None: resize(state["step"], 0)).props("dense") \
+                        .mark("layout-w-plus")
+                    ui.button("W−", on_click=lambda _=None: resize(-state["step"], 0)).props("dense") \
+                        .mark("layout-w-minus")
+                    ui.button("H+", on_click=lambda _=None: resize(0, state["step"])).props("dense") \
+                        .mark("layout-h-plus")
+                    ui.button("H−", on_click=lambda _=None: resize(0, -state["step"])).props("dense") \
+                        .mark("layout-h-minus")
+
+                with ui.row().classes("items-center gap-2"):
+                    fields = {}
+                    for name, value in (("x", rect[0]), ("y", rect[1]), ("w", rect[2]),
+                                        ("h", rect[3])):
+                        fields[name] = ui.number(name, value=value, format="%d").classes("w-24") \
+                            .mark(f"layout-field-{name}")
+
+                    def apply_fields() -> None:
+                        try:
+                            rect_now = [int(fields["x"].value), int(fields["y"].value),
+                                        int(fields["w"].value), int(fields["h"].value)]
+                        except (TypeError, ValueError):
+                            say("x, y, w and h must be whole numbers", good=False)
+                            render_all()
+                            return
+                        move_to(rect_now)
+
+                    ui.button("Apply", on_click=apply_fields).props("outline dense") \
+                        .mark("layout-apply")
+                    ui.button("centre", on_click=lambda _=None: centre()).props("flat dense") \
+                        .mark("layout-centre")
+
+                with ui.row().classes("items-center gap-2 mt-1"):
+                    ui.switch("Freeze the overlays (hold still while you align)",
+                              value=bool(live_report().get("frozen")),
+                              on_change=lambda e: post_layout("freeze", on=bool(e.value))) \
+                        .mark("layout-freeze")
+                    ui.label("freezing stops update() for every overlay — a zero timestep does not "
+                             "hold several of them still").classes("text-xs opacity-50")
+
+    # ------------------------------------------------------------------ actions
+
+    def choose(index: int) -> None:
+        state["selected"] = index
+        post_layout("select", index=index)
+        render_all()
+
+    def set_step(step: int) -> None:
+        state["step"] = step
+        render_all()
+
+    def move_to(rect) -> None:
+        index = selected()
+        report = editor.set_rect(index, rect)
+        if not report["ok"]:
+            say(report["reason"], good=False)
+        else:
+            if on_screen():
+                post_layout("set_rect", index=index, rect=report["rect"])
+                say(f"overlay #{index} at {report['rect']} — live on the wall, Save to keep it")
+            else:
+                say(f"overlay #{index} moved to {report['rect']} in the document. The display is not "
+                    f"showing this layout, so nothing was applied to the wall — Save writes the file.")
+        render_all()
+
+    def nudge(dx: int, dy: int) -> None:
+        rect = editor.rect_of(selected())
+        if rect is None:
+            return
+        move_to([rect[0] + dx, rect[1] + dy, rect[2], rect[3]])
+
+    def resize(dw: int, dh: int) -> None:
+        rect = editor.rect_of(selected())
+        if rect is None:
+            return
+        move_to([rect[0], rect[1], max(1, rect[2] + dw), max(1, rect[3] + dh)])
+
+    def centre() -> None:
+        report = editor.centre_rect(selected())
+        if not report["ok"]:
+            say(report["reason"], good=False)
+            render_all()
+            return
+        move_to(report["rect"])
+
+    def ask_remove(index: int) -> None:
+        if state["pending_remove"] != index:
+            state["pending_remove"] = index
+            say(f"press confirm remove to delete overlay #{index} (from the file, and from the wall)",
+                good=False)
+            render_all()
+            return
+        state["pending_remove"] = None
+        report = editor.remove_control(index)
+        if not report["ok"]:
+            say(report["reason"], good=False)
+            render_all()
+            return
+        saved = editor.save()
+        if not saved.ok:
+            say(f"removed from the document, but not saved: {saved.reason}", good=False)
+        else:
+            if state["selected"] == index:
+                state["selected"] = None
+                post_layout("select", index=None)
+            if on_screen():
+                ctx.bus.post({"cmd": "refresh_mode"})
+                say(f"removed overlay #{index} and saved. The wall is rebuilding the mode so the "
+                    f"removal shows there too.")
+            else:
+                say(f"removed overlay #{index} and saved {saved.rel}.")
+        render_all()
+
+    def do_save() -> None:
+        result = editor.save()
+        if not result.ok:
+            say(result.reason, good=False)
+        else:
+            backup = f" (backup: {os.path.basename(result.backup)})" if result.backup else ""
+            say(f"saved {result.rel}{backup}")
+        render_all()
+
+    def do_reload() -> None:
+        try:
+            editor.reload()
+        except LayoutError as e:
+            say(f"could not reload: {e}", good=False)
+        else:
+            state["selected"] = None
+            state["pending_remove"] = None
+            post_layout("select", index=None)
+            say("reloaded from disk — unsaved changes dropped")
+        render_all()
+
+    # ------------------------------------------------------------------ add / create dialogs
+
+    add_dialog = ui.dialog()
+    with add_dialog, ui.card().classes("w-full max-w-2xl gap-2"):
+        ui.label("Add an overlay").classes("text-base font-semibold")
+        ui.label("It is appended at the centre of the artwork and written to the file straight away, "
+                 "so the mode can be rebuilt with it — a control that exists only on screen could "
+                 "not be tuned.").classes("text-xs opacity-60")
+        try:
+            from controlpanel.controls import CONTROL_CLASSES as _CATALOGUE
+            from controlpanel.layout import load_sprite_defs as _sprite_defs
+            type_options = sorted(set(_CATALOGUE) | {"plate"})
+            sprite_options = sorted(_sprite_defs()["sprites"])
+        except Exception as e:                                    # pragma: no cover
+            type_options, sprite_options = [], []
+            ui.label(f"could not read the control catalogue: {e}").classes("text-xs text-red-400")
+        type_select = ui.select(type_options, value=(type_options[0] if type_options else None),
+                                label="type").classes("w-64").mark("layout-add-type")
+        sprite_select = ui.select(sprite_options,
+                                  value=("GAUGE_ROUND_SMALL_1" if "GAUGE_ROUND_SMALL_1"
+                                         in sprite_options else None),
+                                  label="sprite", with_input=True).classes("w-64") \
+            .mark("layout-add-sprite")
+        add_outcome = ui.label().classes("text-xs").mark("layout-add-outcome")
+
+        def do_add() -> None:
+            report = editor.add_control({"type": type_select.value, "sprite": sprite_select.value,
+                                         "size": [160, 160]})
+            if not report["ok"]:
+                add_outcome.classes(replace="text-xs text-red-400")
+                add_outcome.set_text(report["reason"])
+                return
+            saved = editor.save()
+            add_outcome.classes(replace="text-xs text-green-400")
+            if not saved.ok:
+                add_outcome.classes(replace="text-xs text-red-400")
+                add_outcome.set_text(f"added to the document, but not saved: {saved.reason}")
+                return
+            add_outcome.set_text(f"added overlay #{report['index']}"
+                                 + (" and saved" if saved.ok else ""))
+            state["selected"] = report["index"]
+            if on_screen():
+                ctx.bus.post({"cmd": "refresh_mode"})
+            render_all()
+
+        with ui.row().classes("items-center gap-2"):
+            ui.button("Add", on_click=do_add).props("color=primary").mark("layout-add-confirm")
+            ui.button("Close", on_click=add_dialog.close).props("flat")
+
+    create_dialog = ui.dialog()
+    with create_dialog, ui.card().classes("w-full max-w-2xl gap-2"):
+        ui.label("New freeform layout over a PNG").classes("text-base font-semibold")
+        ui.label("Drop your artwork in assets/control_panel/backgrounds/, then name a layout here. "
+                 "Seeding copies the controls from an existing layout so you start with the right "
+                 "set of overlays and only have to place them.").classes("text-xs opacity-60")
+        name_input = ui.input("Layout name", placeholder="livingroom_panel").classes("w-full") \
+            .mark("layout-create-name")
+        background_select = ui.select(list_backgrounds(),
+                                      value=(list_backgrounds()[0] if list_backgrounds() else None),
+                                      label="background PNG").classes("w-72") \
+            .mark("layout-create-background")
+        seed_select = ui.select(["none"] + list_layouts(), value="none", label="seed from") \
+            .classes("w-72").mark("layout-create-seed")
+        create_outcome = ui.label().classes("text-xs whitespace-pre-line") \
+            .mark("layout-create-outcome")
+
+        def do_create() -> None:
+            result = create_freeform(name_input.value or "", background_select.value or "",
+                                     None if seed_select.value in (None, "none")
+                                     else seed_select.value)
+            if not result["ok"]:
+                create_outcome.classes(replace="text-xs whitespace-pre-line text-red-400")
+                create_outcome.set_text(result["reason"])
+                return
+            create_outcome.classes(replace="text-xs whitespace-pre-line text-green-400")
+            create_outcome.set_text(
+                f"created {result['name']}.json over {result['background']} "
+                f"({result['canvas'][0]}x{result['canvas'][1]}, {result['controls']} overlays"
+                f"{result['seeded']}).\nPoint the mode at it: on the mode's params page set "
+                f"layout_file to '{result['name']}'.")
+            texture = "text-xs whitespace-pre-line text-green-400"
+
+        with ui.row().classes("items-center gap-2"):
+            ui.button("Create", on_click=do_create).props("color=primary") \
+                .mark("layout-create-confirm")
+            ui.button("Close", on_click=create_dialog.close).props("flat")
+
+    with ui.row().classes("items-center gap-2 mt-2"):
+        ui.button("New freeform layout over a PNG…", on_click=create_dialog.open) \
+            .props("outline dense").mark("layout-create")
+        ui.link("Back to the profile", f"/?profile={rel}").classes("text-xs")
+    _footer()
+
+    render_all()
+
+
+def _register_layout_route(app, ctx: PageContext) -> None:
+    # The page is a NiceGUI page (@ui.page), NOT a FastAPI route: a FastAPI route returns a response
+    # and has no slot, so building UI inside one fails with "the slot stack for this task is empty".
+    @ui.page("/layout")
+    def layout_page(profile: str | None = None, mode: int | None = None):
+        active_path, _ = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+        rel = profile or os.path.relpath(active_path, ctx.base_dir)
+        _layout_page(ctx, rel, int(mode) if mode is not None else None)
+
+    @app.get("/api/asset/background")
+    def asset_background(name: str = ""):
+        """
+        Serve a background PNG to the page's <img>.
+
+        Restricted to the backgrounds directory — a path that resolves outside it is refused, so this
+        cannot be used to read anything else on the machine — and behind the usual token gate, which
+        an <img> satisfies through the cookie (the page itself is behind the middleware).
+        """
+        from fastapi.responses import FileResponse
+
+        wanted = os.path.basename(str(name or ""))
+        target = os.path.join(backgrounds_dir(), wanted)
+        if not wanted or not os.path.isfile(target):
+            return PlainTextResponse("no such background", status_code=404)
+        if os.path.dirname(os.path.abspath(target)) != os.path.abspath(backgrounds_dir()):
+            return PlainTextResponse("refused", status_code=403)
+        return FileResponse(target, media_type="image/png")
+
+
 def _load_registry(base_dir: str) -> dict:
     """The registry's type specs. Re-read per page build so a hand edit shows up on reload."""
-    from core.config import load_json
-
     registry = load_json(os.path.join(base_dir, "modes_registry.json"), {})
     return registry.get("types", {}) if isinstance(registry, dict) else {}
 
