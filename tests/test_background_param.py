@@ -210,3 +210,35 @@ def test_the_registry_offers_it_as_an_optional_field_with_help():
     assert "background_image" not in entry["required"]
     spec = entry["params"]["background_image"]
     assert spec["default"] == "" and len(spec["help"]) > 40
+
+
+HELP_SENTENCE = "Bare name or path to the artwork."
+
+
+async def test_a_fields_help_text_shows_on_the_page_you_edit_in(tmp_path):
+    """
+    The registry's words about a key are the only place its meaning is written down — and the
+    EDITABLE rows drew the widget and skipped the help entirely, so no parameter's help had ever been
+    visible on the page you actually edit in. Found by adding this parameter and asking why its
+    explanation was not on the screen.
+    """
+    from panel.app import PageContext
+    from test_transport import _bus, _panel
+
+    root = tmp_path / "proj"
+    (root / "configs").mkdir(parents=True)
+    (root / "modes_registry.json").write_text(json.dumps({
+        "settings": {"modes_config_file": "modes_config.json"},
+        "types": {"controlpanel": {
+            "entrypoint": "modes.control_panel_mode:ControlPanelMode",
+            "required": ["layout_file"],
+            "optional": ["background_image"],
+            "params": {"layout_file": {"default": ""},
+                       "background_image": {"default": "", "help": HELP_SENTENCE}}}},
+    }, indent=2) + "\n")
+    (root / "modes_config.json").write_text(json.dumps(
+        {"modes": {"0": {"type": "controlpanel", "layout_file": "steampunk1"}}}, indent=2) + "\n")
+
+    async with _panel(PageContext(base_dir=str(root), bus=_bus(), bind="127.0.0.1")) as p:
+        await p.user.open("/mode/0?profile=modes_config.json")
+        await p.user.should_see(HELP_SENTENCE)

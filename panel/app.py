@@ -2349,6 +2349,7 @@ def _editable_field(state: _ModeEditor, p, staged: dict) -> None:
             if not can_edit:
                 _param_widget(p)
                 ui.label(why).classes("text-[11px] opacity-60")
+                _help_line(p)
                 return
 
             def on_change(value, key=p.key, box=notice):
@@ -2363,6 +2364,7 @@ def _editable_field(state: _ModeEditor, p, staged: dict) -> None:
                 initial = _blank_for(p)
                 notice.set_text("staged for removal — Save to write that")
             _editable_widget(state, p, notice, on_change=on_change, initial=initial)
+            _help_line(p)
 
             # numeric feedback for a value the schema bounds
             if p.widget == "number" and (p.min is not None or p.max is not None):
@@ -2527,14 +2529,25 @@ def _editable_widget(state: _ModeEditor, p, notice, on_change, initial) -> None:
         .classes("w-full font-mono text-xs").mark(marker)
 
 
+def _help_line(p) -> None:
+    """
+    The registry's own words about a field.
+
+    Shared by both renderings for one reason: the editable rows used to draw the widget and skip
+    the help, so the only place a key's meaning is written down was invisible on the page you
+    actually edit in.
+    """
+    if p.help:
+        ui.label(p.help).classes("text-[11px] opacity-50").mark(f"param-help-{p.key}")
+
+
 def _param_field(p) -> None:
     with ui.row().classes("w-full items-start gap-4 py-2 border-b border-white/5") \
             .mark(f"param-{p.key}"):
         _param_labels(p)
         with ui.column().classes("grow gap-1"):
             _param_widget(p)
-            if p.help:
-                ui.label(p.help).classes("text-xs opacity-50")
+            _help_line(p)
 
 
 def _param_labels(p) -> None:
