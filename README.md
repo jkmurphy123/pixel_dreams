@@ -60,6 +60,37 @@ WHICH profile is active, in order: `--config FILE` (a command-line pin), then
 `modes_registry.json` → `settings.modes_config_file`. An app started with `--config` cannot be
 switched from the panel and says so, because that flag would win again at the next restart.
 
+### Creating a new config
+
+**New config…** on the profile card creates a profile containing every mode `modes_registry.json`
+knows about, so a new orientation starts with all the material and you can disable what does not
+suit it. Name it, and it lands in `configs/` (`.json` is added if you leave it off) and appears in
+the dropdown immediately.
+
+Two things are worth knowing, because they are what the button is careful about:
+
+- **A create never overwrites.** An existing name is refused with the reason and nothing is written —
+  a create has no backup to fall back on, so it refuses rather than replaces. To change an existing
+  profile, use Save, which backs up first.
+- **The tuned values are copied from the profile you are looking at** (tick box, on by default). A
+  mode the current profile already configures comes across exactly as it is; a mode it does not
+  mention is included with its required keys filled from the registry's recorded defaults and
+  everything else unset, for you to tune. Untick it for a file of bare registry defaults.
+
+Anything the button could not do properly, it says rather than hides:
+
+- **Required values that are empty** are written (the key has to exist for the profile to validate)
+  and listed as *still needs a value* — a mode with an empty folder shows nothing until you point it
+  somewhere.
+- **A mode the registry declares but cannot be filled is left out, and named**, with the keys that
+  were missing. It is left out rather than guessed at: the registry records no default for those
+  keys, and a fabricated value would look configured while doing nothing. Give the registry a
+  default for them and the next create includes it. (Today that is four types: `headlinesnews`,
+  `animatedcityrain`, `chatreplay` and `antfarm`.)
+
+The file is validated and written atomically through the same path as any other edit, so a new
+profile cannot be born broken, and the dialog stays open showing the report.
+
 ### Backups and the raw editor
 
 Every save keeps a timestamped copy of the profile in `.backups/` (newest 20 per file). The
@@ -120,6 +151,8 @@ curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/status
 curl -H "X-Panel-Token: $TOKEN" http://jetsons:8090/api/profiles
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/refresh
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/step -d '{"delta": 1}'   # or -1
+curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/profile/new \
+     -H 'Content-Type: application/json' -d '{"name": "modes_config_livingroom", "inherit": true}'
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/apply \
      -H 'Content-Type: application/json' -d '{"profile": "configs/modes_config_portrait.json", "refresh": true}'
 curl -H "X-Panel-Token: $TOKEN" -X POST http://jetsons:8090/api/profile \

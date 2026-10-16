@@ -715,6 +715,52 @@ than relying on `--auto`.
   box. Both are easy to add on this plumbing; the request was two buttons.
 
 
+### 10.7 Addition after the phases — New config (DONE, 2026-10-15)
+
+Asked for next: "create a new config file with all known modes and add it to the drop down list".
+
+- **`New config…` on the profile card**, dialog with a name, a seed tick box (default on) and a
+  switch tick box (default off). The file lands in `configs/`, appears in the dropdown immediately,
+  and the dialog stays open showing the full report.
+- **What goes in it, and the reasoning is the deliverable as much as the code:**
+  * a mode the active profile already configures is copied VERBATIM (tuned values, its own `type`
+    spelling, its `enabled` state) — so a new orientation starts from work already done, which is the
+    whole point of seeding it from what you are looking at;
+  * a mode it does not mention gets its REQUIRED keys from the schema's recorded defaults and nothing
+    else — an unset key is a key the mode itself decides, and the panel already shows those as "not
+    set in this profile";
+  * a required key that is EMPTY is written (the key must exist for the profile to validate) and
+    reported as needing a value;
+  * a required key with NO recorded default means the whole type is left out and NAMED. Guessing a
+    value from the key's name is what the parameter layer refuses to do, and a fabricated value would
+    look configured while doing nothing.
+- **On the real registry**: 53 types → 49 modes written (20 carried over from the active profile, 29
+  at registry defaults), 3 values needing a value, 4 types left out (`headlinesnews`,
+  `animatedcityrain`, `chatreplay`, `antfarm` — required keys with no default). Validation: 0 errors,
+  0 warnings. Every registry type is therefore either in the file or explained, which is asserted.
+- **A create never overwrites**: an existing name is refused with the reason and nothing written —
+  there is no backup to fall back on for a file that did not exist a second ago. Names are restricted
+  (`[A-Za-z0-9._-]`, no separators, no leading dot, ≤100 chars) and REFUSED rather than sanitised, so
+  the file is always where the typed name says; a resolved path that is not directly inside `configs/`
+  is rejected as defence in depth.
+- **`POST /api/profile/new`** for scripts; 409 with the reason on refusal, and the success body is the
+  report (`carried_over`, `at_registry_defaults`, `needs_a_value`, `left_out`), not just `ok`.
+- **A bug found by writing the tests, worth recording**: three shapes of "registry" meet at this
+  boundary — the file on disk is `{"settings", "types"}`, the panel's `_load_registry` hands out the
+  `types` MAPPING, and `validate_profile`/`switch_profile` want the mapping. Taking the wrong one is
+  not loud: it reports every type as "unknown", or finds no types at all. Normalised in ONE place
+  (`_type_specs`) instead of remembered per call site, and pinned by a test that both shapes give
+  identical output.
+- **Verified**: 32 tests (`tests/test_new_config.py`) — the generator rules on a synthetic registry,
+  unsafe names, the overwrite refusal, determinism, document-vs-mapping equality, the refusal path
+  when `--config` pins the app (file created, switch refused, and it says so), the distinct real-tree
+  test, three page-level clicks, and one process-level run that creates over HTTP, switches, and makes
+  the app PLAY the generated profile — "the file exists" would not have caught a mode the app cannot
+  build. Plus a live run against the real registry over the LAN (49 modes, listed in
+  `/api/profiles`, duplicate refused, wall untouched), whose probe file was removed afterwards.
+  Suite: 504 passed.
+
+
 ## 11. Risks and non-goals
 
 Risks:

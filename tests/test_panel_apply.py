@@ -243,6 +243,10 @@ def test_a_disabled_mode_is_skipped_by_the_actual_rotation(kiosk):
     assert editor.save().ok
     assert _post(url + "/api/apply", payload={"refresh": False})[0] == 200
     assert _wait_for(lambda s: s.get("enabled_modes") == [0, 2], url) is not None
+    # A switch that was already in flight when the apply landed still COMPLETES — the app is right to
+    # finish what it started — so sampling immediately can catch the old transition arriving on the
+    # disabled mode. Wait until the loop is on an enabled mode before observing the rotation.
+    assert _wait_for(lambda s: s.get("mode_index") in (0, 2), url) is not None
 
     seen = set()
     deadline = time.time() + 6.0

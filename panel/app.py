@@ -46,6 +46,7 @@ from core.config import (
 from core.editor import (
     EditorRefused,
     ProfileEditor,
+    create_profile,
     list_backups,
     load_payload,
     restore_backup,
@@ -202,6 +203,94 @@ def _render_switch_button(container, ctx: PageContext, state: dict, info, is_act
         ui.label("Writes runtime/active_profile.json (one line, gitignored) and reloads the "
                  "running app. It refuses a profile that does not validate.") \
             .classes("text-xs opacity-50")
+
+
+def _create_summary(result) -> str:
+    """
+    The report after a create, in full: what landed, where each value came from, and what still
+    needs a human. Summarising this to "created" would hide the two things that matter — the
+    placeholders and the modes that could not be included at all.
+    """
+    parts = [f"Created {result.rel} — {result.modes} modes"]
+    origin = []
+    if result.inherited:
+        origin.append(f"{len(result.inherited)} carried over from {result.seed or 'the seed profile'}")
+    if result.at_defaults:
+        origin.append(f"{len(result.at_defaults)} at registry defaults")
+    parts.append(" (" + ", ".join(origin) + ")." if origin else ".")
+    text = " ".join(parts)
+    if result.placeholders:
+        text += ("\nStill needs a value (" + str(len(result.placeholders)) +
+                 "): " + ", ".join(result.placeholders) +
+                 " — the registry records no real default for these, and a mode with an empty one "
+                 "shows nothing until you fill it in.")
+    if result.left_out:
+        listed = "; ".join(f"{t} ({', '.join(keys)})" for t, keys in result.left_out)
+        text += (f"\nLeft out ({len(result.left_out)}): {listed} — the registry declares these as "
+                 f"required with no default, so an entry could not be written that the app would "
+                 f"build. Give them defaults in the registry to include them.")
+    if result.switched is not None:
+        text += "\n" + ("Switched: " + result.switched.reason if result.switched.ok
+                        else "Created, but not switched: " + result.switched.reason)
+    return text
+
+
+def _render_new_config(ctx: PageContext, after_create) -> None:
+    """
+    Create a new profile: every mode the registry knows, in a file you name, under configs/.
+
+    This writes a file, so it can refuse but it can never be half-done: the name is checked, an
+    existing file is never overwritten, and the document goes through the same validation and atomic
+    write as an edit. The result is reported in full and the dialog stays open to be read, because
+    the interesting part is rarely "created" — it is which values still need filling and which modes
+    the registry declares but cannot be created at all.
+
+    The one choice worth making here is the seed: copying the tuned values from the profile you are
+    looking at (the default) means a new orientation starts from the settings you have already
+    adjusted, rather than from nothing. Unticking it gives a file of bare registry defaults.
+    """
+    active_path, _ = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+    try:
+        seed_rel = os.path.relpath(active_path, ctx.base_dir)
+    except ValueError:                      # different drive: nothing sensible to show
+        seed_rel = active_path
+
+    dialog = ui.dialog()
+    ui.button("New config…", on_click=dialog.open).props("outline").mark("new-config")
+
+    with dialog, ui.card().classes("w-full max-w-2xl gap-2"):
+        ui.label("New config").classes("text-base font-semibold")
+        ui.label("Every mode in modes_registry.json, in one new file under configs/. Nothing else "
+                 "in the project is touched, and an existing file is never overwritten.") \
+            .classes("text-xs opacity-60")
+        name_input = ui.input("File name", placeholder="modes_config_livingroom") \
+            .classes("w-full").mark("new-config-name")
+        ui.label(f"Saved as configs/<name>.json — '.json' is added if you leave it off.") \
+            .classes("text-xs opacity-50")
+        inherit = ui.checkbox(f"Copy the tuned values from {seed_rel}", value=True) \
+            .mark("new-config-inherit")
+        switch_it = ui.checkbox("Make it the active profile once it is created", value=False) \
+            .mark("new-config-switch")
+        outcome = ui.label().classes("text-xs whitespace-pre-line").mark("new-config-outcome")
+
+        def do_create() -> None:
+            result = create_profile(
+                ctx.base_dir, name_input.value or "", _load_registry(ctx.base_dir),
+                inherit_from=active_path if inherit.value else None,
+                switch=bool(switch_it.value), config_override=ctx.config_override)
+            if not result.ok:
+                outcome.classes(replace="text-xs whitespace-pre-line text-red-400")
+                outcome.set_text("Refused: " + " ".join([result.reason] + list(result.errors)))
+                return
+            if result.switched is not None and result.switched.ok:
+                ctx.bus.post(_apply_payload(ctx, result.switched.profile_abs, refresh=True))
+            outcome.classes(replace="text-xs whitespace-pre-line text-green-400")
+            outcome.set_text(_create_summary(result))
+            after_create(result)
+
+        with ui.row().classes("items-center gap-2"):
+            ui.button("Create", on_click=do_create).props("color=primary").mark("new-config-create")
+            ui.button("Close", on_click=dialog.close).props("flat")
 
 
 def _render_backups(container, ctx: PageContext, state: dict, after) -> None:
@@ -554,6 +643,56 @@ def register_pages(ctx: PageContext) -> None:
         # Poll /api/status for the real position (`mode_index`, and `last_step` to confirm).
         return {"ok": True, "queued": delta}
 
+    @app.post("/api/profile/new")
+    async def api_profile_new(request: Request):
+        """
+        Create a new profile containing every mode the registry knows.
+
+        Body: {"name": "modes_config_livingroom", "inherit": true, "switch": false}. `inherit`
+        copies the tuned values from the profile that is currently active, so a new orientation
+        starts from settings already adjusted. The response is the report, not just a boolean: which
+        modes came from where, which values are still empty, and which types could not be created.
+
+        Refused (409) for a name that is not a safe file name or a file that already exists — a
+        create never overwrites, because there is no backup to fall back on for a file you meant to
+        keep. Nothing is written on refusal.
+        """
+        if not _authorised(ctx, request):
+            return PlainTextResponse("token required", status_code=403)
+        body = {}
+        raw = await request.body()
+        if raw:
+            try:
+                body = json.loads(raw)
+            except ValueError:
+                return JSONResponse({"ok": False, "reason": "body must be JSON"}, status_code=400)
+            if not isinstance(body, dict):
+                return JSONResponse({"ok": False, "reason": "body must be a JSON object"},
+                                    status_code=400)
+
+        inherit_from = None
+        if body.get("inherit", True):
+            inherit_from, _ = profiles_mod.resolve_active_profile(ctx.base_dir, ctx.config_override)
+        result = create_profile(ctx.base_dir, str(body.get("name") or ""),
+                                _load_registry(ctx.base_dir), inherit_from=inherit_from,
+                                switch=bool(body.get("switch", False)),
+                                config_override=ctx.config_override)
+        if not result.ok:
+            return JSONResponse({"ok": False, "reason": result.reason, "errors": list(result.errors)},
+                                status_code=409)
+        if result.switched is not None and result.switched.ok:
+            ctx.bus.post(_apply_payload(ctx, result.switched.profile_abs, refresh=True))
+        return {
+            "ok": True, "path": result.rel, "sha256": result.sha256, "modes": result.modes,
+            "carried_over": list(result.inherited), "at_registry_defaults": list(result.at_defaults),
+            "seed": result.seed,
+            "needs_a_value": list(result.placeholders),
+            "left_out": [{"type": t, "keys": list(k)} for t, k in result.left_out],
+            "switched": bool(result.switched is not None and result.switched.ok),
+            "switch_reason": (result.switched.reason if result.switched is not None else ""),
+            "warnings": list(result.warnings),
+        }
+
     @app.post("/api/profile")
     async def api_profile(request: Request):
         """
@@ -680,6 +819,18 @@ def register_pages(ctx: PageContext) -> None:
                 """A switch happened (or was explained): re-render everything that depends on it."""
                 reload_from_disk()
                 _refresh_status(ctx, labels)
+
+            def after_create(result) -> None:
+                """
+                A new profile exists. Show it rather than only saying so: the list is rebuilt with
+                the new file selected, so the modes it contains are immediately visible (and, with
+                the seed ticked, recognisably the ones from the profile you were looking at).
+                """
+                state["view"] = result.rel
+                reload_from_disk()
+                _refresh_status(ctx, labels)
+
+            _render_new_config(ctx, after_create)
 
             def on_view_change() -> None:
                 state["view"] = select.value

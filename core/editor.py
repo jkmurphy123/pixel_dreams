@@ -38,6 +38,7 @@ from .config import (
     write_active_profile,
 )
 from .params import resolve_params, validate_param_value
+from .profiles import PROFILES_DIRNAME
 from .store import WriteVerificationError, atomic_write_json, sha256_file
 from .validation import ERROR, Issue, validate_profile
 
@@ -525,6 +526,232 @@ def switch_profile(base_dir: str, profile_path: str, registry: dict, *,
         runtime_file=active_profile_file(base_dir),
         payload=load_payload(base_dir, path),
         warnings=tuple(i.render().strip() for i in issues if not i.is_error))
+
+
+# ---------------------------------------------------------------- creating a new profile
+#
+# "New config" is a CREATE, and it is the only writer path here that makes a file rather than
+# changing one. Two rules follow from that, and both are about not producing an unusable profile:
+#   * anything it writes goes through the same validation + atomic write as an edit, so a new file
+#     cannot be born broken;
+#   * a mode the registry declares but whose required keys cannot be filled is LEFT OUT and named in
+#     the result, rather than written as an empty entry the app would then fail to build (and rather
+#     than guessing a value from the key's name, which is exactly what the param layer refuses to do).
+
+PROFILE_SUFFIX = ".json"
+_NAME_ALLOWED = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+
+
+@dataclass
+class CreateResult:
+    """The outcome of creating a new profile file."""
+
+    ok: bool
+    reason: str = ""
+    path: str = ""                     # absolute
+    rel: str = ""                      # relative to base_dir, as the panel lists it
+    sha256: str = ""
+    modes: int = 0
+    types: tuple = ()                  # every type included, in file order
+    inherited: tuple = ()              # types whose tuned values came from the seed profile
+    at_defaults: tuple = ()            # types included at registry defaults
+    placeholders: tuple = ()           # "type.key" required values that are empty or null
+    left_out: tuple = ()               # (type, (keys...)) that could not be created validly
+    seed: str = ""                     # which profile the tuned values came from
+    switched: "SwitchResult | None" = None
+    errors: tuple = ()
+    warnings: tuple = ()
+
+
+def safe_profile_name(name: str) -> tuple:
+    """
+    (filename, problem) for a user-supplied profile name.
+
+    A create writes a new file into the project, so the name is restricted rather than sanitised:
+    anything with a path separator, a leading dot, a `..`, or a character outside `[A-Za-z0-9._-]`
+    is REFUSED with the reason shown, not quietly rewritten into something else. A silent rename
+    would leave the user looking for a file under the name they typed. `.json` is appended when it
+    is missing, because that is the only extension the app will load.
+    """
+    raw = (name or "").strip()
+    if not raw:
+        return "", "give the new config a name"
+    # Checked before the leading-dot rule: '../evil.json' and 'a/b.json' both contain a separator,
+    # and "that is not allowed in a name" is the reason a user needs to see, not "starts with a dot".
+    if any(ch not in _NAME_ALLOWED for ch in raw):
+        return "", (f"{raw!r} contains characters that are not allowed in a profile name "
+                    f"(use letters, digits, dot, dash, underscore — no slashes, spaces or tildes)")
+    if raw.startswith("."):
+        return "", f"{raw!r} starts with a dot — hidden files are not profiles"
+    if not raw.lower().endswith(PROFILE_SUFFIX):
+        raw += PROFILE_SUFFIX
+    if len(raw) > 100:
+        return "", "that name is too long (100 characters max)"
+    return raw, ""
+
+
+def _type_specs(registry) -> dict:
+    """
+    The `types` mapping out of whatever the caller has.
+
+    Three shapes meet at this boundary: the panel's `_load_registry` hands out the `types` MAPPING,
+    the file on disk is the whole document, and `validate_profile` wants the mapping. Normalising in
+    one place beats remembering which one each caller passes — getting it wrong is not loud, it just
+    reports every type as unknown.
+    """
+    if not isinstance(registry, dict):
+        return {}
+    types = registry.get("types", registry)
+    return types if isinstance(types, dict) else {}
+
+
+def build_full_profile(registry: dict, seed_modes: dict | None = None) -> tuple:
+    """
+    Every mode the registry knows, as a profile document body.
+
+    Returns `(modes, report)`. Pure — no disk access — so the RULES are testable without a project
+    directory, which is the part worth testing: which types appear, what they are seeded with, and
+    which ones could not be created at all.
+
+    * A type the seed profile already has is copied VERBATIM (its tuned values, its own `type`
+      spelling, its `enabled` state). Copying is what makes a new orientation start from the values
+      already adjusted rather than from nothing.
+    * A type the seed does not have gets its REQUIRED keys only, filled from the schema's recorded
+      defaults. Everything else is left unset on purpose: an unset key is a key the mode itself
+      decides, and the panel shows it as "not set in this profile". Filling all 409 declared keys
+      would invent settings the user never chose.
+    * A required key with no recorded default cannot be filled honestly, so its whole type is left
+      out and reported. Writing `null`, or guessing from the key's name, would produce a mode that
+      looks configured and is not.
+    * A default that exists but is empty (`""`, `[]`, `{}`, `null`) IS written — the key has to be
+      present for the profile to validate — and the pair is reported as a placeholder so the panel
+      can say which values still need a real answer.
+    """
+    types = _type_specs(registry)
+    by_type = {}
+    for cfg in (seed_modes or {}).values():
+        if isinstance(cfg, dict) and cfg.get("type"):
+            by_type.setdefault(normalize_type(cfg["type"]), cfg)
+
+    modes: dict = {}
+    inherited, at_defaults, placeholders, left_out = [], [], [], []
+    slot = 0
+    for type_key, spec in types.items():
+        seed = by_type.get(type_key)
+        if seed is not None:
+            modes[str(slot)] = copy.deepcopy(seed)
+            inherited.append(type_key)
+            slot += 1
+            continue
+
+        entry: dict = {"type": type_key}
+        unfillable, empty_valued = [], []
+        for key in spec.get("required", []) or []:
+            schema = (spec.get("params") or {}).get(key)
+            if not isinstance(schema, dict) or "default" not in schema:
+                unfillable.append(key)
+                continue
+            value = schema["default"]
+            entry[key] = copy.deepcopy(value)
+            if value is None or value == "" or value == [] or value == {}:
+                empty_valued.append(f"{type_key}.{key}")
+        if unfillable:
+            left_out.append((type_key, tuple(unfillable)))
+            continue
+        # Only an INCLUDED type contributes placeholders: reporting "headlinesnews.feed_url is empty"
+        # for a type that was then left out of the file would point at something that is not there.
+        placeholders.extend(empty_valued)
+        modes[str(slot)] = entry
+        at_defaults.append(type_key)
+        slot += 1
+
+    report = {
+        "types": tuple(inherited) + tuple(at_defaults),
+        "inherited": tuple(inherited),
+        "at_defaults": tuple(at_defaults),
+        "placeholders": tuple(placeholders),
+        "left_out": tuple(left_out),
+    }
+    return modes, report
+
+
+def create_profile(base_dir: str, name: str, registry: dict, *, inherit_from: str | None = None,
+                   switch: bool = False, config_override: str | None = None) -> CreateResult:
+    """
+    Create a new profile: every mode the registry knows, in a file you name, in configs/.
+
+    Written through the same validation and atomic write as an edit, so a new file cannot be born
+    broken. `inherit_from` (usually the active profile) seeds the tuned values — see
+    `build_full_profile` for the rules and for what happens to a mode that cannot be filled.
+
+    Refused, with nothing written, when: the name is unsafe, the file already exists (a create must
+    never be a silent overwrite — that is what Save is for, and Save backs up first), the registry
+    lists no types, or the generated document does not validate.
+    """
+    filename, problem = safe_profile_name(name)
+    if problem:
+        return CreateResult(ok=False, reason=problem)
+
+    directory = os.path.join(os.path.abspath(base_dir), PROFILES_DIRNAME)
+    path = os.path.abspath(os.path.join(directory, filename))
+    # Defence in depth: the name is restricted above, and a create still must not escape configs/.
+    if os.path.dirname(path) != os.path.abspath(directory):
+        return CreateResult(ok=False,
+                            reason=f"{name!r} does not name a file directly inside {PROFILES_DIRNAME}/")
+    if os.path.exists(path):
+        return CreateResult(
+            ok=False,
+            reason=f"{os.path.relpath(path, base_dir)} already exists — pick another name. "
+                   f"Nothing was written.")
+
+    seed_label, seed_modes = "", None
+    if inherit_from:
+        seed_path = (os.path.abspath(inherit_from) if os.path.isabs(inherit_from)
+                     else os.path.abspath(os.path.join(base_dir, inherit_from)))
+        candidate = load_json(seed_path, None)
+        if isinstance(candidate, dict) and isinstance(candidate.get("modes"), dict) \
+                and candidate["modes"]:
+            seed_modes = candidate["modes"]
+            seed_label = os.path.relpath(seed_path, base_dir)
+
+    modes, report = build_full_profile(registry, seed_modes)
+    if not modes:
+        return CreateResult(ok=False,
+                            reason="the registry lists no mode types, so there is nothing to put in "
+                                   "a new profile")
+
+    issues = validate_profile(modes, _type_specs(registry), base_dir=base_dir)
+    blocking = [i for i in issues if i.is_error]
+    if blocking:
+        return CreateResult(
+            ok=False,
+            reason="the generated profile did not validate, so nothing was written",
+            errors=tuple(i.render().strip() for i in blocking))
+
+    os.makedirs(directory, exist_ok=True)
+    try:
+        written = atomic_write_json(path, {"modes": modes}, backup=False)
+    except (WriteVerificationError, OSError, TypeError, ValueError) as e:
+        return CreateResult(ok=False, reason=f"could not write {filename}: {e}")
+
+    result = CreateResult(
+        ok=True,
+        path=path,
+        rel=os.path.relpath(path, base_dir),
+        sha256=written.get("sha256", ""),
+        modes=len(modes),
+        types=report["types"],
+        inherited=report["inherited"],
+        at_defaults=report["at_defaults"],
+        placeholders=report["placeholders"],
+        left_out=report["left_out"],
+        seed=seed_label,
+        warnings=tuple(i.render().strip() for i in issues if not i.is_error),
+    )
+    if switch:
+        result.switched = switch_profile(base_dir, path, _type_specs(registry),
+                                         config_override=config_override)
+    return result
 
 
 def load_payload(base_dir: str, profile_path: str) -> dict:
