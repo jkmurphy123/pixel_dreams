@@ -194,13 +194,19 @@ def _load_grid(name, data, sprite_defs):
 
 # ── freeform mode (pixel-precise over full artwork, D6) ─────────
 
-def _load_freeform(name, data, sprite_defs):
+def _load_freeform(name, data, sprite_defs, background_override=None):
     # Resolve the background image first because, when no design_resolution
     # is supplied, the layout canvas should match the artwork's native
     # resolution. This avoids accidentally forcing a portrait background
     # into the default 1920x1080 landscape canvas.
+    #
+    # background_override is the MODE's background_image parameter. The mode owns which artwork is
+    # shown — one layout can then be reused over different PNGs — and the layout's own field is
+    # only the default. Resolved by the same rule as that field: a bare name looks under
+    # assets/control_panel/backgrounds/, and a path with a separator (or an absolute one) is used
+    # as given, which is how you point at artwork living anywhere on disk.
     background_image = None
-    bg = data.get("background_image")
+    bg = str(background_override or "").strip() or data.get("background_image")
     if bg:
         bg_path = paths.resolve_under(paths.BACKGROUNDS_DIR, bg)
         if not bg_path.exists():
@@ -264,7 +270,8 @@ def _load_freeform(name, data, sprite_defs):
                   background_image=background_image)
 
 
-def layout_from_data(data, name: str | None = None) -> Layout:
+def layout_from_data(data, name: str | None = None,
+                     background_override: str | None = None) -> Layout:
     """
     Build and validate a Layout from an in-memory document.
 
@@ -278,15 +285,23 @@ def layout_from_data(data, name: str | None = None) -> Layout:
     sprite_defs = load_sprite_defs()["sprites"]
     mode = str(data.get("mode", "grid")).strip().lower()
     if mode == "grid":
+        # Refused rather than ignored: a grid layout draws its panels from the skin and has no
+        # background image at all, so silently dropping the mode's artwork request would leave the
+        # author looking at the wrong picture and believing it took effect.
+        if str(background_override or "").strip():
+            raise LayoutError(
+                f"layout '{name}': a grid layout has no background image to override — its panels "
+                f"come from the skin. The mode's background_image is for freeform layouts."
+            )
         return _load_grid(name, data, sprite_defs)
     if mode == "freeform":
-        return _load_freeform(name, data, sprite_defs)
+        return _load_freeform(name, data, sprite_defs, background_override)
     raise LayoutError(
         f"layout '{name}': unknown mode '{mode}' (expected 'grid' or 'freeform')"
     )
 
 
-def load_layout(name_or_path: str) -> Layout:
+def load_layout(name_or_path: str, background_override: str | None = None) -> Layout:
     """
     Load and fully validate a layout by bare name (under
     assets/control_panel/layouts/) or by path.
@@ -301,4 +316,5 @@ def load_layout(name_or_path: str) -> Layout:
     except json.JSONDecodeError as e:
         raise LayoutError(f"invalid JSON in {layout_path}: {e}")
 
-    return layout_from_data(data, name=data.get("name", layout_path.stem))
+    return layout_from_data(data, name=data.get("name", layout_path.stem),
+                           background_override=background_override)

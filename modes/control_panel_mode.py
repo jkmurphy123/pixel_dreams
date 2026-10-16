@@ -10,6 +10,11 @@
 # Config keys (see modes_registry.json "controlpanel" entry):
 #   layout_file (required) — layout name under assets/control_panel/layouts/
 #                            or a full path
+#   background_image (optional) — the artwork the overlays are drawn over: a
+#                            bare name under assets/control_panel/backgrounds/,
+#                            or a path (absolute, or with a separator) used as
+#                            given. OVERRIDES the layout file's own
+#                            background_image; blank = use the layout's.
 #   skin        (optional) — skin name under assets/control_panel/skins/
 #                            or a full path (default "placeholder")
 #   seed        (optional) — int; fixes the random choreography for debugging
@@ -37,6 +42,10 @@ class ControlPanelMode:
         # Keep __init__ cheap and asset-free: tests construct every mode
         # without a display. All file/graphics work happens in enter().
         self.layout_file = config.get("layout_file", "")
+        # The artwork is the MODE's business, not the layout's: the layout file names a default and
+        # this overrides it, so one layout can be reused over different PNGs.
+        self.background_param = str(config.get("background_image", "") or "").strip()
+        self.background_image = None                    # resolved path, set in enter()
         self.skin_name = str(config.get("skin", "placeholder")).strip()
         self.seed = config.get("seed")
         self.accent_rgb = tuple(config.get("accent_rgb", [255, 176, 64]))
@@ -70,7 +79,8 @@ class ControlPanelMode:
         self._error = None
         self.controls = []
         try:
-            layout = load_layout(self.layout_file)
+            layout = load_layout(self.layout_file,
+                                 background_override=self.background_param or None)
             # freeform layouts carry their own full-panel artwork; grid
             # layouts are built from skin sprites (decision D6)
             skin = None if layout.mode == "freeform" else load_skin(self.skin_name)
@@ -81,6 +91,7 @@ class ControlPanelMode:
                                  trace_rgb=self.trace_rgb, lamp_rgb=self.lamp_rgb)
             self.layout_name = layout.name
             self.layout_mode = layout.mode
+            self.background_image = layout.background_image    # the artwork actually in use
             self.canvas_size = tuple(layout.design_resolution)
             self._placed = list(layout.controls)
             self._by_index = {}
@@ -96,8 +107,9 @@ class ControlPanelMode:
             self._static_only = [i for i in range(len(layout.controls)) if i not in self._by_index]
 
             skin_name = skin.name if skin is not None else "(background image)"
+            art = f" background='{layout.background_image}'" if layout.background_image else ""
             print(f"[ControlPanel] skin='{skin_name}' layout='{layout.name}' "
-                  f"mode={layout.mode} "
+                  f"mode={layout.mode}{art} "
                   f"({len(layout.panels)} panels, {len(layout.controls)} controls, "
                   f"{len(self.controls)} animated)")
         except (SkinError, LayoutError) as e:
@@ -192,6 +204,8 @@ class ControlPanelMode:
             "layout_file": self.layout_file,
             "layout": self.layout_name,
             "mode": self.layout_mode,
+            "background_param": self.background_param,
+            "background_image": self.background_image,
             "canvas": list(self.canvas_size),
             "controls": len(self._placed),
             "animated": len(self._by_index),

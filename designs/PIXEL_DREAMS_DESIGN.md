@@ -857,6 +857,56 @@ list, the PNG preview with clickable boxes, the nudge pad, add/remove, and Save/
 freeform layout over a PNG of mine" flow from Q1.
 
 
+### 10.11 Phase 6B — the alignment page, and the way into it (DONE, 2026-10-16)
+
+The page the mode needed: /layout lists every overlay of a control panel's layout, shows the artwork
+with a clickable box per overlay, and offers a nudge pad (1/5/10px steps, arrows, W/H, direct entry,
+centre), add/remove, freeze, Save/Reload, and "new freeform layout over a PNG". Nudges edit an
+in-memory DOCUMENT and post ONE bus command, so dozens of presses stay live and cost no writes;
+structural changes (add/remove) write immediately and rebuild, like the enable switch and duplicate,
+because a control that exists only on screen could not be tuned. Save writes through
+core/layout_edit.py — the layout's only writer — validating with controlpanel.layout.layout_from_data,
+the package's own loader, so the editor can never develop a second opinion about what a layout is.
+
+Built and shipped in two steps, and the second is worth recording as a lesson in its own right: the
+page existed for a while with nothing pointing at it. A page nobody can reach is not a feature. The
+control panel's params page now carries an "Overlay alignment" card whose link is scoped to that mode,
+and which reads the layout up front so it can say what you are about to find — the grid flavour has no
+pixel positions to nudge, and an unreadable layout_file is named rather than swallowed. Both are said
+before the click, because finding out after it is a poor welcome.
+
+Three bugs came out of the tests rather than from reading the code: the page was registered with
+FastAPI's app.get instead of @ui.page and so had no slot for UI at all; core/layout_edit.py imported
+the controlpanel package (and through it pygame) at module level, which killed the panel thread in the
+test sandboxes that copy core/ without controlpanel/ — core must not hard-require a mode package; and
+the first fix for that used a module __getattr__, which does not serve bare name lookups inside the
+module's own functions. The writer also refused to take basename() before validating the name, so
+"../escape" is refused rather than silently renamed to "escape" — the same rule as profile names: a
+file must always be where the name you typed says it is.
+
+### 10.12 Addition after the phases — the panel's artwork is a mode parameter (DONE, 2026-10-16)
+
+Asked for directly: "a parameter where i can set the path to the png background". The honest answer
+was that it was neither a parameter nor hard-coded — it was a field in the LAYOUT file
+(background_image), so changing the picture meant hand-editing layout JSON.
+
+Now the layout names a DEFAULT and the mode overrides it with `background_image` (optional, so every
+existing profile keeps validating). That direction was chosen deliberately: the artwork is what an
+author changes often and per mode — one layout reused over different pictures — while the layout stays
+the drawing spec that the alignment page edits and the thing that makes a panel reproducible.
+Resolution follows the same rule as skin and layout_file: a bare name looks under
+assets/control_panel/backgrounds/, a path with a separator (or an absolute one) is used as given,
+which is how you point at artwork living anywhere on disk.
+
+Two refusals, because a panel that quietly draws the wrong picture is worse than one that explains
+itself: a missing file is named with the path you typed, and a grid layout refuses an artwork override
+outright — it draws its panels from the skin and has no background image for the override to replace.
+One consequence is worth the reader's attention rather than a surprise later: when a layout declares no
+design_resolution its canvas is the artwork's size, so the parameter does not only change the picture,
+it changes the coordinate space every overlay is measured in. The mode's layout_report now publishes
+both what the profile asked for and the resolved path in use, so the page and the wall can be shown to
+agree.
+
 ## 11. Risks and non-goals
 
 Risks:

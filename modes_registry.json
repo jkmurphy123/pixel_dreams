@@ -3092,6 +3092,7 @@
         "layout_file"
       ],
       "optional": [
+        "background_image",
         "skin",
         "seed",
         "accent_rgb",
@@ -3106,6 +3107,10 @@
             176,
             64
           ]
+        },
+        "background_image": {
+          "default": "",
+          "help": "Artwork to draw the overlays over. Blank = whatever the layout file names. A bare name looks under assets/control_panel/backgrounds/; a path (e.g. /mnt/ssd/pics/panel.png, or ./pics/panel.png) is used as given."
         },
         "layout_file": {
           "default": ""

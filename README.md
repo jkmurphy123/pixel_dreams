@@ -238,3 +238,26 @@ python3 scripts/audit_params.py --mode blinkenlights  # one mode
 Read-only. Its findings and recommendations are in `designs/PHASE_05_PARAMETER_AUDIT.md`.
 
 See AGENTS.md for the developer guide, including the panel's thread rules.
+
+### Pointing a control panel at your own artwork
+
+The `controlpanel` mode draws its animated overlays (needles, lamps, scopes, readouts) over a
+background PNG. There is one PNG per mode, and the mode owns it: the `background_image` parameter.
+
+    blank         use whatever artwork the layout file names (the default)
+    a bare name   looked up under assets/control_panel/backgrounds/  (e.g. steampunk1.png)
+    a path        used as given, so it can live anywhere on disk
+                  (e.g. /mnt/ssd/projects/images/panel.png, or ./pics/panel.png)
+
+So one layout can be reused over different pictures without editing any JSON: open the mode in the
+panel, type the path, press Save. Two things are worth knowing, because otherwise they bite quietly:
+
+  * the artwork only SHOWS on a freeform layout. A grid layout builds its panels from the skin and
+    has no background image at all, so it refuses an artwork override and says so, rather than
+    accepting it and drawing something else.
+  * when a layout declares no `design_resolution`, its canvas IS the artwork's size — so pointing at
+    a taller PNG moves the coordinate space every overlay is measured in. On a portrait wall that is
+    usually what you want; the alignment page reports the canvas it is working in.
+
+`modes/control_panel_mode.py` documents the mode's config keys, and `tests/test_background_param.py`
+pins the resolution rules and the refusals.
