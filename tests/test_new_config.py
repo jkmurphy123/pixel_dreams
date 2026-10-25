@@ -248,7 +248,9 @@ def test_create_succeeds_but_reports_a_refused_switch_when_the_app_is_pinned(tmp
 
 def test_the_real_registry_yields_a_valid_profile_with_the_leftovers_named(tmp_path):
     """
-    The real thing: 53 types, one real profile as the seed. Asserts the shape of the answer and,
+    The real thing: every type in the registry, one real profile as the seed. (Counts here move
+    when a type is added: `inkmap` took it from 53 to 54, and from 49 to 50 includeable, because it
+    declares no required keys.) Asserts the shape of the answer and,
     importantly, that every type is either IN the file or NAMED in the report — nothing vanishes
     quietly.
     """
@@ -257,7 +259,7 @@ def test_the_real_registry_yields_a_valid_profile_with_the_leftovers_named(tmp_p
     seed = json.load(open(os.path.join(BASE_DIR, "modes_config.json")))["modes"]
 
     modes, report = build_full_profile(registry, seed)
-    assert len(modes) == 49 and len(registry["types"]) == 53
+    assert len(modes) == 50 and len(registry["types"]) == 54
     assert len(report["left_out"]) == 4
     assert {t for t, _ in report["left_out"]} == {"headlinesnews", "animatedcityrain",
                                                   "chatreplay", "antfarm"}
@@ -269,7 +271,7 @@ def test_the_real_registry_yields_a_valid_profile_with_the_leftovers_named(tmp_p
     result = create_profile(root := _project(tmp_path, registry=registry, seed=seed),
                             "modes_config_all_orientations", registry,
                             inherit_from=os.path.join(BASE_DIR, "modes_config.json"))
-    assert result.ok and result.modes == 49
+    assert result.ok and result.modes == 50
     assert os.path.exists(result.path), root
 
 

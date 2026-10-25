@@ -1,0 +1,596 @@
+{
+  "modes": {
+    "0": {
+      "type": "animatedscene",
+      "scenes_file": "animated_scenes.json",
+      "image_folder": "art/parallax",
+      "scene_duration": 60,
+      "shuffle": true,
+      "scale_layers": "cover",
+      "enabled": false
+    },
+    "1": {
+      "type": "slideshow",
+      "name": "Cyberart",
+      "folder": "/mnt/ssd/projects/images",
+      "duration": 120,
+      "show_time": true,
+      "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "font_size": 192,
+      "overlay_font_size": 94,
+      "show_date": true,
+      "show_weather": true,
+      "weather_location": "16053",
+      "weather_units": "imperial",
+      "show_crypto": true,
+      "crypto_ids": [
+        "bitcoin",
+        "ethereum",
+        "doge"
+      ],
+      "show_dow": false
+    },
+    "2": {
+      "type": "SystemInformation",
+      "refresh_hz": 2.0,
+      "show_seconds": false
+    },
+    "3": {
+      "type": "StatusTicker",
+      "file": "boot_ticker_hal9000.txt",
+      "pause": 3.5,
+      "scroll_px_per_sec": 160,
+      "cursor_blink_hz": 2.0,
+      "accent_probability": 0.35,
+      "blank_lines_between_loops": 5
+    },
+    "4": {
+      "type": "blinkenlights",
+      "computer_name": "CYBERDYNE MARK III",
+      "label_font_scale": 0.03,
+      "title_font_scale": 0.05,
+      "registers_per_column": 12.0,
+      "led_radius_scale": 0.012
+    },
+    "5": {
+      "type": "reminderhtml",
+      "file": "",
+      "enabled": false
+    },
+    "6": {
+      "type": "quotegenerator"
+    },
+    "7": {
+      "type": "galacticnavigation"
+    },
+    "8": {
+      "type": "deepspacesignaldecoder"
+    },
+    "9": {
+      "type": "retrocrthackerterminal"
+    },
+    "10": {
+      "type": "cryopodstatuswall"
+    },
+    "11": {
+      "type": "autonomousdronefleettracker"
+    },
+    "12": {
+      "type": "cosmiclibraryindex"
+    },
+    "13": {
+      "type": "alienbiometricscanner"
+    },
+    "14": {
+      "type": "vintagespaceprobetelemetry"
+    },
+    "15": {
+      "type": "forgottenspacestationdirectory"
+    },
+    "16": {
+      "type": "retrocomputermemoryvisualizer"
+    },
+    "17": {
+      "type": "coldwarcommandroomwall"
+    },
+    "18": {
+      "type": "missioncontrolconsole",
+      "title": "MISSION CONTROL CONSOLE",
+      "mission_name": "APOLLO 17 // TRANSLUNAR OPERATIONS",
+      "accent_rgb": [
+        255,
+        204,
+        132
+      ],
+      "refresh_hz": 60,
+      "portrait_layout": false,
+      "scanline_alpha": 0,
+      "noise_alpha": 0,
+      "vignette_strength": 0.0,
+      "console_rows": 4,
+      "console_cols": 7,
+      "anomaly_probability_per_min": 0.45,
+      "event_interval_range": [
+        1.6,
+        3.4
+      ],
+      "chart_count": 3,
+      "orbit_period_sec": 52.0,
+      "seed": 19691207
+    },
+    "19": {
+      "type": "corememorymatrix",
+      "title": "CORE MEMORY MATRIX",
+      "bank_name": "STACK 2 // COINCIDENT CURRENT STORE",
+      "accent_rgb": [
+        255,
+        174,
+        98
+      ],
+      "refresh_hz": 60,
+      "rows": 16,
+      "cols": 16,
+      "write_probability_per_sec": 1.0,
+      "read_probability_per_sec": 1.7,
+      "parity_fault_probability_per_min": 0.28,
+      "pulse_ttl": 1.0,
+      "scanline_alpha": 0,
+      "noise_alpha": 0,
+      "vignette_strength": 0.0,
+      "portrait_layout": false,
+      "seed": 19640315
+    },
+    "20": {
+      "type": "basicprompt",
+      "title": "BASIC PROMPT",
+      "machine_name": "HOME COMPUTER BASIC V2",
+      "prompt": "READY.",
+      "palette": "amber",
+      "typing_cps": 34,
+      "cursor_blink_hz": 2.0,
+      "lines_on_screen": 26,
+      "max_chars_per_line": 34,
+      "seed": 19830211
+    },
+    "21": {
+      "type": "rbmkreactorsimulation",
+      "title": "REACTOR CONTROL SIMULATION",
+      "reactor_name": "RBMK-STYLE CORE // NIGHT TEST SEQUENCE",
+      "accent_rgb": [
+        255,
+        166,
+        98
+      ],
+      "refresh_hz": 60,
+      "rows": 12,
+      "cols": 12,
+      "loop_duration_sec": 38.0,
+      "portrait_layout": true,
+      "seed": 19860426
+    },
+    "22": {
+      "type": "machinedreamscape"
+    },
+    "23": {
+      "type": "spaceelevatortrafficcontrol"
+    },
+    "24": {
+      "type": "alienlanguagerosettaconsole"
+    },
+    "25": {
+      "type": "dnasequencevisualizer"
+    },
+    "26": {
+      "type": "binarywaterfall"
+    },
+    "27": {
+      "type": "globalthreatmap"
+    },
+    "28": {
+      "type": "seventiescomputerdashboard"
+    },
+    "29": {
+      "type": "fantasynews",
+      "stories_folder": "",
+      "duration": 30
+    },
+    "30": {
+      "type": "alienstarmapcartographer"
+    },
+    "31": {
+      "type": "retroaithoughtstream"
+    },
+    "32": {
+      "type": "aiethicscompliancedashboard"
+    },
+    "33": {
+      "type": "hackerbbsfeed",
+      "font_size": 28.0
+    },
+    "34": {
+      "type": "conwaylife",
+      "enabled": false
+    },
+    "35": {
+      "type": "galtonboard",
+      "enabled": false
+    },
+    "36": {
+      "type": "curated_slideshow",
+      "data_file": "pioneer_gallery.json",
+      "image_folder": "/home/ubuntu/narrow_slideshow/vert_images/pioneers",
+      "duration": 120,
+      "scale_mode": "cover",
+      "shuffle": false,
+      "title_font_scale": 0.041,
+      "desc_font_scale": 0.021,
+      "panel_alpha": 170
+    },
+    "37": {
+      "type": "networkstatuswall",
+      "devices": []
+    },
+    "38": {
+      "type": "scifihomecontrolpanel",
+      "title": "KESTREL HABITAT CONTROL",
+      "subtitle": "TIER 3 DOMICILE // 23RD CENTURY SYSTEMS",
+      "accent_rgb": [
+        0,
+        255,
+        200
+      ],
+      "panel_duration_sec": 60,
+      "crossfade_sec": 0.8,
+      "scanline_alpha": 10,
+      "noise_alpha": 10,
+      "vignette_strength": 0.18,
+      "seed": 23501201
+    },
+    "39": {
+      "type": "fantasymapgenerator",
+      "title": "Fantasy Map",
+      "map_size": 256,
+      "water_level": 0.4,
+      "mountain_level": 0.72,
+      "hill_level": 0.58,
+      "num_rivers": 18,
+      "num_settlements": 14,
+      "regeneration_interval_sec": 45,
+      "show_labels": true,
+      "show_rivers": true,
+      "show_roads": true,
+      "render_scale": 4,
+      "enabled": false
+    },
+    "40": {
+      "type": "penrosetiling",
+      "tiling_type": "p3",
+      "generation_interval_sec": 3.5,
+      "max_generations": 10,
+      "tile_fill_alpha": 220,
+      "tile_edge_alpha": 60,
+      "bg_rgb": [
+        8,
+        8,
+        20
+      ],
+      "palette": [
+        [
+          220,
+          150,
+          60
+        ],
+        [
+          70,
+          170,
+          210
+        ],
+        [
+          190,
+          110,
+          170
+        ],
+        [
+          110,
+          200,
+          140
+        ],
+        [
+          230,
+          190,
+          110
+        ]
+      ],
+      "enabled": false
+    },
+    "41": {
+      "type": "quoteslideshow",
+      "folder": "/mnt/ssd/projects/images",
+      "duration": 15,
+      "quote_file": "quotes_dystopian.json",
+      "play_audio": false,
+      "scale_mode": "cover",
+      "shuffle_images": true,
+      "quote_panel_alpha": 170,
+      "quote_panel_color": [
+        15,
+        15,
+        28
+      ],
+      "quote_text_color": [
+        235,
+        235,
+        245
+      ],
+      "quote_author_color": [
+        170,
+        170,
+        200
+      ],
+      "quote_font_scale": 0.07,
+      "quote_max_width_frac": 0.7,
+      "quote_line_spacing": 1.4
+    },
+    "42": {
+      "type": "satellitetracker",
+      "title": "SATELLITE TRACKING NETWORK",
+      "rotation": "daily",
+      "tle_max_age_hours": 24,
+      "update_hz": 1.0,
+      "accent_rgb": [
+        255,
+        204,
+        132
+      ],
+      "scanline_alpha": 0
+    },
+    "43": {
+      "type": "wargames",
+      "title": "WOPR // GLOBAL THERMONUCLEAR WAR",
+      "speed": 1.0,
+      "seed": 1983,
+      "accent_rgb": [
+        255,
+        204,
+        132
+      ],
+      "scanline_alpha": 0
+    },
+    "44": {
+      "type": "llmpricingwall",
+      "title": "LLM API PRICING DASHBOARD",
+      "subtitle": "per-million-token input / output prices in USD",
+      "data_file": "data/llm_pricing.json",
+      "accent_rgb": [
+        100,
+        220,
+        180
+      ],
+      "columns_portrait": 1,
+      "columns_landscape": 2,
+      "panel_spacing_scale": 0.025,
+      "scanline_alpha": 0,
+      "noise_alpha": 0,
+      "vignette_strength": 0.15,
+      "seed": 20260817
+    },
+    "45": {
+      "type": "controlpanel",
+      "layout_file": "Portrait",
+      "skin": "placeholder",
+      "background_image": "portrait_panel.png"
+    },
+    "46": {
+      "type": "puppettheatre",
+      "scenes_file": "assets/puppet_theatre/scene_files/puppet_scenes.json",
+      "image_folder": "assets/puppet_theatre",
+      "scene_description_hold_sec": 3.0,
+      "dialogue_hold_sec": 2.5,
+      "enabled": false
+    },
+    "47": {
+      "type": "dungeonexpedition",
+      "seed": 42,
+      "dungeon_width": 64,
+      "dungeon_height": 40,
+      "minimum_rooms": 8,
+      "maximum_rooms": 15,
+      "major_grid_interval": 5,
+      "show_room_numbers": true,
+      "show_expedition_route": true,
+      "paper_style": "blue_green",
+      "layout": "auto",
+      "font_name": "dejavusansmono",
+      "enabled": false
+    },
+    "48": {
+      "type": "imaginarylibrary",
+      "image_folder": "assets/imaginary_library",
+      "dwell_seconds": 180
+    },
+    "49": {
+      "type": "slideshow",
+      "name": "Cyberpunk Blueprints",
+      "folder": "/mnt/ssd/projects/images/blueprints",
+      "duration": 120,
+      "show_time": true,
+      "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "font_size": 192,
+      "overlay_font_size": 94,
+      "show_date": true,
+      "show_weather": true,
+      "weather_location": "16053",
+      "weather_units": "imperial",
+      "show_crypto": true,
+      "crypto_ids": [
+        "bitcoin",
+        "ethereum",
+        "doge"
+      ],
+      "show_dow": false
+    },
+    "50": {
+      "type": "slideshow",
+      "name": "Cyberpunk #1",
+      "folder": "/mnt/ssd/projects/images/cyber1",
+      "duration": 120,
+      "show_time": true,
+      "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "font_size": 192,
+      "overlay_font_size": 94,
+      "show_date": true,
+      "show_weather": true,
+      "weather_location": "16053",
+      "weather_units": "imperial",
+      "show_crypto": true,
+      "crypto_ids": [
+        "bitcoin",
+        "ethereum",
+        "doge"
+      ],
+      "show_dow": false
+    },
+    "51": {
+      "type": "slideshow",
+      "name": "Cyberpunk #2",
+      "folder": "/mnt/ssd/projects/images/cyber2",
+      "duration": 120,
+      "show_time": true,
+      "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "font_size": 192,
+      "overlay_font_size": 94,
+      "show_date": true,
+      "show_weather": true,
+      "weather_location": "16053",
+      "weather_units": "imperial",
+      "show_crypto": true,
+      "crypto_ids": [
+        "bitcoin",
+        "ethereum",
+        "doge"
+      ],
+      "show_dow": false
+    },
+    "52": {
+      "type": "slideshow",
+      "name": "Cyberpunk #3",
+      "folder": "/mnt/ssd/projects/images/cyber3",
+      "duration": 120,
+      "show_time": true,
+      "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "font_size": 192,
+      "overlay_font_size": 94,
+      "show_date": true,
+      "show_weather": true,
+      "weather_location": "16053",
+      "weather_units": "imperial",
+      "show_crypto": true,
+      "crypto_ids": [
+        "bitcoin",
+        "ethereum",
+        "doge"
+      ],
+      "show_dow": false
+    },
+    "53": {
+      "type": "slideshow",
+      "name": "Cyberpunk #4",
+      "folder": "/mnt/ssd/projects/images/cyber4",
+      "duration": 120,
+      "show_time": true,
+      "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "font_size": 192,
+      "overlay_font_size": 94,
+      "show_date": true,
+      "show_weather": true,
+      "weather_location": "16053",
+      "weather_units": "imperial",
+      "show_crypto": true,
+      "crypto_ids": [
+        "bitcoin",
+        "ethereum",
+        "doge"
+      ],
+      "show_dow": false
+    },
+    "54": {
+      "type": "puppettheatre",
+      "scenes_file": "assets/puppet_theatre/scene_files/puppet_scenes.json",
+      "image_folder": "assets/puppet_theatre",
+      "scene_description_hold_sec": 3.0,
+      "dialogue_hold_sec": 2.5,
+      "enabled": false
+    },
+    "55": {
+      "type": "controlpanel",
+      "layout_file": "Scifi",
+      "skin": "placeholder",
+      "background_image": "scifi_panel.png"
+    },
+    "56": {
+      "type": "inkmap",
+      "name": "Ink Map",
+      "seed": 0,
+      "draw_minutes": 2.0,
+      "enabled": false
+    },
+    "57": {
+      "type": "controlpanel",
+      "name": "Arcane Laboratory",
+      "layout_file": "arcane_gate",
+      "seed": 7,
+      "scale_mode": "cover",
+      "accent_rgb": [
+        255,
+        176,
+        64
+      ],
+      "lamp_rgb": [
+        255,
+        150,
+        60
+      ]
+    },
+    "58": {
+      "type": "controlpanel",
+      "name": "Arcane Circle",
+      "layout_file": "arcane_circle",
+      "seed": 11,
+      "scale_mode": "cover",
+      "accent_rgb": [
+        255,
+        176,
+        64
+      ],
+      "lamp_rgb": [
+        255,
+        150,
+        60
+      ]
+    },
+    "59": {
+      "type": "controlpanel",
+      "name": "Mad Scientist Control Panel",
+      "layout_file": "mad_scientist_lab",
+      "seed": 19,
+      "scale_mode": "cover"
+    },
+    "60": {
+      "type": "controlpanel",
+      "name": "Scifi Radar Panel",
+      "layout_file": "scifi_radar_panel",
+      "seed": 23,
+      "scale_mode": "cover",
+      "accent_rgb": [
+        120,
+        230,
+        255
+      ],
+      "trace_rgb": [
+        110,
+        240,
+        235
+      ]
+    }
+  }
+}

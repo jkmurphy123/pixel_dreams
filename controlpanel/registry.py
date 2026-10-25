@@ -29,4 +29,21 @@ CONTROL_TYPES = {
     "radar":           "RADAR_ROUND",
     "clock":           "CLOCK_FACE",
     "plate":           "PANEL_PLATE_1",
+    # arcane family (designs/ARCANE_LAB_DESIGN.md) — freeform-only in practice,
+    # but the loader still wants a sprite ID to validate and size against
+    "candle_flame":    "ARCANE_FLAME",
+    "ember_field":     "ARCANE_EMBERS",
+    "floating_orb":    "ARCANE_ORB",
+    "rune_circle":     "ARCANE_RUNE_RING",
+    "rune_line":       "ARCANE_RUNE_LINE",
+    "smoke_wisp":      "ARCANE_SMOKE",
+    "lightning_arc":   "ARCANE_ARC",
+    "potion_bubbles":  "ARCANE_POTION",
+    "drifting_runes":  "ARCANE_RUNE_DRIFT",
+    "glowing_eyes":    "ARCANE_EYES",
+    # mad-science family — freeform overlays over electrical apparatus artwork
+    "jacobs_ladder":      "MAD_LADDER",
+    "electric_filament":  "MAD_FILAMENT",
+    "spark_terminal":     "MAD_SPARK",
+    "mechanical_wheels":  "MAD_WHEELS",
 }

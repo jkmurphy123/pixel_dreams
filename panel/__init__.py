@@ -41,14 +41,15 @@ class PanelHandle:
 
 def start_panel(*, base_dir: str, bus, host: str = DEFAULT_PANEL_BIND,
                 port: int = DEFAULT_PANEL_PORT, token: str | None = None,
-                config_override: str | None = None) -> PanelHandle:
+                config_override: str | None = None, ungated: bool = False) -> PanelHandle:
     """
     Register the panel's pages and serve them from a daemon thread.
 
     Raises ValueError (before importing nicegui, or touching the network) when a
-    non-loopback bind has no token configured.
+    non-loopback bind has no token configured, unless `ungated` says the operator asked
+    for an open panel (`--panel-open`).
     """
-    require_loopback_or_token(host, token)
+    require_loopback_or_token(host, token, allow_open=ungated)
 
     # Imported here, not at module import: this is the lazy boundary.
     from .app import register_pages, PageContext
@@ -61,6 +62,7 @@ def start_panel(*, base_dir: str, bus, host: str = DEFAULT_PANEL_BIND,
         port=int(port),
         token=token or None,
         config_override=config_override,
+        ungated=bool(ungated),
     )
     register_pages(ctx)
     bus.update_status(panel_bind=host, panel_port=int(port),

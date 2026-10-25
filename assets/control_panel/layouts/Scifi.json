@@ -1,0 +1,523 @@
+{
+  "name": "Portrait",
+  "mode": "freeform",
+  "design_resolution": [
+    1080,
+    1920
+  ],
+  "background_image": "steampunk1.png",
+  "controls": [
+    {
+      "type": "radar",
+      "at": [
+        226,
+        1170
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "color": [
+        102,
+        153,
+        204
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        199,
+        292
+      ],
+      "size": [
+        180,
+        180
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 240,
+      "color": [
+        102,
+        153,
+        204
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        448,
+        289
+      ],
+      "size": [
+        190,
+        190
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 240,
+      "color": [
+        102,
+        153,
+        204
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        700,
+        296
+      ],
+      "size": [
+        190,
+        190
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 240,
+      "color": [
+        102,
+        153,
+        204
+      ]
+    },
+    {
+      "type": "clock",
+      "at": [
+        330,
+        595
+      ],
+      "size": [
+        190,
+        190
+      ],
+      "color": [
+        102,
+        153,
+        204
+      ]
+    },
+    {
+      "type": "scope",
+      "at": [
+        595,
+        910
+      ],
+      "size": [
+        280,
+        150
+      ],
+      "window": [
+        0.07,
+        0.12,
+        0.86,
+        0.76
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        255,
+        890
+      ],
+      "size": [
+        70,
+        70
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        269,
+        1494
+      ],
+      "size": [
+        70,
+        70
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        343,
+        1493
+      ],
+      "size": [
+        70,
+        70
+      ],
+      "color": [
+        67,
+        105,
+        222
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        417,
+        1494
+      ],
+      "size": [
+        70,
+        70
+      ],
+      "color": [
+        247,
+        236,
+        25
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        171,
+        892
+      ],
+      "size": [
+        70,
+        70
+      ],
+      "color_rgb": [
+        70,
+        255,
+        110
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        550,
+        1437
+      ],
+      "size": [
+        110,
+        110
+      ],
+      "color_rgb": [
+        70,
+        255,
+        110
+      ],
+      "color": [
+        237,
+        110,
+        19
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        425,
+        891
+      ],
+      "size": [
+        70,
+        70
+      ],
+      "color_rgb": [
+        70,
+        255,
+        110
+      ]
+    },
+    {
+      "type": "lamp",
+      "at": [
+        337,
+        890
+      ],
+      "size": [
+        70,
+        70
+      ],
+      "color_rgb": [
+        80,
+        170,
+        255
+      ]
+    },
+    {
+      "type": "rotary_knob",
+      "at": [
+        170,
+        1013
+      ],
+      "size": [
+        75,
+        75
+      ]
+    },
+    {
+      "type": "rotary_knob",
+      "at": [
+        336,
+        1013
+      ],
+      "size": [
+        75,
+        75
+      ]
+    },
+    {
+      "type": "rotary_knob",
+      "at": [
+        423,
+        1013
+      ],
+      "size": [
+        75,
+        75
+      ]
+    },
+    {
+      "type": "digital_readout",
+      "at": [
+        200,
+        605
+      ],
+      "size": [
+        70,
+        40
+      ],
+      "window": [
+        0.05,
+        0.15,
+        0.9,
+        0.7
+      ]
+    },
+    {
+      "type": "bar_graph",
+      "at": [
+        750,
+        1445
+      ],
+      "size": [
+        40,
+        60
+      ],
+      "window": [
+        0.2,
+        0.05,
+        0.6,
+        0.9
+      ]
+    },
+    {
+      "type": "bar_graph",
+      "at": [
+        794,
+        1445
+      ],
+      "size": [
+        40,
+        60
+      ],
+      "window": [
+        0.2,
+        0.05,
+        0.6,
+        0.9
+      ]
+    },
+    {
+      "type": "bar_graph",
+      "at": [
+        838,
+        1445
+      ],
+      "size": [
+        40,
+        60
+      ],
+      "window": [
+        0.2,
+        0.05,
+        0.6,
+        0.9
+      ]
+    },
+    {
+      "type": "led_bar",
+      "at": [
+        595,
+        600
+      ],
+      "size": [
+        170,
+        100
+      ],
+      "window": [
+        0.03,
+        0.2,
+        0.94,
+        0.6
+      ]
+    },
+    {
+      "type": "keypad",
+      "at": [
+        592,
+        1192
+      ],
+      "size": [
+        130,
+        130
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        290,
+        1635
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        213,
+        1512
+      ],
+      "color": [
+        87,
+        222,
+        24
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        369,
+        1635
+      ],
+      "color": [
+        237,
+        126,
+        14
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        833,
+        1635
+      ],
+      "color": [
+        237,
+        126,
+        14
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        747,
+        1635
+      ],
+      "color": [
+        237,
+        126,
+        14
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        214,
+        1634
+      ],
+      "color": [
+        32,
+        52,
+        186
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        444,
+        1635
+      ],
+      "color": [
+        247,
+        216,
+        10
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        568,
+        1635
+      ],
+      "color": [
+        247,
+        216,
+        10
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "sprite": "LED_LAMP_SQUARE",
+      "size": [
+        30,
+        30
+      ],
+      "at": [
+        642,
+        1635
+      ],
+      "color": [
+        38,
+        247,
+        10
+      ]
+    }
+  ]
+}

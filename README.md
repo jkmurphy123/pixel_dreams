@@ -39,7 +39,8 @@ without fastapi/uvicorn loaded at all).
 | Flag | Meaning |
 | --- | --- |
 | `--panel-port N` | serve the panel on port N (127.0.0.1 by default) |
-| `--panel-bind ADDR` | bind address; a non-loopback address **requires** `panel_token` in `secrets.json` |
+| `--panel-bind ADDR` | bind address; a non-loopback address **requires** `panel_token` in `secrets.json` (or `--panel-open`) |
+| `--panel-open` | serve with **no token gate** on any bind — anyone who can reach the address can read and change configs |
 | `--panel-only` | serve the panel without initialising pygame — for preparing a profile offline |
 | `--frames N` | exit after N frames (used by the verification tests) |
 
@@ -205,6 +206,19 @@ Panel reach: loopback by default. To open it from another machine, add
 so the token is not needed again in that browser until it expires (or you change the token, which
 invalidates every existing cookie). Scripts should send `X-Panel-Token: <token>` instead — that
 form is never remembered as a cookie.
+
+On a trusted LAN you can skip the token entirely: `--panel-bind 0.0.0.0 --panel-open` serves the
+panel with no gate, so `http://jetsons:8090` just opens. This is an explicit command-line choice,
+not a config setting: it makes the panel readable AND writable by anyone who can reach that
+address (and the LAN is the trust boundary). The app says so at startup
+(`[Panel] Control panel on … UNGATED (--panel-open)`) and on the panel's status card. Drop the
+flag to put the token gate back.
+
+This repo's own launch paths already pass the flag — `scripts/run_kiosk.sh` for a manual start and
+`deploy/pixel_dreams.service` for the service — so a restart never re-arms the gate. The flag has
+to live in the command that starts the process: a gated panel cannot remember anything except a
+browser cookie, and a cookie that a private window, a "clear on exit" setting or the IP instead of
+the hostname discards will ask for the token again.
 
 ## Configuration
 

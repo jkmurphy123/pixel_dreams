@@ -17,7 +17,7 @@
     "2": {
       "type": "slideshow",
       "name": "Cyberart",
-      "folder": "/home/ubuntu/narrow_slideshow/vert_images/cyberart1",
+      "folder": "/mnt/ssd/projects/images",
       "duration": 120,
       "show_time": true,
       "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -38,7 +38,7 @@
     "3": {
       "type": "slideshow",
       "name": "Cyberart",
-      "folder": "/home/ubuntu/narrow_slideshow/vert_images/cyberart2",
+      "folder": "/mnt/ssd/projects/images",
       "duration": 120,
       "show_time": true,
       "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -59,7 +59,7 @@
     "4": {
       "type": "slideshow",
       "name": "Cyberart",
-      "folder": "/home/ubuntu/narrow_slideshow/vert_images/cyberart3",
+      "folder": "/mnt/ssd/projects/images",
       "duration": 120,
       "show_time": true,
       "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -80,7 +80,7 @@
     "5": {
       "type": "slideshow",
       "name": "Pixel Art",
-      "folder": "/home/ubuntu/narrow_slideshow/vert_images/pixelart",
+      "folder": "/mnt/ssd/projects/images",
       "duration": 120,
       "show_time": true,
       "overlay_font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",

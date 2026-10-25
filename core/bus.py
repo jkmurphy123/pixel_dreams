@@ -39,14 +39,20 @@ def is_loopback(host: str) -> bool:
     return host.startswith("127.")
 
 
-def require_loopback_or_token(bind: str, token: str | None) -> None:
+def require_loopback_or_token(bind: str, token: str | None, allow_open: bool = False) -> None:
     """
     Refuse a non-loopback bind with no token configured.
 
     Called at startup so the app cannot come up with an unauthenticated control surface:
     the alternative (start anyway, gate later) is a window where the panel is on the LAN
     with no gate at all. Raises ValueError with a message intended for the operator.
+
+    `allow_open` is the operator's explicit opt-out (`--panel-open`): the panel then serves
+    with no gate at all on whatever address it is bound to. It is a deliberate choice made
+    on a command line, never something a config file can turn on by accident.
     """
+    if allow_open:
+        return
     if is_loopback(bind):
         return
     if not token:

@@ -92,11 +92,17 @@ class PageContext:
     port: int = 8090
     token: str | None = None
     config_override: str | None = None
+    #: True when the operator asked for an open panel (`--panel-open`): no token gate at all,
+    #: on any bind. Only an explicit command line sets this — see core.bus.require_loopback_or_token.
+    ungated: bool = False
 
     @property
     def token_required(self) -> bool:
-        """A panel reachable off-machine must be gated; a loopback bind needs no token."""
-        return not is_loopback(self.bind)
+        """
+        A panel reachable off-machine must be gated; a loopback bind needs no token, and
+        `--panel-open` is the operator's explicit "serve it ungated anyway".
+        """
+        return not self.ungated and not is_loopback(self.bind)
 
 
 # ---------------------------------------------------------------- formatting helpers
@@ -534,7 +540,10 @@ def register_pages(ctx: PageContext) -> None:
     """Declare every route. Called once, before the server starts."""
     if ctx.token_required:
         _install_token_gate(ctx)
-        _register_auth_route(ctx)
+    # Registered on every panel (not just gated ones): a bookmark to the old
+    # /_panel/auth?token=... URL, which this panel may have handed out before it was
+    # started with --panel-open, should land on the panel instead of a dead 404.
+    _register_auth_route(ctx)
 
     _register_layout_route(app, ctx)
     _register_layout_raw_route(app, ctx)
@@ -1236,10 +1245,17 @@ def _status_card(ctx: PageContext, active_path: str, active_source: str) -> dict
                                  ("commands", "Commands"), ("rotation", "Rotation")):
                 ui.label(caption).classes("opacity-60")
                 labels[key] = ui.label("-").mark(f"status-{key}")
-        if not ctx.token_required:
+        if ctx.ungated:
+            ui.label(
+                f"Panel bound to {ctx.bind} with NO token gate (--panel-open): anyone who can "
+                f"reach this address can read and change the configs. Restart without "
+                f"--panel-open to require panel_token."
+            ).classes("text-xs opacity-50")
+        elif not ctx.token_required:
             ui.label(
                 f"Panel bound to {ctx.bind} — reachable from this machine only. "
-                f"For LAN access, set panel_token in secrets.json and bind 0.0.0.0."
+                f"For LAN access, set panel_token in secrets.json and bind 0.0.0.0 "
+                f"(or bind 0.0.0.0 with --panel-open to serve it ungated)."
             ).classes("text-xs opacity-50")
     labels["profile"].set_text(
         f"{os.path.relpath(active_path, ctx.base_dir)} (chosen via {active_source})"
@@ -3123,13 +3139,16 @@ def _install_token_gate(ctx: PageContext) -> None:
 
 
 def _register_auth_route(ctx: PageContext) -> None:
-    """GET /_panel/auth?token=... sets the access cookie (network bindings only)."""
+    """GET /_panel/auth?token=... sets the access cookie (gated panels only)."""
 
     @app.get(AUTH_PATH)
     def panel_auth(token: str = "", redirect: str = "/"):
+        target = redirect if redirect.startswith("/") else "/"
+        if ctx.ungated:
+            # Nothing to authorise: a stale bookmark from when the panel was gated lands on it.
+            return RedirectResponse(target, status_code=303)
         if not ctx.token or not _secrets.compare_digest(token, ctx.token):
             return PlainTextResponse("invalid token", status_code=403)
-        target = redirect if redirect.startswith("/") else "/"
         response = RedirectResponse(target, status_code=303)
         response.set_cookie(COOKIE_NAME, token, httponly=True, samesite="lax",
                             max_age=COOKIE_MAX_AGE_SECONDS)

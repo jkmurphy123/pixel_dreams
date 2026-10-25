@@ -188,3 +188,11 @@ def test_non_loopback_bind_without_token_is_refused():
 def test_non_loopback_bind_allowed_with_token():
     require_loopback_or_token("0.0.0.0", "s3cret")
     require_loopback_or_token("127.0.0.1", None)              # loopback needs nothing
+
+
+def test_open_panel_is_allowed_without_a_token():
+    """--panel-open is the operator's explicit opt-out from the token gate."""
+    require_loopback_or_token("0.0.0.0", None, allow_open=True)
+    require_loopback_or_token("192.168.40.216", None, allow_open=True)
+    with pytest.raises(ValueError):
+        require_loopback_or_token("0.0.0.0", None)            # default stays closed

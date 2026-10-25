@@ -23,13 +23,20 @@ Environment=DISPLAY=:0
 Environment=XAUTHORITY=%t/gdm/Xauthority
 # SDL keeps its audio/display sane on a Jetson with no sound card attached.
 Environment=SDL_AUDIODRIVER=dummy
-# The panel is opt-in and this is the useful setting for tuning from a laptop:
-# bound to the LAN, which REQUIRES panel_token in secrets.json — without a token the
-# controller refuses to start rather than exposing an unauthenticated control surface.
-# Use "127.0.0.1" here to keep the panel on the kiosk itself.
+# The panel is opt-in and this is the useful setting for tuning from a laptop: bound to the LAN.
+# --panel-open serves it with NO token gate, so http://jetsons:8090 opens directly in any browser
+# and no cookie has to survive between sessions. The gate is armed by every start that leaves the
+# flag out, which is exactly why it lives here in the unit and not in a browser cookie.
+# Say it out loud: anyone who can reach this address can also WRITE profiles (retune the wall).
+# The startup log prints "UNGATED (--panel-open)" and the panel's status card repeats it.
+# To put the token gate back, delete --panel-open and make sure secrets.json holds panel_token.
+# Use "127.0.0.1" for --panel-bind to keep the panel on the kiosk itself.
+# NO --auto: the wall sits on --start 0 (the profile's first enabled mode) and only changes when
+# someone asks — LEFT/RIGHT on the keyboard, or the panel's mode transport / mode list.
+# Add "--auto 30" if you ever want it cycling on a timer again.
 ExecStart=/mnt/ssd/projects/pixel_dreams/.venv/bin/python \
           /mnt/ssd/projects/pixel_dreams/pixel_dreams.py \
-          --panel-port 8090 --panel-bind 0.0.0.0 --auto 30
+          --panel-port 8090 --panel-bind 0.0.0.0 --start 0 --panel-open
 Restart=on-failure
 RestartSec=5
 UMask=0077

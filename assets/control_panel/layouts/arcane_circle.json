@@ -1,0 +1,348 @@
+{
+  "name": "arcane_circle",
+  "_comment": "Arcane library with a painted sigil on the floor, authored in WALL pixels (1080x1920). arcane_circle.png is 816x1440; it is upscaled once to arcane_circle_wall.png (uniform 4/3, centred, 4 px cropped per side) so the canvas equals the screen and there is no per-frame smoothscale. Each rect is the source coordinate x 4/3 minus the 4 px crop. Source features: floor sigil centre (400,1065) radius ~220; left desk candles x 60..140 y 600..695 and x 265..325 y 590..685; right desk candles x 690..750 y 590..685; hanging lantern x 405..450 y 200..280; open books x 130..280 y 630..780 and x 480..620 y 610..760; green flask x 645..685 y 630..675; blue round flask x 470..515 y 645..700; gothic window x 340..520 y 230..470. The rune ring is deliberately centred on the painted sigil so the floor circle looks alive rather than duplicated.",
+  "mode": "freeform",
+  "design_resolution": [
+    1080,
+    1920
+  ],
+  "background_image": "arcane_circle_wall.png",
+  "controls": [
+    {
+      "type": "ember_field",
+      "at": [
+        0,
+        0
+      ],
+      "size": [
+        1080,
+        1920
+      ],
+      "count": 70,
+      "ember_rgb": [
+        255,
+        168,
+        104
+      ],
+      "mote": 2.6,
+      "rise": 30,
+      "sway": 11,
+      "glow": 2.6
+    },
+    {
+      "type": "rune_circle",
+      "at": [
+        250,
+        1266
+      ],
+      "size": [
+        570,
+        222
+      ],
+      "rings": 1,
+      "glyphs": 20,
+      "radius": 1.0,
+      "spin": 4.0,
+      "pulse": 0.08,
+      "glow": 0.1,
+      "rune_rgb": [
+        255,
+        186,
+        110
+      ],
+      "aspect": 0.39,
+      "upright": true,
+      "glyph": 0.13,
+      "guides": false
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        46,
+        840
+      ],
+      "size": [
+        80,
+        90
+      ],
+      "count": 1,
+      "flame_rgb": [
+        255,
+        172,
+        84
+      ],
+      "flicker": 1.1,
+      "glow": 0.9,
+      "lean": 0.3
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        90,
+        804
+      ],
+      "size": [
+        80,
+        90
+      ],
+      "count": 1,
+      "flame_rgb": [
+        255,
+        172,
+        84
+      ],
+      "flicker": 1.1,
+      "glow": 0.9,
+      "lean": 0.3
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        349,
+        816
+      ],
+      "size": [
+        60,
+        80
+      ],
+      "count": 1,
+      "flame_rgb": [
+        255,
+        176,
+        90
+      ],
+      "flicker": 1.2,
+      "glow": 0.85,
+      "lean": 0.28
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        886,
+        807
+      ],
+      "size": [
+        60,
+        80
+      ],
+      "count": 1,
+      "flame_rgb": [
+        255,
+        180,
+        96
+      ],
+      "flicker": 1.0,
+      "glow": 0.85,
+      "lean": 0.28
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        920,
+        791
+      ],
+      "size": [
+        60,
+        80
+      ],
+      "count": 1,
+      "flame_rgb": [
+        255,
+        180,
+        96
+      ],
+      "flicker": 1.0,
+      "glow": 0.85,
+      "lean": 0.28
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        526,
+        267
+      ],
+      "size": [
+        60,
+        107
+      ],
+      "count": 1,
+      "flame_rgb": [
+        255,
+        186,
+        110
+      ],
+      "flicker": 1.35,
+      "glow": 0.95,
+      "lean": 0.2
+    },
+    {
+      "type": "drifting_runes",
+      "at": [
+        184,
+        815
+      ],
+      "size": [
+        150,
+        150
+      ],
+      "count": 4,
+      "rise": 7.0,
+      "sway": 0.08,
+      "fade": 0.32,
+      "glow": 0.6,
+      "rune_rgb": [
+        206,
+        176,
+        255
+      ]
+    },
+    {
+      "type": "drifting_runes",
+      "at": [
+        686,
+        763
+      ],
+      "size": [
+        90,
+        200
+      ],
+      "count": 4,
+      "rise": 6.5,
+      "sway": 0.08,
+      "fade": 0.32,
+      "glow": 0.6,
+      "rune_rgb": [
+        176,
+        208,
+        255
+      ]
+    },
+    {
+      "type": "potion_bubbles",
+      "at": [
+        836,
+        900
+      ],
+      "size": [
+        53,
+        60
+      ],
+      "bubbles": 6,
+      "rise": 0.28,
+      "surface": 0.2,
+      "glow": 0.5,
+      "potion_rgb": [
+        132,
+        240,
+        150
+      ]
+    },
+    {
+      "type": "potion_bubbles",
+      "at": [
+        603,
+        870
+      ],
+      "size": [
+        60,
+        73
+      ],
+      "bubbles": 5,
+      "rise": 0.24,
+      "surface": 0.2,
+      "glow": 0.45,
+      "potion_rgb": [
+        130,
+        190,
+        245
+      ]
+    },
+    {
+      "type": "floating_orb",
+      "at": [
+        396,
+        440
+      ],
+      "size": [
+        80,
+        80
+      ],
+      "orb_rgb": [
+        170,
+        205,
+        255
+      ],
+      "glow": 0.9,
+      "pulse": 0.08,
+      "drift": 0.2
+    },
+    {
+      "type": "floating_orb",
+      "at": [
+        743,
+        507
+      ],
+      "size": [
+        73,
+        73
+      ],
+      "orb_rgb": [
+        208,
+        170,
+        255
+      ],
+      "glow": 0.85,
+      "pulse": 0.1,
+      "drift": 0.25
+    },
+    {
+      "type": "smoke_wisp",
+      "at": [
+        276,
+        1200
+      ],
+      "size": [
+        507,
+        400
+      ],
+      "wisps": 2,
+      "drift": 0.85,
+      "speed": 0.85,
+      "fade": 0.8,
+      "smoke_rgb": [
+        168,
+        176,
+        208
+      ]
+    },
+    {
+      "type": "glowing_eyes",
+      "at": [
+        224,
+        1073
+      ],
+      "size": [
+        70,
+        70
+      ],
+      "pairs": 1,
+      "eye": 0.4,
+      "gap": 1.3,
+      "slant": 0.3,
+      "period": 11.0,
+      "hold": 0.35,
+      "blink": 7.0,
+      "glow": 0.7,
+      "eye_rgb": [
+        128,
+        238,
+        142
+      ],
+      "color": [
+        230,
+        44,
+        44
+      ]
+    }
+  ]
+}

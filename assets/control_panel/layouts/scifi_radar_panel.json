@@ -1,0 +1,1260 @@
+{
+  "name": "scifi_radar_panel",
+  "_comment": "Sci-fi radar console over scifi_radar_panel_wall.png. The layout is authored in the KIOSK SCREEN's pixels (1080x1920) and the artwork is that same PNG pre-scaled once to the same size, because a canvas that is not the screen's size makes the compositor smoothscale every frame: measured 21.2 ms/frame at the artwork's native 816x1440 versus 5.6 ms at 1080x1920 on this wall. The overlay coordinates below are the measured artwork positions multiplied by the SAME transform that made the wall PNG (x * 1080/816, y * 1920/1440), so art and overlays cannot drift apart. The art supplies the bezels, dial faces, screens and button wells; controls draw only their animated overlays. Re-align via the control-panel layout page after looking at the wall.",
+  "mode": "freeform",
+  "design_resolution": [
+    1080,
+    1920
+  ],
+  "background_image": "scifi_radar_panel_wall.png",
+  "controls": [
+    {
+      "type": "radar",
+      "at": [
+        286,
+        268
+      ],
+      "size": [
+        500,
+        504
+      ],
+      "period": 6.5,
+      "blip_rate": 1.1,
+      "trace_rgb": [
+        150,
+        245,
+        255
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        99,
+        249
+      ],
+      "size": [
+        119,
+        120
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 300,
+      "needle_rgb": [
+        120,
+        235,
+        255
+      ],
+      "signal": {
+        "kind": "random_walk",
+        "min": 0.08,
+        "max": 0.92
+      }
+    },
+    {
+      "type": "clock",
+      "at": [
+        90,
+        457
+      ],
+      "size": [
+        132,
+        133
+      ],
+      "hand_rgb": [
+        205,
+        240,
+        255
+      ],
+      "color": [
+        255,
+        150,
+        90
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        101,
+        667
+      ],
+      "size": [
+        111,
+        112
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 280,
+      "needle_rgb": [
+        255,
+        150,
+        90
+      ],
+      "signal": {
+        "kind": "random_walk",
+        "min": 0.2,
+        "max": 1.0
+      }
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        856,
+        249
+      ],
+      "size": [
+        120,
+        121
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 330,
+      "needle_rgb": [
+        120,
+        235,
+        255
+      ],
+      "signal": {
+        "kind": "random_walk",
+        "min": 0.1,
+        "max": 0.9
+      }
+    },
+    {
+      "type": "rotary_knob",
+      "at": [
+        852,
+        484
+      ],
+      "size": [
+        53,
+        53
+      ],
+      "detents": 5,
+      "pointer_rgb": [
+        120,
+        235,
+        255
+      ]
+    },
+    {
+      "type": "selector_switch",
+      "at": [
+        929,
+        483
+      ],
+      "size": [
+        53,
+        53
+      ],
+      "detents": 6,
+      "pointer_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        864,
+        572
+      ],
+      "size": [
+        32,
+        33
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        938,
+        572
+      ],
+      "size": [
+        32,
+        33
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        864,
+        693
+      ],
+      "size": [
+        29,
+        31
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        930,
+        693
+      ],
+      "size": [
+        29,
+        31
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        864,
+        756
+      ],
+      "size": [
+        30,
+        32
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        930,
+        756
+      ],
+      "size": [
+        30,
+        32
+      ],
+      "color_rgb": [
+        120,
+        255,
+        170
+      ]
+    },
+    {
+      "type": "radar",
+      "at": [
+        91,
+        901
+      ],
+      "size": [
+        156,
+        157
+      ],
+      "period": 3.4,
+      "blip_rate": 1.8,
+      "trace_rgb": [
+        210,
+        255,
+        255
+      ]
+    },
+    {
+      "type": "digital_readout",
+      "at": [
+        304,
+        888
+      ],
+      "size": [
+        213,
+        80
+      ],
+      "window": [
+        0.06,
+        0.16,
+        0.88,
+        0.66
+      ],
+      "color_rgb": [
+        120,
+        235,
+        255
+      ],
+      "min": 0,
+      "max": 9999,
+      "decimals": 1,
+      "refresh_hz": 3.0
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        311,
+        1007
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ],
+      "signal": {
+        "kind": "pulse",
+        "rate": 0.25
+      }
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        355,
+        1007
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ],
+      "signal": {
+        "kind": "pulse",
+        "rate": 0.25
+      }
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        398,
+        1007
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ],
+      "signal": {
+        "kind": "pulse",
+        "rate": 0.25
+      }
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        442,
+        1007
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ],
+      "signal": {
+        "kind": "pulse",
+        "rate": 0.25
+      }
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        486,
+        1007
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ],
+      "signal": {
+        "kind": "pulse",
+        "rate": 0.25
+      }
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        311,
+        1047
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        120,
+        180,
+        255
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        355,
+        1047
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        398,
+        1047
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        442,
+        1047
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        486,
+        1047
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "color_rgb": [
+        120,
+        180,
+        255
+      ]
+    },
+    {
+      "type": "scope",
+      "at": [
+        570,
+        876
+      ],
+      "size": [
+        250,
+        195
+      ],
+      "window": [
+        0.04,
+        0.07,
+        0.92,
+        0.86
+      ],
+      "wave": {
+        "kind": "sine",
+        "freq": 0.33
+      },
+      "trace_rgb": [
+        120,
+        245,
+        230
+      ]
+    },
+    {
+      "type": "led_bar",
+      "at": [
+        852,
+        869
+      ],
+      "size": [
+        135,
+        101
+      ],
+      "window": [
+        0.09,
+        0.2,
+        0.82,
+        0.6
+      ],
+      "segments": 12,
+      "color": [
+        110,
+        235,
+        230
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        871,
+        1013
+      ],
+      "size": [
+        34,
+        36
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        936,
+        1013
+      ],
+      "size": [
+        34,
+        36
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "counter",
+      "at": [
+        73,
+        1141
+      ],
+      "size": [
+        204,
+        135
+      ],
+      "window": [
+        0.07,
+        0.24,
+        0.86,
+        0.52
+      ],
+      "digits": 5,
+      "per_sec": 1.6,
+      "color_rgb": [
+        140,
+        240,
+        255
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        101,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        152,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        202,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        120,
+        255,
+        170
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        253,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        307,
+        1141
+      ],
+      "size": [
+        127,
+        128
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 300,
+      "needle_rgb": [
+        255,
+        150,
+        90
+      ],
+      "signal": {
+        "kind": "random_walk",
+        "min": 0.05,
+        "max": 1.0
+      }
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        446,
+        1164
+      ],
+      "size": [
+        20,
+        21
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        486,
+        1164
+      ],
+      "size": [
+        21,
+        21
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        446,
+        1237
+      ],
+      "size": [
+        20,
+        21
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        487,
+        1239
+      ],
+      "size": [
+        20,
+        20
+      ],
+      "color_rgb": [
+        120,
+        255,
+        170
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        328,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        380,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        430,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        482,
+        1315
+      ],
+      "size": [
+        26,
+        27
+      ],
+      "color_rgb": [
+        120,
+        255,
+        170
+      ]
+    },
+    {
+      "type": "strip_chart",
+      "at": [
+        559,
+        1127
+      ],
+      "size": [
+        426,
+        224
+      ],
+      "window": [
+        0.04,
+        0.09,
+        0.92,
+        0.82
+      ],
+      "samples": 320,
+      "trace_rgb": [
+        120,
+        250,
+        220
+      ]
+    },
+    {
+      "type": "scope",
+      "at": [
+        95,
+        1423
+      ],
+      "size": [
+        275,
+        212
+      ],
+      "window": [
+        0.05,
+        0.1,
+        0.9,
+        0.8
+      ],
+      "wave": {
+        "kind": "noise"
+      },
+      "trace_rgb": [
+        255,
+        195,
+        115
+      ],
+      "samples": 200
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        410,
+        1469
+      ],
+      "size": [
+        30,
+        32
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        471,
+        1469
+      ],
+      "size": [
+        30,
+        32
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        410,
+        1536
+      ],
+      "size": [
+        30,
+        32
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        471,
+        1536
+      ],
+      "size": [
+        32,
+        33
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        410,
+        1601
+      ],
+      "size": [
+        30,
+        31
+      ],
+      "color_rgb": [
+        120,
+        255,
+        170
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        471,
+        1600
+      ],
+      "size": [
+        30,
+        32
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        99,
+        1672
+      ],
+      "size": [
+        25,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        148,
+        1672
+      ],
+      "size": [
+        25,
+        24
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        196,
+        1672
+      ],
+      "size": [
+        25,
+        24
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        245,
+        1672
+      ],
+      "size": [
+        25,
+        24
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        294,
+        1672
+      ],
+      "size": [
+        25,
+        24
+      ],
+      "color_rgb": [
+        120,
+        255,
+        170
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        341,
+        1672
+      ],
+      "size": [
+        25,
+        24
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "led_matrix",
+      "at": [
+        559,
+        1404
+      ],
+      "size": [
+        250,
+        196
+      ],
+      "grid": [
+        10,
+        8
+      ],
+      "window": [
+        0.07,
+        0.12,
+        0.86,
+        0.76
+      ],
+      "rate": 5.0,
+      "color_rgb": [
+        120,
+        235,
+        255
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "at": [
+        858,
+        1439
+      ],
+      "size": [
+        111,
+        112
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "sweep_deg": 240,
+      "needle_rgb": [
+        255,
+        120,
+        95
+      ],
+      "signal": {
+        "kind": "random_walk",
+        "min": 0.0,
+        "max": 0.75
+      }
+    },
+    {
+      "type": "lamp_rect",
+      "at": [
+        593,
+        1636
+      ],
+      "size": [
+        42,
+        19
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_rect",
+      "at": [
+        662,
+        1636
+      ],
+      "size": [
+        42,
+        19
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_rect",
+      "at": [
+        732,
+        1636
+      ],
+      "size": [
+        42,
+        19
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        601,
+        1676
+      ],
+      "size": [
+        34,
+        35
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        670,
+        1676
+      ],
+      "size": [
+        34,
+        35
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        740,
+        1676
+      ],
+      "size": [
+        34,
+        35
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        867,
+        1608
+      ],
+      "size": [
+        30,
+        33
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        932,
+        1608
+      ],
+      "size": [
+        29,
+        32
+      ],
+      "color_rgb": [
+        255,
+        94,
+        79
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        868,
+        1664
+      ],
+      "size": [
+        29,
+        31
+      ],
+      "color_rgb": [
+        70,
+        225,
+        220
+      ]
+    },
+    {
+      "type": "lamp_square",
+      "at": [
+        932,
+        1665
+      ],
+      "size": [
+        29,
+        29
+      ],
+      "color_rgb": [
+        255,
+        170,
+        90
+      ]
+    }
+  ]
+}

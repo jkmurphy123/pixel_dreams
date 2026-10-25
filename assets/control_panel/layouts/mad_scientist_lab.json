@@ -1,0 +1,411 @@
+{
+  "name": "mad_scientist_lab",
+  "_comment": "Mad-scientist electrical laboratory over mad_lab_1_wall.png. Coordinates are authored in 1080x1920 wall pixels. The background supplies the glass, brass, rods, tube frames, gauge faces, and bezels; controls draw only animated overlays. Re-align via the control-panel layout page after looking at the wall.",
+  "mode": "freeform",
+  "design_resolution": [
+    1080,
+    1920
+  ],
+  "background_image": "mad_lab_1_wall.png",
+  "controls": [
+    {
+      "type": "electric_filament",
+      "at": [
+        105,
+        222
+      ],
+      "size": [
+        100,
+        180
+      ],
+      "orient": "v",
+      "turns": 18,
+      "filament_rgb": [
+        252,
+        251,
+        242
+      ],
+      "heat": 0.84,
+      "surge": 0.18,
+      "glow": 0.32,
+      "inset": 0.25,
+      "color": [
+        252,
+        252,
+        93
+      ]
+    },
+    {
+      "type": "electric_filament",
+      "at": [
+        813,
+        212
+      ],
+      "size": [
+        155,
+        367
+      ],
+      "orient": "v",
+      "turns": 18,
+      "filament_rgb": [
+        255,
+        173,
+        78
+      ],
+      "heat": 0.84,
+      "surge": 0.25,
+      "glow": 0.32,
+      "inset": 0.25
+    },
+    {
+      "type": "spark_terminal",
+      "at": [
+        370,
+        1170
+      ],
+      "size": [
+        100,
+        110
+      ],
+      "spark_rgb": [
+        104,
+        194,
+        255
+      ],
+      "rate": 1.05,
+      "count": 14,
+      "speed": 72,
+      "spread": 0.72,
+      "life": 0.26,
+      "glow": 0.34
+    },
+    {
+      "type": "spark_terminal",
+      "at": [
+        490,
+        1170
+      ],
+      "size": [
+        100,
+        110
+      ],
+      "spark_rgb": [
+        140,
+        104,
+        255
+      ],
+      "rate": 1.25,
+      "count": 14,
+      "speed": 72,
+      "spread": 0.72,
+      "life": 0.26,
+      "glow": 0.34
+    },
+    {
+      "type": "spark_terminal",
+      "at": [
+        514,
+        1194
+      ],
+      "size": [
+        100,
+        110
+      ],
+      "spark_rgb": [
+        140,
+        104,
+        255
+      ],
+      "rate": 1.25,
+      "count": 14,
+      "speed": 72,
+      "spread": 0.72,
+      "life": 0.26,
+      "glow": 0.34
+    },
+    {
+      "type": "lamp",
+      "at": [
+        256,
+        902
+      ],
+      "size": [
+        48,
+        48
+      ],
+      "color_rgb": [
+        255,
+        58,
+        42
+      ],
+      "radius": 0.21
+    },
+    {
+      "type": "lamp",
+      "at": [
+        256,
+        965
+      ],
+      "size": [
+        48,
+        48
+      ],
+      "color_rgb": [
+        255,
+        169,
+        52
+      ],
+      "radius": 0.21
+    },
+    {
+      "type": "lamp",
+      "at": [
+        256,
+        1028
+      ],
+      "size": [
+        48,
+        48
+      ],
+      "color_rgb": [
+        66,
+        242,
+        113
+      ],
+      "radius": 0.21
+    },
+    {
+      "type": "lamp",
+      "at": [
+        778,
+        902
+      ],
+      "size": [
+        48,
+        48
+      ],
+      "color_rgb": [
+        255,
+        58,
+        42
+      ],
+      "radius": 0.21
+    },
+    {
+      "type": "lamp",
+      "at": [
+        778,
+        965
+      ],
+      "size": [
+        48,
+        48
+      ],
+      "color_rgb": [
+        255,
+        169,
+        52
+      ],
+      "radius": 0.21
+    },
+    {
+      "type": "lamp",
+      "at": [
+        778,
+        1028
+      ],
+      "size": [
+        48,
+        48
+      ],
+      "color_rgb": [
+        66,
+        242,
+        113
+      ],
+      "radius": 0.21
+    },
+    {
+      "type": "mechanical_wheels",
+      "at": [
+        371,
+        916
+      ],
+      "size": [
+        339,
+        167
+      ],
+      "digits": 5,
+      "start": 18420,
+      "per_sec": 0.7,
+      "step_time": 0.26,
+      "font_name": "dejavusansmono",
+      "wheel_rgb": [
+        223,
+        202,
+        150
+      ],
+      "face_rgb": [
+        20,
+        25,
+        22
+      ],
+      "bezel": 0.1
+    },
+    {
+      "type": "jacobs_ladder",
+      "at": [
+        330,
+        25
+      ],
+      "size": [
+        420,
+        500
+      ],
+      "arc_rgb": [
+        133,
+        191,
+        255
+      ],
+      "climb": 3,
+      "rest": 0.3,
+      "jag": 0.13,
+      "branches": 1,
+      "glow": 0.9,
+      "left_rail": [
+        [
+          0.27,
+          0.85
+        ],
+        [
+          0.12,
+          0.04
+        ]
+      ],
+      "right_rail": [
+        [
+          0.73,
+          0.85
+        ],
+        [
+          0.88,
+          0.04
+        ]
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "sprite": "GAUGE_ROUND_SMALL_1",
+      "size": [
+        170,
+        170
+      ],
+      "at": [
+        48,
+        656
+      ],
+      "color": [
+        8,
+        7,
+        7
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "sprite": "GAUGE_ROUND_SMALL_1",
+      "size": [
+        170,
+        170
+      ],
+      "at": [
+        253,
+        656
+      ],
+      "color": [
+        8,
+        7,
+        7
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "sprite": "GAUGE_ROUND_SMALL_1",
+      "size": [
+        170,
+        170
+      ],
+      "at": [
+        457,
+        656
+      ],
+      "color": [
+        8,
+        7,
+        7
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "sprite": "GAUGE_ROUND_SMALL_1",
+      "size": [
+        170,
+        170
+      ],
+      "at": [
+        659,
+        656
+      ],
+      "color": [
+        8,
+        7,
+        7
+      ]
+    },
+    {
+      "type": "gauge_round",
+      "sprite": "GAUGE_ROUND_SMALL_1",
+      "size": [
+        170,
+        170
+      ],
+      "at": [
+        864,
+        656
+      ],
+      "color": [
+        8,
+        7,
+        7
+      ]
+    },
+    {
+      "type": "potion_bubbles",
+      "sprite": "ARCANE_POTION",
+      "size": [
+        110,
+        260
+      ],
+      "at": [
+        65,
+        1045
+      ]
+    },
+    {
+      "type": "potion_bubbles",
+      "sprite": "ARCANE_POTION",
+      "size": [
+        110,
+        260
+      ],
+      "at": [
+        909,
+        1045
+      ],
+      "color": [
+        247,
+        140,
+        32
+      ]
+    }
+  ]
+}

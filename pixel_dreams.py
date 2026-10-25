@@ -28,7 +28,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
 from core import profiles as profiles_mod
-from core.bus import ControlBus, require_loopback_or_token
+from core.bus import ControlBus, is_loopback, require_loopback_or_token
 from core.config import (
     enabled_mode_indices,
     infer_max_modes_from_config,
@@ -105,7 +105,11 @@ def parse_args(argv):
                         help="Serve the web control panel on port N (default: off)")
     parser.add_argument("--panel-bind", default="127.0.0.1", metavar="ADDR",
                         help="Panel bind address (default: 127.0.0.1). A non-loopback address "
-                             "requires panel_token in secrets.json")
+                             "requires panel_token in secrets.json unless --panel-open is given")
+    parser.add_argument("--panel-open", action="store_true",
+                        help="Serve the panel with NO token gate, on any bind address. Anyone "
+                             "who can reach the address can read and change the configs — only "
+                             "for a trusted LAN.")
     parser.add_argument("--panel-only", action="store_true",
                         help="Serve the panel without initialising pygame (no display needed)")
     parser.add_argument("--frames", type=int, default=None, metavar="N",
@@ -161,7 +165,8 @@ def main(argv=None):
     panel_url = None
     if args.panel_port is not None:
         try:
-            require_loopback_or_token(args.panel_bind, secrets.get("panel_token"))
+            require_loopback_or_token(args.panel_bind, secrets.get("panel_token"),
+                                      allow_open=args.panel_open)
         except ValueError as e:
             print(f"[Panel] Refusing to start: {e}")
             return 2
@@ -169,9 +174,12 @@ def main(argv=None):
         panel = start_panel(
             base_dir=BASE_DIR, bus=bus, host=args.panel_bind, port=args.panel_port,
             token=secrets.get("panel_token"), config_override=args.config,
+            ungated=args.panel_open,
         )
         panel_url = panel.url
-        print(f"[Panel] Control panel on {panel_url} (bind {args.panel_bind})")
+        gate = "UNGATED (--panel-open)" if args.panel_open else (
+            "token" if not is_loopback(args.panel_bind) else "no token (loopback)")
+        print(f"[Panel] Control panel on {panel_url} (bind {args.panel_bind}, {gate})")
 
     if args.panel_only:
         # No display at all: the panel is the whole program.

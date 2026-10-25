@@ -1,0 +1,24 @@
+registry: 53 types -> 54 with the draft
+
+validate_registry(check_imports=False): 0 errors, 0 warnings
+pygame 2.6.1 (SDL 2.28.4, Python 3.10.12)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+
+validate_registry(check_imports=True): 1 errors (expected >0)
+      ERROR: type 'inkmap': cannot import module 'modes.ink_map_mode': No module named 'modes.ink_map_mode'
+   every error is about the not-yet-written mode: True
+
+resolve_params: 54 fields, 0 warnings
+   fields with no default and not set here: []
+   optional keys that collide with common instance keys: []
+
+validate_profile: 0 errors, 0 warnings
+
+CONTROLS (validate_param_value):
+   water_style='not-a-style' -> ['must be one of: hash, squiggle, stipple, wave']
+   draw_minutes=-1           -> ['must be at least 0.1']
+   draw_minutes=4.0          -> [] (must be empty)
+   compass_placement='middle'-> ['must be one of: bottom_right, bottom_left, top_right, top_left']
+   paper_tone=[232,217,184]  -> [] (must be empty)
+
+VERDICT: PASS

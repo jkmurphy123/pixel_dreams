@@ -5,9 +5,16 @@
 
 from .base import Control, ControlContext  # noqa: F401
 from .bars import BarGraphControl, LedBarControl  # noqa: F401
+from .arcane import (CandleFlameControl, DriftingRunesControl,  # noqa: F401
+                     EmberFieldControl, FloatingOrbControl, LightningArcControl,
+                     GlowingEyesControl, PotionBubblesControl, RuneCircleControl,
+                     RuneLineControl,
+                     SmokeWispControl)
 from .keypad import KeypadControl  # noqa: F401
 from .lampgroups import LampBankControl, LedMatrixControl  # noqa: F401
 from .lamps import LampControl, RectLampControl, SquareLampControl  # noqa: F401
+from .mad_science import (ElectricFilamentControl, JacobsLadderControl,  # noqa: F401
+                          MechanicalWheelsControl, SparkTerminalControl)
 from .needles import GaugeControl, MeterControl  # noqa: F401
 from .readouts import (CounterControl, DigitalReadoutControl,  # noqa: F401
                        NixieControl)
@@ -40,6 +47,22 @@ CONTROL_CLASSES = {
     "tape_reel": TapeReelControl,
     "radar": RadarControl,
     "clock": ClockControl,
+    # arcane family — drawn entirely procedurally over freeform artwork
+    "candle_flame": CandleFlameControl,
+    "ember_field": EmberFieldControl,
+    "floating_orb": FloatingOrbControl,
+    "rune_circle": RuneCircleControl,
+    "rune_line": RuneLineControl,
+    "smoke_wisp": SmokeWispControl,
+    "lightning_arc": LightningArcControl,
+    "potion_bubbles": PotionBubblesControl,
+    "drifting_runes": DriftingRunesControl,
+    "glowing_eyes": GlowingEyesControl,
+    # mad-science family — procedural freeform overlays
+    "jacobs_ladder": JacobsLadderControl,
+    "electric_filament": ElectricFilamentControl,
+    "spark_terminal": SparkTerminalControl,
+    "mechanical_wheels": MechanicalWheelsControl,
     # "plate": static only
 }
 
@@ -81,5 +104,20 @@ COLOUR_KEYS = {
     "tape_reel":       ("color", "spoke_rgb"),
     "radar":           ("color", "trace_rgb"),
     "clock":           ("color", "hand_rgb"),
+    # arcane family: one colour key each, read through _color() so the picker finds it
+    "candle_flame":    ("color", "flame_rgb"),
+    "ember_field":     ("color", "ember_rgb"),
+    "floating_orb":    ("color", "orb_rgb"),
+    "rune_circle":     ("color", "rune_rgb"),
+    "rune_line":       ("color", "rune_rgb"),
+    "smoke_wisp":      ("color", "smoke_rgb"),
+    "lightning_arc":   ("color", "arc_rgb"),
+    "potion_bubbles":  ("color", "potion_rgb"),
+    "drifting_runes":  ("color", "rune_rgb"),
+    "glowing_eyes":    ("color", "eye_rgb"),
+    "jacobs_ladder":   ("color", "arc_rgb"),
+    "electric_filament": ("color", "filament_rgb"),
+    "spark_terminal":  ("color", "spark_rgb"),
+    "mechanical_wheels": ("color", "wheel_rgb", "face_rgb"),
     "plate":           (),
 }

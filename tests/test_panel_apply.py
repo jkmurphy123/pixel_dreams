@@ -321,6 +321,43 @@ def test_apply_and_refresh_are_gated_like_everything_else(tmp_path):
         _stop(proc)
 
 
+def test_panel_open_serves_a_network_bind_without_a_token(tmp_path):
+    """
+    --panel-open bound to 0.0.0.0 with a panel_token present in secrets.json: every route answers
+    with NO token, no cookie and no header — the "just open http://jetsons:8090" case. Asserted on
+    a real 200 (not on _wait_ready, which counts a 403 as "up" and would pass on a still-gated panel).
+    """
+    root = _project(tmp_path)
+    port = _free_port()
+    proc, log = _spawn(root, tmp_path, "open.log", "--panel-port", str(port),
+                       "--panel-bind", "0.0.0.0", "--panel-open", "--auto", "1", env=_env())
+    url = f"http://127.0.0.1:{port}"
+    try:
+        deadline, last = time.time() + 25.0, None
+        while time.time() < deadline:
+            assert proc.poll() is None, _read(log)
+            try:
+                assert _status(url, token=None)["status"]["app"] == "pixel_dreams"
+                break
+            except urllib.error.HTTPError as e:
+                last = e.code
+            except Exception:
+                pass
+            time.sleep(0.25)
+        else:
+            raise AssertionError(f"panel never answered ungated (last={last}):\n{_read(log)}")
+
+        req = urllib.request.Request(url + "/")           # the page itself, no credential
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            assert resp.status == 200
+            assert "A token is required" not in resp.read().decode("utf-8", "replace")
+        assert _post(url + "/api/apply", token=None, payload={"refresh": True})[0] == 200
+        assert _post(url + "/api/refresh", token=None)[0] == 200
+        assert "UNGATED" in _read(log)
+    finally:
+        _stop(proc)
+
+
 def test_apply_refuses_an_unknown_profile_and_bad_bodies(kiosk):
     _root, url, _proc, _log = kiosk
     code, body = _post(url + "/api/apply", payload={"profile": "configs/nope.json"})

@@ -3324,14 +3324,23 @@
       ],
       "optional": [
         "books_file",
+        "body_font_name",
+        "collection_label",
         "dwell_seconds",
+        "footer_frac",
+        "header_frac",
+        "layout",
         "match_by",
+        "max_line_chars",
+        "panel_opacity",
         "portrait_layout",
         "portrait_cover_height_frac",
         "placeholder_color",
         "show_tags",
         "show_review",
         "font_name",
+        "text_align",
+        "title_font_name",
         "title_font_size",
         "body_font_size",
         "small_font_size",
@@ -3384,6 +3393,475 @@
         },
         "title_font_size": {
           "default": 48
+        }
+      }
+    },
+    "inkmap": {
+      "entrypoint": "modes.ink_map_mode:InkMapMode",
+      "required": [],
+      "optional": [
+        "seed",
+        "draw_minutes",
+        "hold_minutes",
+        "reveal_fps",
+        "paper_tone",
+        "ink_rgb",
+        "paper_age",
+        "vignette",
+        "supersample",
+        "land_coverage",
+        "grain_size_cells",
+        "pen_scale",
+        "tremor",
+        "feature_scale",
+        "water_style",
+        "water_rings",
+        "lake_count",
+        "show_mountains",
+        "mountain_packing",
+        "show_hills",
+        "hill_packing",
+        "show_rivers",
+        "river_count",
+        "show_desert",
+        "desert_regions",
+        "show_forest",
+        "forest_masses",
+        "show_grass",
+        "grass_density",
+        "show_cliffs",
+        "cliff_coverage",
+        "show_canyons",
+        "canyon_count",
+        "show_waterfalls",
+        "waterfall_count",
+        "show_islands",
+        "floating_islands",
+        "show_vines",
+        "rock_detail",
+        "map_title",
+        "settlements",
+        "show_roads",
+        "road_style",
+        "road_count",
+        "show_region_labels",
+        "region_labels",
+        "label_font",
+        "label_scale",
+        "show_compass",
+        "compass_placement",
+        "compass_points",
+        "show_cartouche",
+        "show_border",
+        "border_inset"
+      ],
+      "params": {
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0,
+          "help": "0 = pick one at random and print it in the log. Any other value reproduces that exact sheet, so a map you like can be kept. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "draw_minutes": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 5.0,
+          "min": 0.1,
+          "help": "How long the pen takes to draw the whole sheet. 0 = draw it all at once. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "hold_minutes": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 2.0,
+          "min": 0,
+          "help": "How long the finished map stays up before the sheet is wiped and a new one poured. 0 = keep it until the mode changes. Not drawn yet - this control becomes live in phase 5 of the design."
+        },
+        "reveal_fps": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 20,
+          "min": 1,
+          "max": 60,
+          "help": "Frame rate of the drawing. The reveal only touches the part of the ink layer it changed, so this is about how smooth the pen looks, not about cost. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "paper_tone": {
+          "widget": "color",
+          "group": "appearance",
+          "default": [
+            232,
+            217,
+            184
+          ],
+          "help": "Base colour of the parchment. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "ink_rgb": {
+          "widget": "color",
+          "group": "appearance",
+          "default": [
+            43,
+            33,
+            26
+          ],
+          "help": "The ink. A warm near-black reads as pen on paper; pure black reads as printed. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "paper_age": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 1.0,
+          "min": 0,
+          "max": 3,
+          "help": "How much blotching and fibre speckle to work into the paper. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "vignette": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 1.0,
+          "min": 0,
+          "max": 3,
+          "help": "Darkening toward the edges of the sheet. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "supersample": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 2,
+          "min": 1,
+          "max": 3,
+          "help": "The ink is drawn at this multiple of the screen resolution and scaled down, which is what anti-aliases the pen strokes. 1 turns it off (faster, visibly jagged). Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "pen_scale": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 1.0,
+          "min": 0.4,
+          "max": 2.5,
+          "help": "Multiplies every pen width. Nib sizes are the real Pigma Micron millimetres, so this is a fair way to make the whole drawing lighter or heavier. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "tremor": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.55,
+          "min": 0,
+          "max": 3,
+          "help": "How unsteady the hand is. The video's own trick is holding the pen higher up, which gives a less controlled line. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "feature_scale": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 1.0,
+          "min": 0.4,
+          "max": 2,
+          "help": "Size of every drawn feature (mountains, trees, hills). Counts follow automatically, because how many fit is derived from the area each one covers. Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "land_coverage": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.55,
+          "min": 0.1,
+          "max": 0.95,
+          "help": "How much of the sheet is land, as opposed to sea. The pour is deliberately pushed off the edges, so the land runs off the page. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "grain_size_cells": {
+          "widget": "number",
+          "group": "layout",
+          "default": 5,
+          "min": 2,
+          "max": 14,
+          "help": "Size of one grain of rice, in field cells. This sets the scale of the scalloped coastline, so it is the single most important dial. Active now: the sheet (phase 1) and the coastline (phase 2)."
+        },
+        "water_style": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "hash",
+          "choices": [
+            "hash",
+            "squiggle",
+            "stipple",
+            "wave"
+          ],
+          "help": "How the sea is indicated. hash = straight hashes and dots, which is the video's main method. squiggle, stipple and wave are the three alternates it shows. Active now: the sheet (phase 1), the coastline (phase 2) and the sea (phase 3)."
+        },
+        "water_rings": {
+          "widget": "number",
+          "group": "layout",
+          "default": 3,
+          "min": 0,
+          "max": 6,
+          "help": "How many parallel rows of water detail to layer outside the coast. More rows make the land stand out more. Active now: the sheet (phase 1), the coastline (phase 2) and the sea (phase 3)."
+        },
+        "lake_count": {
+          "widget": "number",
+          "group": "layout",
+          "default": 3,
+          "min": 0,
+          "max": 12,
+          "help": "Lakes inland, drawn with the same water pass on the inside. Active now: the sheet (phase 1), the coastline (phase 2) and the sea (phase 3)."
+        },
+        "show_mountains": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "mountain_packing": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.25,
+          "min": 0.05,
+          "max": 0.6,
+          "help": "How much of the mountainous ground is covered by peaks. This is what decides how many mountains to draw. Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "show_hills": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "hill_packing": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.3,
+          "min": 0.05,
+          "max": 0.6,
+          "help": "How much of the hilly ground is covered by hills. Hills are the transition from the ranges down to the plain. Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "show_rivers": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "river_count": {
+          "widget": "number",
+          "group": "layout",
+          "default": 8,
+          "min": 0,
+          "max": 30,
+          "help": "Rivers, each running from high ground down to the coast. A river never splits - that is a rule of the technique, not a setting. Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "show_desert": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "desert_regions": {
+          "widget": "number",
+          "group": "layout",
+          "default": 2,
+          "min": 0,
+          "max": 8,
+          "help": "Deserts. Each is poured like the land is, stippled dark at the rim and light in the middle, with a few dunes. Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "show_forest": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 5 of the design."
+        },
+        "forest_masses": {
+          "widget": "number",
+          "group": "layout",
+          "default": 6,
+          "min": 0,
+          "max": 20,
+          "help": "Forests. Each is a clump of pines and oaks, still shaded on the right like everything else. Not drawn yet - this control becomes live in phase 5 of the design."
+        },
+        "show_grass": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "grass_density": {
+          "widget": "number",
+          "group": "layout",
+          "default": 1.0,
+          "min": 0,
+          "max": 3,
+          "help": "How much grass tuft detail is scattered over the ground left bare by everything else. Not drawn yet - this control becomes live in phase 4 of the design."
+        },
+        "show_cliffs": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "cliff_coverage": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.35,
+          "min": 0,
+          "max": 1,
+          "help": "How much of the coastline is cliff rather than beach. Cliffs use the vertical-line, Y and hash technique from the second tutorial. Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "show_canyons": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "canyon_count": {
+          "widget": "number",
+          "group": "layout",
+          "default": 3,
+          "min": 0,
+          "max": 10,
+          "help": "Canyons cut inland. Same rock technique as the cliffs, but on their own closed region, shaded all the way round to show the ground dropping inward. Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "show_waterfalls": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "waterfall_count": {
+          "widget": "number",
+          "group": "layout",
+          "default": 2,
+          "min": 0,
+          "max": 8,
+          "help": "Waterfalls, drawn only where a river actually crosses a cliff edge, each with a two-loop splash at the foot. Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "show_islands": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "floating_islands": {
+          "widget": "number",
+          "group": "layout",
+          "default": 2,
+          "min": 0,
+          "max": 8,
+          "help": "Floating islands: a squashed landmass with an upside-down mountain under it. A fantasy element - switch off for a map that stays plausible. Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "show_vines": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "rock_detail": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 1.0,
+          "min": 0.3,
+          "max": 3,
+          "help": "Multiplies the stroke count texturing every cliff, canyon and island. This is the patience dial both tutorials keep coming back to. Not drawn yet - this control becomes live in phase 6 of the design."
+        },
+        "map_title": {
+          "widget": "text",
+          "group": "data",
+          "default": "",
+          "help": "The name written on the sheet. Blank lets the mode invent one from the same word lists the other map mode uses. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "settlements": {
+          "widget": "number",
+          "group": "layout",
+          "default": 6,
+          "min": 0,
+          "max": 24,
+          "help": "Towns and villages, placed on flat ground away from mountains and water, and labelled. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "show_roads": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "road_style": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "dashed",
+          "choices": [
+            "solid",
+            "dashed",
+            "double"
+          ],
+          "help": "How a road is drawn between two settlements. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "road_count": {
+          "widget": "number",
+          "group": "layout",
+          "default": 5,
+          "min": 0,
+          "max": 20,
+          "help": "How many roads to try to build. A road bends around rivers and mountains and refuses to cross a cliff. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "show_region_labels": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "region_labels": {
+          "widget": "number",
+          "group": "layout",
+          "default": 4,
+          "min": 0,
+          "max": 12,
+          "help": "Names written across large regions, smaller and more widely spaced than the settlement labels, as a real map does. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "label_font": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "dejavuserif",
+          "help": "Any font name the system knows. A serif reads as a hand-lettered sheet. Lettering is drawn glyph by glyph with a little jitter in position, size and angle, because perfectly set text is the fastest way to make a hand-drawn map look printed. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "label_scale": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.024,
+          "min": 0.008,
+          "max": 0.06,
+          "help": "Label size as a fraction of the sheet's short side. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "show_compass": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "compass_placement": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "bottom_right",
+          "choices": [
+            "bottom_right",
+            "bottom_left",
+            "top_right",
+            "top_left"
+          ],
+          "help": "Which corner the compass rose takes. That corner is kept clear of terrain so the rose never lands on a mountain. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "compass_points": {
+          "widget": "number",
+          "group": "layout",
+          "default": 8,
+          "min": 4,
+          "max": 32,
+          "help": "Points on the rose: 4 is a plain cross, 8 the classic star, more for an ornate one. Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "show_cartouche": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "show_border": {
+          "widget": "switch",
+          "group": "layout",
+          "default": true,
+          "help": "Not drawn yet - this control becomes live in phase 7 of the design."
+        },
+        "border_inset": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.035,
+          "min": 0.005,
+          "max": 0.12,
+          "help": "How far in from the edge the ruled border sits. The sheet is drawn a little larger than the screen, so the border is the map's own edge, not the panel's. Not drawn yet - this control becomes live in phase 7 of the design."
         }
       }
     }

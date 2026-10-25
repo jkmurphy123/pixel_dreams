@@ -1,0 +1,365 @@
+{
+  "name": "arcane_gate",
+  "_comment": "The arcane laboratory over the real painting, authored in WALL pixels (1080x1920). arcane_gate.png is 816x1440; it was upscaled once (uniform 4/3, centred, 4 px cropped per side) to arcane_gate_wall.png so the canvas equals the screen and the compositor does NO per-frame smoothscale \u2014 measured 36 fps with the 816-wide canvas vs ~60 here. Every rect below is the source painting's coordinate times 4/3 with the 4 px crop subtracted. Source features: candelabra wicks y~755, right-hand candle wicks y~799, gate x 330..500 / y 615..880 (centre 415,747), arch band y 566..592, rose window 345..455 / 350..445.",
+  "mode": "freeform",
+  "background_image": "arcane_gate_wall.png",
+  "controls": [
+    {
+      "type": "ember_field",
+      "at": [
+        0,
+        0
+      ],
+      "size": [
+        1080,
+        1920
+      ],
+      "count": 80,
+      "ember_rgb": [
+        255,
+        160,
+        96
+      ],
+      "mote": 2.7,
+      "rise": 26,
+      "sway": 9,
+      "glow": 2.6
+    },
+    {
+      "type": "rune_circle",
+      "at": [
+        349,
+        796
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "rings": 3,
+      "glyphs": 18,
+      "radius": 0.92,
+      "spin": 9,
+      "pulse": 0.14,
+      "glow": 0.22,
+      "rune_rgb": [
+        206,
+        168,
+        255
+      ]
+    },
+    {
+      "type": "lightning_arc",
+      "at": [
+        455,
+        845
+      ],
+      "size": [
+        190,
+        300
+      ],
+      "anchors": [
+        [
+          0.5,
+          0.06
+        ],
+        [
+          0.5,
+          0.94
+        ]
+      ],
+      "strike": 1.0,
+      "branches": 3,
+      "jag": 0.5,
+      "decay": 4.0,
+      "glow": 0.4,
+      "arc_rgb": [
+        247,
+        245,
+        252
+      ],
+      "blend": "over"
+    },
+    {
+      "type": "rune_line",
+      "at": [
+        377,
+        1275
+      ],
+      "size": [
+        344,
+        35
+      ],
+      "count": 10,
+      "speed": 0.35,
+      "orient": "h",
+      "glow": 0.5,
+      "rune_rgb": [
+        214,
+        178,
+        255
+      ]
+    },
+    {
+      "type": "rune_line",
+      "at": [
+        420,
+        1424
+      ],
+      "size": [
+        253,
+        32
+      ],
+      "count": 8,
+      "speed": 0.5,
+      "orient": "h",
+      "glow": 0.45,
+      "rune_rgb": [
+        198,
+        162,
+        246
+      ]
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        177,
+        933
+      ],
+      "size": [
+        123,
+        80
+      ],
+      "count": 5,
+      "flame_rgb": [
+        255,
+        172,
+        84
+      ],
+      "flicker": 1.15,
+      "glow": 0.9,
+      "lean": 0.3
+    },
+    {
+      "type": "candle_flame",
+      "at": [
+        807,
+        1019
+      ],
+      "size": [
+        85,
+        83
+      ],
+      "count": 3,
+      "flame_rgb": [
+        255,
+        180,
+        96
+      ],
+      "flicker": 0.95,
+      "glow": 0.85,
+      "lean": 0.28
+    },
+    {
+      "type": "smoke_wisp",
+      "at": [
+        236,
+        1480
+      ],
+      "size": [
+        613,
+        400
+      ],
+      "wisps": 2,
+      "drift": 0.9,
+      "speed": 1.0,
+      "fade": 0.8,
+      "smoke_rgb": [
+        150,
+        158,
+        190
+      ]
+    },
+    {
+      "type": "floating_orb",
+      "at": [
+        269,
+        577
+      ],
+      "size": [
+        107,
+        107
+      ],
+      "orb_rgb": [
+        170,
+        205,
+        255
+      ],
+      "glow": 0.9,
+      "pulse": 0.08,
+      "drift": 0.2
+    },
+    {
+      "type": "floating_orb",
+      "at": [
+        784,
+        815
+      ],
+      "size": [
+        93,
+        93
+      ],
+      "orb_rgb": [
+        208,
+        160,
+        255
+      ],
+      "glow": 0.85,
+      "pulse": 0.1,
+      "drift": 0.25
+    },
+    {
+      "type": "potion_bubbles",
+      "at": [
+        730,
+        1126
+      ],
+      "size": [
+        50,
+        44
+      ],
+      "bubbles": 6,
+      "rise": 0.26,
+      "surface": 0.15,
+      "glow": 0.5,
+      "potion_rgb": [
+        150,
+        210,
+        235
+      ]
+    },
+    {
+      "type": "potion_bubbles",
+      "at": [
+        291,
+        1146
+      ],
+      "size": [
+        30,
+        48
+      ],
+      "bubbles": 4,
+      "rise": 0.32,
+      "surface": 0.7,
+      "glow": 0.4,
+      "potion_rgb": [
+        202,
+        172,
+        242
+      ]
+    },
+    {
+      "type": "drifting_runes",
+      "at": [
+        55,
+        1140
+      ],
+      "size": [
+        150,
+        200
+      ],
+      "count": 4,
+      "rise": 7.5,
+      "sway": 0.08,
+      "fade": 0.32,
+      "glow": 0.6,
+      "rune_rgb": [
+        206,
+        176,
+        255
+      ],
+      "color": [
+        81,
+        212,
+        30
+      ]
+    },
+    {
+      "type": "drifting_runes",
+      "at": [
+        886,
+        1140
+      ],
+      "size": [
+        80,
+        160
+      ],
+      "count": 3,
+      "rise": 6.0,
+      "sway": 0.08,
+      "fade": 0.32,
+      "glow": 0.6,
+      "rune_rgb": [
+        180,
+        214,
+        255
+      ],
+      "color": [
+        222,
+        107,
+        24
+      ]
+    },
+    {
+      "type": "glowing_eyes",
+      "at": [
+        110,
+        320
+      ],
+      "size": [
+        210,
+        150
+      ],
+      "pairs": 1,
+      "eye": 0.4,
+      "gap": 1.3,
+      "slant": 0.3,
+      "period": 9.0,
+      "hold": 0.35,
+      "blink": 7.0,
+      "glow": 0.7,
+      "eye_rgb": [
+        128,
+        238,
+        142
+      ]
+    },
+    {
+      "type": "glowing_eyes",
+      "at": [
+        800,
+        210
+      ],
+      "size": [
+        210,
+        150
+      ],
+      "pairs": 1,
+      "eye": 0.4,
+      "gap": 1.3,
+      "slant": 0.3,
+      "period": 12.0,
+      "hold": 0.35,
+      "blink": 9.0,
+      "glow": 0.7,
+      "eye_rgb": [
+        255,
+        132,
+        96
+      ]
+    }
+  ],
+  "design_resolution": [
+    1080,
+    1920
+  ]
+}

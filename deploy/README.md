@@ -35,9 +35,18 @@ loginctl enable-linger "$USER"                     # if it ever needs re-enablin
 
 ## The panel over the LAN
 
-`--panel-bind 0.0.0.0` requires `panel_token` in `secrets.json`; without it the controller
-refuses to start rather than exposing an unauthenticated control surface. To read the token and
-open the panel once:
+As shipped, `deploy/pixel_dreams.service` binds the panel to `0.0.0.0` **and** passes
+`--panel-open`, so `http://jetsons:8090` opens directly — no token, no cookie to keep. That is a
+deliberate choice for a trusted LAN, made once in the unit's command line so it survives every
+restart: a gated panel re-arms its gate on any start that leaves the flag out, which is what made
+the token request come back the day after it worked.
+
+Say it out loud: with `--panel-open` every device that can reach port 8090 can read **and write**
+profiles, i.e. retune the wall. The startup log prints `UNGATED (--panel-open)` and the panel's
+status card repeats it.
+
+To put the token gate back, delete `--panel-open` from ExecStart (or run the app yourself without
+it) and keep a token in `secrets.json`:
 
 ```bash
 python3 -c "import json;print(json.load(open('secrets.json'))['panel_token'])"
@@ -45,9 +54,21 @@ python3 -c "import json;print(json.load(open('secrets.json'))['panel_token'])"
 ```
 
 That first visit sets an httpOnly cookie which lasts 60 days. Scripts should send
-`X-Panel-Token: <token>` instead — that form is never remembered as a cookie.
+`X-Panel-Token: <token>` instead — that form is never remembered as a cookie. Note the cookie only
+lives as long as the browser keeps it: private windows, "clear cookies on exit" and a different
+spelling of the host (`jetsons` vs the IP) each look like a fresh unauthenticated request.
 
 To keep the panel off the network entirely, change `--panel-bind 0.0.0.0` to `127.0.0.1`.
+
+### Starting it by hand
+
+`scripts/run_kiosk.sh` is the same command the unit runs, `--panel-open` included, for starting the
+kiosk from a terminal instead of a service:
+
+```bash
+./scripts/run_kiosk.sh                 # display :0, LAN panel ungated on :8090
+./scripts/run_kiosk.sh --auto 60       # extra flags are appended (last one wins)
+```
 
 ## Operating it
 
@@ -66,7 +87,9 @@ the profile card **switches profiles live**. A restart is for code changes and f
 
 ## Notes
 
-- `--auto 30` in the unit is the rotation interval; remove it for manual LEFT/RIGHT control.
+- The unit starts in **manual** mode on `--start 0`, the profile's first enabled mode: nothing
+  advances until you press LEFT/RIGHT on the kiosk keyboard or use the panel's transport buttons /
+  mode list. Add `--auto 30` to ExecStart for timed rotation.
 - The profiles themselves, the backups (`.backups/`) and the recorded active profile
   (`runtime/active_profile.json`) are all plain files in the project directory, so a service
   restart never loses tuning work.

@@ -1,0 +1,17 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.10.12)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+[Config] Using modes config: /mnt/ssd/projects/pixel_dreams/configs/modes_config_vert.json (via runtime)
+[Controller] Max modes: 59
+[Panel] Control panel on http://127.0.0.1:8090/ (bind 0.0.0.0, token)
+[Controller] Rotation: 52 of 59 mode(s) enabled (disabled: [0, 5, 40, 46, 47, 54, 56])
+[Mode] Creating mode 1: slideshow -> modes.slideshow_mode:SlideshowMode
+[SlideshowMode] found 67 image(s) in /mnt/ssd/projects/images
+[Controller] Manual mode. LEFT/RIGHT switch, ESC quits.
+NiceGUI ready to go on http://localhost:8090, http://172.17.0.1:8090, and http://192.168.40.216:8090
+[Controller] Quitting cleanly...
+Traceback (most recent call last):
+  File "/mnt/ssd/projects/pixel_dreams/pixel_dreams.py", line 619, in <module>
+    raise SystemExit(main())
+  File "/mnt/ssd/projects/pixel_dreams/pixel_dreams.py", line 575, in main
+    pygame.display.flip()
+KeyboardInterrupt

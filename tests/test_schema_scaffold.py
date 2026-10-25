@@ -247,7 +247,9 @@ def test_real_project_analysis_is_sane():
             modes.append(profile)
 
     analysis = analyse(BASE_DIR, registry, modes)
-    assert analysis["totals"]["types"] == len(registry) == 53
+    assert analysis["totals"]["types"] == len(registry) == 54   # 53 + inkmap
+    # ...and the count moves whenever a type lands in modes_registry.json; what this test
+    # is really guarding is that every one of them has a module and a schema below.
     assert analysis["totals"]["types_without_module"] == 0
 
     # The drift fix landed: every key the shipped mode code reads is now declared, so a form

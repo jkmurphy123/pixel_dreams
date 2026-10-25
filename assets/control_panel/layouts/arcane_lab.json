@@ -1,0 +1,71 @@
+{
+  "name": "arcane_lab",
+  "_comment": "Arcane laboratory, phase 1. Coordinates are features of the placeholder painting (scripts/make_arcane_placeholder.py prints them): shelf surface y=430, candle wicks at y~355, desk surface y=1270, apparatus posts x=430/660, floor circle centre 540,1650 r=240. Re-place every control against the real artwork with the panel's alignment page. Controls draw in document order: the ambient ember field first, then local lights. Deliberately NO lamp / gauge_round / radar here: in a freeform layout those draw only their overlay (an opaque disc, a needle, a sweep), so over a painting with no painted dial face they read as a dark hole or a floating stick.",
+  "mode": "freeform",
+  "design_resolution": [1080, 1920],
+  "background_image": "arcane_lab_placeholder.png",
+  "controls": [
+    {
+      "type": "ember_field",
+      "at": [0, 0],
+      "size": [1080, 1920],
+      "count": 90,
+      "ember_rgb": [255, 150, 90],
+      "mote": 2.2,
+      "rise": 30,
+      "sway": 10,
+      "glow": 3.0
+    },
+    {
+      "type": "candle_flame",
+      "at": [570, 253],
+      "size": [300, 110],
+      "count": 3,
+      "flame_rgb": [255, 170, 80],
+      "flicker": 1.0,
+      "glow": 0.95,
+      "lean": 0.35
+    },
+    {
+      "type": "candle_flame",
+      "at": [170, 1130],
+      "size": [60, 88],
+      "flame_rgb": [255, 178, 96],
+      "glow": 0.95
+    },
+    {
+      "type": "floating_orb",
+      "at": [380, 950],
+      "size": [200, 200],
+      "orb_rgb": [150, 210, 230],
+      "glow": 0.85,
+      "pulse": 0.05,
+      "drift": 0.16
+    },
+    {
+      "type": "floating_orb",
+      "at": [760, 880],
+      "size": [160, 160],
+      "count": 2,
+      "orb_rgb": [180, 140, 240],
+      "glow": 0.7
+    },
+    {
+      "type": "floating_orb",
+      "at": [450, 590],
+      "size": [240, 240],
+      "count": 3,
+      "orb_rgb": [168, 150, 250],
+      "glow": 0.75,
+      "drift": 0.3
+    },
+    {
+      "type": "floating_orb",
+      "at": [496, 1584],
+      "size": [88, 88],
+      "orb_rgb": [170, 130, 255],
+      "glow": 0.9,
+      "pulse": 0.12
+    }
+  ]
+}

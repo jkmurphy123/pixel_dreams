@@ -22,8 +22,10 @@ import pygame  # noqa: E402
 from controlpanel import seven_seg  # noqa: E402
 from controlpanel.controls import (CONTROL_CLASSES, ControlContext,  # noqa: E402
                                    make_control)
+from controlpanel.geometry import CELL_SIZE  # noqa: E402
 from controlpanel.layout import load_layout  # noqa: E402
 from controlpanel.registry import CONTROL_TYPES  # noqa: E402
+from controlpanel.skin import load_sprite_defs  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -35,33 +37,69 @@ def pygame_init():
 
 
 # One layout exercising every animated type (plate is static by design).
+#
+# FREEFORM, not grid: a grid layout has to find an unoccupied 15x8 cell block for every type it
+# adds, so adding a control meant re-packing the fixture. Freeform takes a pixel rect with no
+# overlap rule, which makes adding a type one line — the same path the real layouts use.
+_DEFS = load_sprite_defs()["sprites"]
+
+
+def _control(ctype, sprite=None, col=0, row=0, **extra):
+    """A freeform control at a grid-ish coordinate, sized by the type's default sprite."""
+    sid = sprite or CONTROL_TYPES[ctype]
+    geo = _DEFS[sid]
+    doc = {"type": ctype, "sprite": sid,
+           "at": [col * CELL_SIZE, row * CELL_SIZE],
+           "size": [geo["w"] * CELL_SIZE, geo["h"] * CELL_SIZE]}
+    doc.update(extra)
+    return doc
+
+
 ALL_TYPES_LAYOUT = {
     "name": "all_types",
-    "panels": [{"id": "p", "origin": [0, 0], "size": [15, 8]}],
+    "mode": "freeform",
+    "design_resolution": [1920, 1400],
     "controls": [
-        {"type": "scope",           "sprite": "SCOPE_H_1",    "panel": "p", "at": [0, 0]},
-        {"type": "strip_chart",     "sprite": "STRIP_CHART",  "panel": "p", "at": [4, 0]},
-        {"type": "radar",           "sprite": "RADAR_ROUND",  "panel": "p", "at": [10, 0]},
-        {"type": "gauge_round",     "sprite": "GAUGE_ROUND_SMALL_1", "panel": "p", "at": [0, 2]},
-        {"type": "meter_vu",        "sprite": "METER_VU_H_1", "panel": "p", "at": [1, 2]},
-        {"type": "bar_graph",       "sprite": "BAR_GRAPH_V_1", "panel": "p", "at": [3, 2]},
-        {"type": "led_bar",         "sprite": "LED_BAR",      "panel": "p", "at": [4, 2]},
-        {"type": "lamp",            "sprite": "LED_LAMP_RED", "panel": "p", "at": [0, 3]},
-        {"type": "lamp_rect",      "sprite": "LED_LAMP_RECT", "panel": "p", "at": [8, 3]},
-        {"type": "lamp_square",    "sprite": "LED_LAMP_SQUARE", "panel": "p", "at": [14, 3]},
-        {"type": "lamp_bank",       "sprite": "LAMP_BANK",    "panel": "p", "at": [1, 3]},
-        {"type": "led_matrix",      "sprite": "LED_MATRIX",   "panel": "p", "at": [4, 3]},
-        {"type": "keypad",          "sprite": "KEYPAD",       "panel": "p", "at": [6, 3]},
-        {"type": "push_button",     "sprite": "PUSH_BUTTON_1", "panel": "p", "at": [0, 4]},
-        {"type": "digital_readout", "sprite": "READOUT_DIGITAL", "panel": "p", "at": [8, 4]},
-        {"type": "clock",           "sprite": "CLOCK_FACE",   "panel": "p", "at": [12, 4]},
-        {"type": "meter_vu",        "sprite": "METER_VU_V_1", "panel": "p", "at": [14, 4]},
-        {"type": "toggle_switch",   "sprite": "TOGGLE_SWITCH_1", "panel": "p", "at": [0, 5]},
-        {"type": "rotary_knob",     "sprite": "ROTARY_KNOB_1", "panel": "p", "at": [1, 5]},
-        {"type": "selector_switch", "sprite": "SELECTOR_SWITCH", "panel": "p", "at": [2, 5]},
-        {"type": "counter",         "sprite": "COUNTER",      "panel": "p", "at": [8, 5]},
-        {"type": "nixie",           "sprite": "NIXIE_PAIR",   "panel": "p", "at": [4, 5]},
-        {"type": "tape_reel",       "sprite": "TAPE_REEL",    "panel": "p", "at": [6, 5]},
+        _control("scope",           "SCOPE_H_1",    0, 0),
+        _control("strip_chart",     "STRIP_CHART",  4, 0),
+        _control("radar",           "RADAR_ROUND",  10, 0),
+        _control("gauge_round",     "GAUGE_ROUND_SMALL_1", 0, 2),
+        _control("meter_vu",        "METER_VU_H_1", 1, 2),
+        _control("bar_graph",       "BAR_GRAPH_V_1", 3, 2),
+        _control("led_bar",         "LED_BAR",      4, 2),
+        _control("lamp",            "LED_LAMP_RED", 0, 3),
+        _control("lamp_rect",       "LED_LAMP_RECT", 8, 3),
+        _control("lamp_square",     "LED_LAMP_SQUARE", 14, 3),
+        _control("lamp_bank",       "LAMP_BANK",    1, 3),
+        _control("led_matrix",      "LED_MATRIX",   4, 3),
+        _control("keypad",          "KEYPAD",       6, 3),
+        _control("push_button",     "PUSH_BUTTON_1", 0, 4),
+        _control("digital_readout", "READOUT_DIGITAL", 8, 4),
+        _control("clock",           "CLOCK_FACE",   12, 4),
+        _control("meter_vu",        "METER_VU_V_1", 14, 4),
+        _control("toggle_switch",   "TOGGLE_SWITCH_1", 0, 5),
+        _control("rotary_knob",     "ROTARY_KNOB_1", 1, 5),
+        _control("selector_switch", "SELECTOR_SWITCH", 2, 5),
+        _control("counter",         "COUNTER",      8, 5),
+        _control("nixie",           "NIXIE_PAIR",   4, 5),
+        _control("tape_reel",       "TAPE_REEL",    6, 5),
+        # arcane family (designs/ARCANE_LAB_DESIGN.md) — phases 2 and 3 append here
+        _control("candle_flame",    col=0, row=6, count=2),
+        _control("ember_field",     col=2, row=6, count=24),
+        _control("floating_orb",    col=6, row=6),
+        _control("rune_circle",     col=8, row=6),
+        _control("rune_line",       "ARCANE_RUNE_LINE", 10, 6),
+        _control("smoke_wisp",      col=12, row=6),
+        _control("lightning_arc",   col=0, row=7),
+        _control("potion_bubbles",  col=2, row=7),
+        _control("drifting_runes",  col=4, row=7),
+        _control("glowing_eyes",    col=6, row=7),
+        # mad-science family — electrical/mechanical freeform overlays
+        _control("jacobs_ladder",   col=8, row=7),
+        _control("electric_filament", col=10, row=7),
+        _control("spark_terminal",  col=11, row=7),
+        _control("mechanical_wheels", col=12, row=7),
+
     ],
 }
 

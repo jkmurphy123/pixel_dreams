@@ -59,9 +59,9 @@ def _project(tmp_path, active="modes_config.json"):
     return str(tmp_path)
 
 
-def _ctx(tmp_path, *, bind="127.0.0.1", token=None, bus=None):
+def _ctx(tmp_path, *, bind="127.0.0.1", token=None, bus=None, ungated=False):
     return PageContext(base_dir=_project(tmp_path), bus=bus or ControlBus(),
-                       bind=bind, port=8090, token=token)
+                       bind=bind, port=8090, token=token, ungated=ungated)
 
 
 @asynccontextmanager
@@ -291,6 +291,16 @@ async def test_loopback_binding_needs_no_token(tmp_path):
         assert (await p.client.get("/api/status")).status_code == 200
 
 
+async def test_an_ungated_panel_bounces_the_old_auth_url_to_the_page(tmp_path):
+    """--panel-open: the stale /_panel/auth?token=... bookmark redirects instead of 404ing."""
+    ctx = _ctx(tmp_path, bind="0.0.0.0", token="s3cret-token", ungated=True)
+    async with _panel(ctx) as p:
+        r = await p.client.get("/_panel/auth?token=s3cret-token", follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == "/"
+        assert (await p.client.get("/api/status")).status_code == 200
+        assert (await p.client.get("/?token=s3cret-token")).status_code == 200
+
+
 # ---------------------------------------------------------------- access rule (pure)
 
 def test_authorised_matrix():
@@ -311,6 +321,15 @@ def test_presented_token_prefers_header_over_query():
     req = _req(header="from-header", cookie="from-cookie", query="from-query")
     assert _presented_token(req) == "from-header"
     assert _presented_token(None) == ""
+
+
+def test_ungated_context_authorises_a_network_bind():
+    """--panel-open (ctx.ungated) drops the gate even on 0.0.0.0, token or not."""
+    open_ctx = PageContext(base_dir=".", bus=ControlBus(), bind="0.0.0.0", token="a-token",
+                           ungated=True)
+    assert open_ctx.token_required is False
+    assert _authorised(open_ctx, None) is True
+    assert _authorised(open_ctx, _req()) is True
 
 
 class _Req:

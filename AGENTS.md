@@ -142,7 +142,13 @@ for the same reason: one writer, one set of refusals.
 A non-loopback `--panel-bind` requires `panel_token` in `secrets.json`; without a token the
 controller refuses to start rather than exposing an unauthenticated control surface. A loopback
 bind is ungated by design (only this machine can reach it) — `tests/test_panel_apply.py` asserts
-both halves of that.
+both halves of that. `--panel-open` is the operator's explicit opt-out: it serves the panel with
+no gate on any bind, so it is only ever a command-line decision (never a config file or a default)
+and the panel says so in its status card and its startup log line. A panel opened that way is
+readable AND writable by anyone who can reach the address — treat the LAN as the trust boundary.
+This repo's own launch paths pass `--panel-open` (`scripts/run_kiosk.sh` for a manual start,
+`deploy/pixel_dreams.service` for the service), so the flag lives in a command line that survives a
+restart; a gated panel can only ever remember a browser cookie, and that is not durability.
 
 
 ## Config schema
@@ -233,7 +239,9 @@ Kiosk-friendly logging:
   variables (`OPENAI_API_KEY`, `PANEL_TOKEN`). The controller injects them into mode configs
   automatically when the config declares the key (see `core/loader.py`).
 - `panel_token` in `secrets.json` (or `PANEL_TOKEN` in the environment) is required before the
-  panel may bind a non-loopback address. Never put the token in a page, a URL the server logs,
+  panel may bind a non-loopback address, unless the operator passes `--panel-open` (no token, no
+  gate, any bind — a deliberate choice on a trusted LAN, visible in the startup log and the panel's
+  status card). Never put the token in a page, a URL the server logs,
   or a config file. A valid token presented in the URL becomes an httpOnly cookie that lasts
   `COOKIE_MAX_AGE_SECONDS` (60 days), so the panel is reachable from that browser without the
   token; changing the token invalidates every existing cookie. A token in an `X-Panel-Token`
