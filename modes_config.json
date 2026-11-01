@@ -636,6 +636,21 @@
       "station_detail": 3,
       "station_spin_rpm": 0.85,
       "earth_rotation_seconds": 300.0
+    },
+    "36": {
+      "type": "glasscastle",
+      "name": "The Glass Castle",
+      "palette": "ice",
+      "hud": "full",
+      "quality": "auto",
+      "orientation": "auto",
+      "aurora": true,
+      "snow": true,
+      "camera_drift": 0.5,
+      "window_lights": true,
+      "shard_count": 6,
+      "reflection_strength": 0.72,
+      "duration": 150
     }
   }
 }

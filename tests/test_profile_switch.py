@@ -350,7 +350,10 @@ def test_the_real_project_can_switch_between_its_own_profiles(tmp_path):
     assert result.ok, (result.reason, result.errors)
     _, _, modes, path = load_project_config(str(root))
     assert path.endswith("modes_config_portrait.json")
-    assert len(modes) == 26, f"portrait has 26 modes in the real project, got {len(modes)}"
+    expected = len(json.load(open(os.path.join(REAL_ROOT, "configs",
+                                               "modes_config_portrait.json")))["modes"])
+    assert len(modes) == expected, (
+        f"portrait has {expected} modes in the real project, got {len(modes)}")
     assert modes != landscape[2]
 
     back = switch_profile(str(root), "modes_config.json", registry)

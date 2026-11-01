@@ -181,7 +181,7 @@
 				"doge"
 			],
 			"show_dow": false
-		},		
+		},
 		"10": {
 			"type": "slideshow",
 			"name": "Pixel Art",
@@ -202,7 +202,7 @@
 				"doge"
 			],
 			"show_dow": false
-		},	
+		},
 		"11": {
 			"type": "slideshow",
 			"name": "Pixel Art",
@@ -223,7 +223,7 @@
 				"doge"
 			],
 			"show_dow": false
-		},	
+		},
 		"12": {
 			"type": "slideshow",
 			"name": "Pixel Art",
@@ -244,7 +244,7 @@
 				"doge"
 			],
 			"show_dow": false
-		},			
+		},
 		"13": {
 			"type": "curated_slideshow",
 			"data_file": "pioneer_gallery.json",
@@ -435,6 +435,131 @@
             "station_detail": 3,
             "station_spin_rpm": 0.85,
             "earth_rotation_seconds": 300.0
+        },
+        "26": {
+            "type": "orrery",
+            "name": "The Orrery of Small Worlds",
+            "palette": "brass",
+            "hud": "full",
+            "quality": "auto",
+            "orientation": "portrait",
+            "world_count": 7,
+            "orbit_seconds": 90,
+            "show_labels": true,
+            "show_comet": true,
+            "show_conjunctions": true,
+            "show_plaque": true,
+            "camera_drift": 1.0,
+            "duration": 150
+        },
+        "27": {
+            "type": "longarchive",
+            "name": "The Long Archive",
+            "palette": "bone",
+            "hud": "full",
+            "quality": "auto",
+            "orientation": "auto",
+            "slab_count": 9,
+            "drift_speed": 2.0,
+            "text_speed": 14,
+            "bar_period": 8.0,
+            "show_labels": true,
+            "duration": 150
+        },
+        "28": {
+         "type": "lanternprocession",
+        "name": "Lantern Procession",
+        "palette": "moss",
+        "hud": "full",
+        "quality": "auto",
+        "orientation": "portrait",
+        "lantern_count": 14,
+        "speed": 6.0,
+        "reflection": true,
+        "mist": true,
+        "departure_seconds": 120,
+        "duration": 150
+        },
+        "29": {
+            "type": "glasscastle",
+            "name": "The Glass Castle",
+            "palette": "ice",
+            "hud": "full",
+            "quality": "auto",
+            "orientation": "portrait",
+            "aurora": true,
+            "snow": true,
+            "camera_drift": 0.5,
+            "window_lights": true,
+            "shard_count": 6,
+            "reflection_strength": 0.78,
+            "duration": 150
+},
+        "30": {
+            "type": "leviathan",
+            "name": "Leviathan Passage",
+            "palette": "dusk",
+            "hud": "full",
+            "quality": "auto",
+            "orientation": "portrait",
+            "pod_size": 3,
+            "crossing_seconds": 120,
+            "mist": true,
+            "moon": true,
+            "scale_reference": "boat",
+            "meteor": true,
+            "star_density": 1.0,
+            "duration": 150
+        },
+        "31": {
+            "type": "terraform",
+            "name": "Terraform",
+            "palette": "biosphere",
+            "hud": "full",
+            "quality": "auto",
+            "orientation": "portrait",
+            "cycle_seconds": 180,
+            "start_stage": 0,
+            "show_timeline": true,
+            "show_city_lights": true,
+            "show_lighthouse": true,
+            "show_foreground": true,
+            "mist": true,
+            "duration": 150
+        },
+        "32": {
+            "type": "dysonswarm",
+            "name": "Dyson Swarm",
+            "palette": "vector_blue",
+            "hud": "full",
+            "quality": "medium",
+            "orientation": "portrait",
+            "collector_count": 900,
+            "shells": 3,
+            "orbit_seconds": 180,
+            "transit_chance": 0.5,
+            "camera_drift": 0.5,
+            "glow_strength": 0.45,
+            "scanline_alpha": 4,
+            "vignette_strength": 0.22,
+            "duration": 150
+        },
+        "33": {
+            "type": "stellarengine",
+            "name": "Stellar Engine",
+            "title": "STELLAR ENGINE",
+            "subtitle": "MIRROR 01 · PRECESSION HOLD",
+            "palette": "amber",
+            "hud": "full",
+            "quality": "medium",
+            "fill": "line",
+            "glow_strength": 0.5,
+            "scanline_alpha": 4,
+            "mirror_span": 0.7,
+            "precession_seconds": 300,
+            "beam_width": 0.4,
+            "show_star": true,
+            "duration": 150
         }
     }
 }

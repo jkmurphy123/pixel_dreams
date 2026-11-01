@@ -95,13 +95,16 @@ class RampScene:
 
         day = [(t, art._sample(self.pal["sky"], t)) for t in (0.0, 0.45, 0.72, 0.90)]
         dawn = art._DAWN[self.season]["stops"]
-        horizon = dawn[-1][1]
+        base_horizon = dawn[-1][1]
         if not rising:
-            horizon = art.mix(horizon, (255, 108, 66), 0.50)
+            base_horizon = art.mix(base_horizon, (255, 84, 52), 0.55)
+        # The last stretch above the horizon goes red; the band above it keeps
+        # the season's peach/pink so the sky still reads as dawn/dusk.
+        low_horizon = art.mix(base_horizon, (204, 34, 22), 0.70)
         warm_top = art.mix(day[0][1], (34, 28, 62), 0.55)
-        warm_mid = art.mix(day[1][1], horizon, 0.55)
+        warm_mid = art.mix(day[1][1], base_horizon, 0.55)
         warm_stops = [(0.0, warm_top), (0.45, warm_mid),
-                      (0.72, horizon), (0.90, horizon)]
+                      (0.72, low_horizon), (0.90, low_horizon)]
         night_stops = [(0.0, (6, 9, 22)), (0.45, (10, 18, 40)),
                        (0.72, (20, 30, 52)), (0.90, (34, 44, 68))]
 
@@ -113,15 +116,17 @@ class RampScene:
         sun_x = art.SUN_X - 70.0 * max(0.0, min(1.0, alt))
         sun_y = art.HORIZON + 8 - max(-0.15, min(1.0, alt)) * 240
         sun_r = sun[2] * 1.45 * (1.0 + 0.22 * warm)
-        sun_col = art.mix(self.pal["sun_color"],
-                          art.mix(horizon, (255, 255, 240), 0.35), 0.65 * warm)
-        glow_col = art.mix(self.pal["glow_color"], horizon, 0.70 * warm)
+        sun_warm = smoothstep(0.45, 0.0, alt)
+        low_sun = art.mix(low_horizon, (255, 128, 78), 0.85)
+        sun_col = art.mix(self.pal["sun_color"], low_sun, 0.95 * sun_warm)
+        sun_core = art.mix(sun_col, (255, 244, 216), 0.60 * (1.0 - 0.35 * sun_warm))
+        glow_col = art.mix(self.pal["glow_color"], low_horizon, 0.75 * warm)
         glow_col = art.mix(glow_col, (44, 58, 96), night * 0.80)
         glow_strength = (0.75 + 0.65 * warm) * (1.0 - 0.55 * night)
         return dict(alt=alt, rising=rising, warm=warm, night=night, stops=stops,
                     sun_x=sun_x, sun_y=sun_y, sun_r=sun_r, sun_col=sun_col,
-                    glow_col=glow_col, glow_strength=glow_strength,
-                    horizon=horizon)
+                    sun_core=sun_core, sun_warm=sun_warm, glow_col=glow_col,
+                    glow_strength=glow_strength, horizon=low_horizon)
 
     # ------------------------------------------------------------------
     # sky
@@ -149,8 +154,9 @@ class RampScene:
         if mood["alt"] > -0.04:
             art.circle(sky, sx, mood["sun_y"], mood["sun_r"], mood["sun_col"])
             art.circle(sky, sx - mood["sun_r"] * 0.1,
-                       mood["sun_y"] - mood["sun_r"] * 0.1, mood["sun_r"] * 0.78,
-                       art.mix(mood["sun_col"], (255, 255, 255), 0.55))
+                       mood["sun_y"] - mood["sun_r"] * 0.1,
+                       mood["sun_r"] * (0.78 - 0.16 * mood["sun_warm"]),
+                       mood["sun_core"])
 
         # horizon mist, warmer at dawn/dusk
         mist_col = art.mix(self.pal["horizon_mist"], mood["horizon"], mood["warm"])

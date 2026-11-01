@@ -71,6 +71,38 @@ def solar_altitude(latitude: float, longitude: float, when: dt.datetime):
     return math.degrees(math.asin(sin_alt)), hour_angle < 0.0
 
 
+def sun_times(latitude: float, longitude: float, day: dt.date, tzinfo):
+    """(sunrise, sunset) local datetimes for a date/place; None if no crossing.
+
+    Scans the day at 5-minute steps and interpolates the -0.833 deg crossing.
+    Handles polar day/night by returning None for the missing event.
+    """
+    start = dt.datetime.combine(day, dt.time(0, 0), tzinfo=tzinfo)
+    step = 5.0 / 60.0
+    samples = int(round(24.0 / step))
+    horizon = -0.833
+
+    def alt_at(hours):
+        return solar_altitude(latitude, longitude,
+                              start + dt.timedelta(hours=hours))[0]
+
+    prev = alt_at(0.0)
+    rise = setting = None
+    for i in range(1, samples + 1):
+        t = i * step
+        a = alt_at(t)
+        if rise is None and prev < horizon <= a and a != prev:
+            rise = t - step + step * (horizon - prev) / (a - prev)
+        if setting is None and prev >= horizon > a and a != prev:
+            setting = t - step + step * (prev - horizon) / (prev - a)
+        prev = a
+
+    def to_dt(hours):
+        return start + dt.timedelta(hours=hours) if hours is not None else None
+
+    return to_dt(rise), to_dt(setting)
+
+
 def season_for_month(month: int, latitude: float) -> str:
     """Meteorological season for a month; flips for the southern hemisphere."""
     if latitude < 0:
@@ -119,6 +151,8 @@ class SunriseMode:
         self.season = None
         self._portrait = False
         self._sim = dt.datetime.now().astimezone()
+        self._sun_times = (None, None)
+        self._sun_times_key = None
         self._cached = None
         self._next_scene = 0.0
         self._shade = None
@@ -137,6 +171,7 @@ class SunriseMode:
                       else RampScene(self.season))
         self._cached = None
         self._next_scene = 0.0
+        self._update_sun_times()
         self._render_scene()
         if self.weather_enabled and (abs(self.latitude) > 0.01 or abs(self.longitude) > 0.01):
             self._weather_feed = WeatherFeed(self.latitude, self.longitude,
@@ -181,6 +216,8 @@ class SunriseMode:
             self._cached = None
             self._next_scene = 0.0
 
+        self._update_sun_times()
+
         now = time.monotonic()
         if self._cached is None or now >= self._next_scene:
             self._render_scene()
@@ -205,6 +242,25 @@ class SunriseMode:
         if self.orientation == "landscape":
             return False
         return self.h > self.w * 1.20
+
+    def _update_sun_times(self):
+        key = (self._sim.date(), round(self.latitude, 3),
+               round(self.longitude, 3), self._sim.utcoffset())
+        if key == self._sun_times_key:
+            return
+        self._sun_times_key = key
+        self._sun_times = sun_times(self.latitude, self.longitude,
+                                    self._sim.date(), self._sim.tzinfo)
+
+    def _sun_line(self):
+        rise, setting = self._sun_times
+        if self.clock_24h:
+            rise_text = rise.strftime("%H:%M") if rise else "—"
+            set_text = setting.strftime("%H:%M") if setting else "—"
+        else:
+            rise_text = rise.strftime("%I:%M %p").lstrip("0") if rise else "—"
+            set_text = setting.strftime("%I:%M %p").lstrip("0") if setting else "—"
+        return f"SUNRISE {rise_text}   ·   SUNSET {set_text}"
 
     def _resolve_season(self):
         if self.season_pref in ("spring", "summer", "autumn", "winter"):
@@ -278,13 +334,17 @@ class SunriseMode:
             if self.show_speed:
                 self._blit_text(screen, f"{self.speed:g}×", w - pad, pad,
                                 small_px, (236, 232, 220), "topright", bold=False)
+            sun_px = max(12, int(base * 0.036))
+            weather_y = h - pad - sun_px - 6
             weather_text = self._weather_line()
             if weather_text:
-                self._blit_text(screen, weather_text, w // 2, h - pad,
+                self._blit_text(screen, weather_text, w // 2, weather_y,
                                 weather_px, (242, 239, 230), "midbottom", bold=False)
+            self._blit_text(screen, self._sun_line(), w // 2, h - pad, sun_px,
+                            (255, 238, 214), "midbottom", bold=False)
             if self.weather_location:
                 self._blit_text(screen, self.weather_location.upper(), pad,
-                                h - pad - weather_px - 10,
+                                weather_y - weather_px - 10,
                                 loc_px, (226, 222, 210), "bottomleft", bold=False)
             return
 
@@ -298,6 +358,7 @@ class SunriseMode:
 
         weather_text = self._weather_line()
         if weather_text:
+            weather_text = f"{weather_text}   ·   {self._sun_line()}"
             self._blit_text(screen, weather_text, w // 2, h - pad, weather_px,
                             (242, 239, 230), "midbottom", bold=False)
         if self.weather_location:

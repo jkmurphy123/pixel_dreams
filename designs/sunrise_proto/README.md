@@ -1,7 +1,8 @@
 # Sunrise mode — four-season forest study
 
-Prototype art for the sunrise mode. Everything is drawn at **1280×400** (the
-narrow Pi kiosk resolution) and is procedural — no image assets, no numpy/PIL.
+Prototype art for the sunrise mode. The landscape scene is drawn at **1280×400**
+(the narrow Pi kiosk); the portrait composition is a **1080×1920** variant of the
+same art. Everything is procedural — no image assets, no numpy/PIL.
 
 ![four seasons](seasons_sheet.png)
 
@@ -12,9 +13,11 @@ narrow Pi kiosk resolution) and is procedural — no image assets, no numpy/PIL.
 `modes/sunrise_mode.py` wraps this art as a kiosk mode (slot **20** in the narrow
 profile, slot **64** in the portrait profile). It derives the solar altitude from latitude + date, picks the season
 from the calendar (or a pinned override), runs a 1×–10× simulated clock, and
-fetches current conditions from Open-Meteo on a background thread for the bottom
-line. The art package is `sunrise/` — a 2× extraction of these prototypes so the
-mode does not depend on `designs/`; the files in this folder remain the 3× lab.
+fetches current conditions from Open-Meteo on a background thread, and computes
+today's sunrise/sunset for the same coordinates. The bottom status carries the
+weather and those times; portrait stacks the sun line under the weather. The art
+package is `sunrise/` — a 2× extraction of these prototypes so the mode does not
+depend on `designs/`; the files in this folder remain the 3× lab.
 
 ```bash
 # 1280x400 wall
@@ -31,11 +34,14 @@ longitude and units in the panel.
 ### Portrait
 
 `orientation: "portrait"` (or `auto` on a tall screen) does not crop the 1280x400
-frame. The forest stays a band across the bottom of the screen, scaled to the
-screen width, and a tall sky grows above it with its own sun path, clouds and
-star field. The sun still rises in the landscape's clearing (right of centre)
-and drifts left. The HUD stacks the clock and date in the top centre and the
-location/weather at the bottom.
+frame. The portrait forest is drawn natively at 1080x1920: the treeline sits at
+**80% of the frame**, near trees root below the frame, and the lower 20% is
+forest floor — trees, scrub, grass and leaf litter — rather than a separate
+empty meadow. That gives the HUD a terrain base instead of a flat strip. A tall
+sky grows above the forest with its own sun path, clouds and star field. The sun
+still rises in the landscape's clearing (right of centre) and drifts left. The
+HUD stacks the clock and date in the top centre; the bottom carries the
+location, weather and a second line with today's sunrise/sunset.
 
 ![portrait sunrise](mode_portrait_hud.png)
 
@@ -106,6 +112,12 @@ alt = sin((phase - 0.25) * 2π)     # 1 at noon, 0 at 06:00 / 18:00, -1 at midni
   and warmer, the ground is darker and cooler, and the far layer is lifted a
   little for atmospheric depth. At full day the gradient is neutral, so the
   four day stills are unchanged.
+- Near the horizon the low sky is pushed toward a **deep red** (a mix toward
+  `(204, 34, 22)`), while the band above it keeps the season's peach/pink. The
+  sun has its own heat curve (`sun_warm`): the last ~25° above the horizon
+  redden the disc and its core, so it is deep red at the horizon and white at
+  noon. The low sun is also lifted in brightness so the red disc separates from
+  the red horizon instead of sinking into it.
 - The sun climbs **vertically with a gentle leftward drift** (70 px at the
   zenith) instead of sitting on one rail. It returns to the gap at dusk, so the
   sunrise and sunset both happen in the clearing.
@@ -121,7 +133,7 @@ alt = sin((phase - 0.25) * 2π)     # 1 at noon, 0 at 06:00 / 18:00, -1 at midni
 ## What is still rough
 
 - Clouds are simple flat-bottomed puffs; the shapes are generic and at dawn
-  they all take the same peach tint.
+  they all take the same red/peach tint.
 - The meadow is a flat gradient with grass/flowers; it could use stronger tonal
   bands, a path, rocks, or long shadows to sell the perspective.
 - Tree crowns are clusters of dabs — readable as cartoon foliage at 1×, but at

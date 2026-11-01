@@ -16,7 +16,7 @@ sys.path.insert(0, BASE_DIR)
 
 from core.cache import ResourceCache                                       # noqa: E402
 from modes.sunrise_mode import (SunriseMode, season_for_month,            # noqa: E402
-                                solar_altitude)
+                                solar_altitude, sun_times)
 
 pygame.init()
 pygame.font.init()
@@ -34,6 +34,16 @@ def test_solar_altitude_equator_equinox():
     dusk, rising = solar_altitude(0.0, 0.0, when.replace(hour=18))
     assert -6.0 < dusk < 3.0
     assert rising is False
+
+
+def test_sun_times_for_nyc_in_november():
+    tz = dt.timezone(dt.timedelta(hours=-5))
+    rise, setting = sun_times(40.7, -74.0, dt.date(2026, 11, 1), tz)
+    assert rise is not None and setting is not None
+    rise_minutes = rise.hour * 60 + rise.minute
+    set_minutes = setting.hour * 60 + setting.minute
+    assert abs(rise_minutes - (6 * 60 + 29)) <= 8
+    assert abs(set_minutes - (16 * 60 + 49)) <= 8
 
 
 def test_season_for_month_includes_southern_hemisphere():

@@ -9,9 +9,13 @@ contract, the registry/config format and its modes are inherited unchanged. What
 pixel_dreams adds is the panel and the plumbing the panel needs.
 
 - one controller (`pixel_dreams.py`), one registry (`modes_registry.json`), one config
-  per orientation (`modes_config.json` + `configs/*.json`), **58 visual mode types**
+  per orientation (`modes_config.json` + `configs/*.json`), **64 visual mode types**
 - one pygame shell; modes never touch the display directly
 - an embedded NiceGUI panel, in the same process as the display
+
+Recent scenic additions include Sunrise, Space Station V, Cyberspace Matrix,
+Trench Run, **The Glass Castle** (SLOW_WORLDS_DESIGN.md §5.13) and **Terraform**
+(SLOW_WORLDS_DESIGN.md §5.15).
 
 ## Usage
 

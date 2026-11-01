@@ -4850,6 +4850,1423 @@
           "help": "Seconds between full scene re-renders at 10x. The interval stretches automatically at slower speeds, because the sun barely moves."
         }
       }
+    },
+    "orrery": {
+      "entrypoint": "modes.orrery_mode:OrreryMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "palette",
+        "seed",
+        "quality",
+        "hud",
+        "orientation",
+        "world_count",
+        "orbit_seconds",
+        "show_labels",
+        "show_comet",
+        "show_conjunctions",
+        "show_plaque",
+        "camera_drift",
+        "camera_elevation",
+        "camera_azimuth",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "ORRERY OF SMALL WORLDS",
+          "help": "The line in the top-left corner. In the portrait preset the default splits into THE ORRERY / OF SMALL WORLDS; a custom title can use a newline for two lines."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "",
+          "help": "The line under the title. Leave empty for A BRASS INSTRUMENT · SEVEN INVENTED WORLDS; the world count and palette are filled in."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "brass",
+          "choices": [
+            "brass",
+            "verdigris",
+            "bone"
+          ],
+          "help": "brass is the warm instrument; verdigris is the same orrery after years of patina; bone is the pale, silver-print version."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a new entry moment, comet phase and dust on every entry; set a value to reproduce them exactly. The seed in use is logged on entry."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "auto starts at medium and follows the frame time. Detail changes rail subdivision, moons, dust and bloom resolution; the composition and timing never change."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "minimal",
+          "choices": [
+            "full",
+            "minimal",
+            "off"
+          ],
+          "help": "minimal is title, subtitle, instrument number, epoch and the lamp caption; full adds the SLOW WORLDS eyebrow; off leaves the scene alone. World labels have their own switch."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "ultrawide",
+            "landscape",
+            "portrait",
+            "square"
+          ],
+          "help": "Framing preset. auto picks from the screen aspect: 16 degrees on the 1280x400 strip, 33 degrees on the portrait wall. The preset also decides whether the meridian arch is present."
+        },
+        "world_count": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 7,
+          "min": 5,
+          "max": 9,
+          "step": 1,
+          "help": "How many invented worlds ride the rails. Five is sparse, seven is the design default, nine crowds the plate."
+        },
+        "orbit_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 90.0,
+          "min": 45.0,
+          "max": 300.0,
+          "step": 5.0,
+          "help": "Base orbital period in seconds. Each world multiplies it by a fixed, co-prime-ish factor, so the outer worlds take 0.5x to 3.1x this value."
+        },
+        "show_labels": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "The Roman numeral and name beside each world, with a short engraved leader."
+        },
+        "show_comet": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "One comet on a long, steep ellipse, visible for the middle of each pass."
+        },
+        "show_conjunctions": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "When two worlds line up, a hairline and a short caption appear for eight seconds. The event has a cooldown, so it stays a rare signature."
+        },
+        "show_plaque": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": false,
+          "help": "The engraved system-description plaque under the instrument. Off for the narrow strip, on for the portrait wall. Its lines describe THE AUREL SYSTEM, the world count, the periods and the inclinations."
+        },
+        "camera_drift": {
+          "widget": "number",
+          "group": "layout",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 3.0,
+          "step": 0.1,
+          "help": "Amplitude in pixels of the barely perceptible camera drift. 0 pins the view."
+        },
+        "camera_elevation": {
+          "widget": "text",
+          "group": "layout",
+          "default": "auto",
+          "suggestions": [
+            "auto",
+            "13",
+            "16",
+            "19",
+            "24",
+            "27",
+            "33",
+            "38"
+          ],
+          "help": "Override the viewing elevation above the plate, in degrees. auto keeps the aspect preset: 16 for the strip, 33 for portrait. The oval ratio is sin(elevation)."
+        },
+        "camera_azimuth": {
+          "widget": "text",
+          "group": "layout",
+          "default": "auto",
+          "suggestions": [
+            "auto",
+            "-13",
+            "-10",
+            "-9",
+            "0",
+            "9",
+            "13"
+          ],
+          "help": "Override the camera's turn around the instrument, in degrees. auto uses -9 on the strip and -13 on portrait. It changes the lean of the ovals, not their aspect."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.62,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Strength of the downscaled additive bloom. 0 removes it; the drawing still reads."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 7.0,
+          "min": 0.0,
+          "max": 80.0,
+          "step": 1.0,
+          "help": "Opacity of the 1-in-3 scanline seasoning. 0 is a clean image; the house default is very light."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.42,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Darkening toward the corners. The lower-left mode-number corner must stay dark and clear."
+        }
+      }
+    },
+    "glasscastle": {
+      "entrypoint": "modes.glass_castle_mode:GlassCastleMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "seed",
+        "palette",
+        "orientation",
+        "hud",
+        "quality",
+        "aurora",
+        "snow",
+        "camera_drift",
+        "window_lights",
+        "shard_count",
+        "aurora_period",
+        "window_flicker",
+        "reflection_strength",
+        "snow_speed",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "data",
+          "default": "THE GLASS CASTLE",
+          "help": "The header in the top-left corner. Uppercase, one line; the serif face is part of the fairy-tale read."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "data",
+          "default": "",
+          "help": "Optional second line under the title, shown only when hud is full. Keep it short; it does not wrap."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a fresh scene on every entry; set 0..2147483647 to reproduce one exactly. The seed in use is logged on entry."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "ice",
+          "choices": [
+            "ice",
+            "aurora",
+            "rose"
+          ],
+          "help": "ice is the reviewed still: Aurora & Ice, teal curtains and violet structure. aurora is a hotter green sky; rose is the fairy-tale rose and gold reading. Layout and timing do not change."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "landscape",
+            "portrait"
+          ],
+          "help": "auto picks portrait when the screen is taller than 1.2:1. The vista is re-composed for the aspect, never stretched or cropped from the strip."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "minimal",
+          "choices": [
+            "minimal",
+            "full",
+            "off"
+          ],
+          "help": "minimal is the reviewed strip: title, telemetry and camera footer. full adds the optional subtitle and the second portrait telemetry line. off leaves the vista alone."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "auto starts at medium and follows frame time. low thins the snow and drops the bloom; medium is the reviewed field; high raises the aurora refresh, snow density and bloom. Composition and timing never change."
+        },
+        "aurora": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Curtains, hue drift, the 47 s brightening and the clipped reflection inside the glass. Off leaves a dark starry sky and no reflection."
+        },
+        "snow": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Both parallax snow layers. Off leaves clear air; the foreground still reads."
+        },
+        "camera_drift": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.5,
+          "min": 0.0,
+          "max": 2.0,
+          "step": 0.1,
+          "help": "Lateral drift in pixels per second. 0 holds the camera. The far, castle and near layers move at 0.35x, 0.55x and 0.8x for depth."
+        },
+        "window_lights": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "The warm windows flicker on 2.8-7.2 s periods. The gate stays lit either way."
+        },
+        "shard_count": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 6,
+          "min": 0,
+          "max": 10,
+          "step": 1,
+          "help": "Detached crystal fragments orbiting the keep; 0 removes them. The design card's default is 6."
+        },
+        "aurora_period": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 60.0,
+          "min": 20.0,
+          "max": 180.0,
+          "step": 1.0,
+          "help": "Seconds for the aurora's drift and hue cycle. The 47 s brightening is separate and fixed."
+        },
+        "window_flicker": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "0 holds the windows steady; 1 lets each window keep its own period and phase."
+        },
+        "reflection_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.72,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "How strongly the aurora is mirrored inside the glass; 0 removes the interior light."
+        },
+        "snow_speed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 12.0,
+          "min": 4.0,
+          "max": 24.0,
+          "step": 0.5,
+          "help": "Fall-speed multiplier for both snow layers; 12 is the reviewed pace."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.36,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Downscaled additive bloom. 0 still reads; the composition does not depend on it."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 4,
+          "min": 0,
+          "max": 40,
+          "step": 1,
+          "help": "Opacity of the 1-in-3 scanline seasoning. 0 is a clean image."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.34,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Corner darkening. The lower-left mode-number corner stays clear by composition."
+        }
+      }
+    },
+    "longarchive": {
+      "entrypoint": "modes.long_archive_mode:LongArchiveMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "seed",
+        "palette",
+        "orientation",
+        "hud",
+        "quality",
+        "slab_count",
+        "drift_speed",
+        "text_speed",
+        "text_file",
+        "show_labels",
+        "bar_period",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "data",
+          "default": "THE LONG ARCHIVE",
+          "help": "The header in the top-left corner. Kept short: it does not wrap."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "data",
+          "default": "VAULT 9 // MONOLITH FIELD",
+          "help": "The second line under the title. Shown only when hud is full."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a fresh vault on every entry; set 0..2147483647 to reproduce one exactly. The seed in use is logged on entry."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "bone",
+          "choices": [
+            "bone",
+            "amber",
+            "verdigris"
+          ],
+          "help": "bone is the reviewed still: near-black blue, cold structure, a bone-white line and one small amber mark. amber is Ember & Rust; verdigris is Phosphor & Ash green."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "landscape",
+            "portrait"
+          ],
+          "help": "auto picks portrait when the screen is taller than 1.2:1, landscape otherwise. The wall is re-composed for the aspect, never stretched or cropped from the strip."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "full",
+          "choices": [
+            "full",
+            "minimal",
+            "off"
+          ],
+          "help": "full is the reviewed still: title, subtitle, entries, focus, bar clock, progress track and camera footer. minimal drops the subtitle and footer. off leaves the wall and the translation alone."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "auto starts at medium and moves with the frame time. low skips alternating glyph rows and thins the motes; medium is the full wall at a half-resolution bloom; high adds the full mote field and a 4x bloom. The wall, its alignment and the clock never move."
+        },
+        "slab_count": {
+          "widget": "number",
+          "group": "layout",
+          "default": 9,
+          "min": 7,
+          "max": 12,
+          "step": 1,
+          "help": "The vault's total slab count, used in the catalogue readout. The wall itself shows the current slab and two cropped neighbours; the rest are beyond the frame."
+        },
+        "drift_speed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 2.0,
+          "min": 0.0,
+          "max": 4.0,
+          "step": 0.1,
+          "help": "Camera sway in pixels per second. 0 holds the wall still. The wall never tilts or changes plane; only the whole row drifts a little against the void."
+        },
+        "text_speed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 14,
+          "min": 4,
+          "max": 30,
+          "step": 1,
+          "help": "Characters per second at which the translation resolves as the bar passes. The completed line holds, then fades before the next entry."
+        },
+        "text_file": {
+          "widget": "path",
+          "group": "data",
+          "default": "",
+          "help": "Optional JSON list of one-line entries. Missing or malformed files fall back to the built-in lore and log once. Leave empty for the built-ins."
+        },
+        "show_labels": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the SLAB 04 // TRANSLATION label and the TL-0447 catalogue mark."
+        },
+        "bar_period": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 8.0,
+          "min": 4.0,
+          "max": 20.0,
+          "step": 0.5,
+          "help": "Seconds for one full light-bar sweep. The bar bounces across the current slab; the translation clock is tied to it."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.55,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Strength of the downscaled additive bloom. 0 still reads; the wall does not depend on the glow."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 6,
+          "min": 0,
+          "max": 40,
+          "step": 1,
+          "help": "Opacity of the 1-in-3 scanline seasoning. 0 is a clean image."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.42,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Darkening toward the corners. The lower-left mode-number corner stays dark and clear."
+        }
+      }
+    },
+    "lanternprocession": {
+      "entrypoint": "modes.lantern_procession_mode:LanternProcessionMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "palette",
+        "seed",
+        "quality",
+        "hud",
+        "orientation",
+        "lantern_count",
+        "speed",
+        "sigil_set",
+        "reflection",
+        "mist",
+        "departure_seconds",
+        "flicker",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "LANTERN PROCESSION",
+          "help": "The line in the top-left corner. The portrait preset splits the default into LANTERN / PROCESSION; a custom title can use a newline for two lines."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "A PROCESSION THROUGH THE NIGHT WOOD",
+          "help": "The small line under the title."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "moss",
+          "choices": [
+            "moss",
+            "indigo",
+            "mono"
+          ],
+          "help": "moss is the Moon & Moss design default; indigo is cold moonlight with warm lanterns; mono is a sepia silver print."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a new forest, firefly scatter and departure schedule on every entry; set a value to reproduce them. The seed in use is logged on entry."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "auto starts at medium and follows the frame time. Detail changes reflection slices, fireflies, mist and bloom; the composition and timing never change. Large frames skip the full-screen bloom."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "minimal",
+          "choices": [
+            "none",
+            "minimal",
+            "full"
+          ],
+          "help": "minimal is the title, subtitle, night/steps and lantern count; full adds the SLOW WORLDS \u00b7 FANTASY eyebrow; none leaves the scene alone."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "ultrawide",
+            "landscape",
+            "portrait",
+            "square"
+          ],
+          "help": "auto picks from the screen aspect: the receding strip, the descending portrait, the 16:9 trail or the square path. The preset re-composes the scene rather than stretching it."
+        },
+        "lantern_count": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 14,
+          "min": 8,
+          "max": 20,
+          "step": 1,
+          "help": "How many lanterns are in the procession. Eight is a lost line; twenty crowds the strip."
+        },
+        "speed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 6.0,
+          "min": 1.0,
+          "max": 12.0,
+          "step": 0.5,
+          "help": "Walking pace along the cached path, in pixels per second. The design's 6 px/s crosses the strip in about four minutes."
+        },
+        "sigil_set": {
+          "widget": "stringlist",
+          "group": "appearance",
+          "default": [],
+          "item": "string",
+          "help": "Optional list of 1-3 character glyphs to stamp on the paper. Empty uses the eight built-in invented runes. A malformed list falls back to the built-ins and logs once."
+        },
+        "reflection": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Stream reflections: flipped, blurred, rippled copies of each lantern near the bank."
+        },
+        "mist": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Low fog bands over the water and behind the tree-line."
+        },
+        "departure_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 120.0,
+          "min": 0.0,
+          "max": 600.0,
+          "step": 15.0,
+          "help": "How often the signature happens: one lantern leaves the line, drifts to the water and goes out while its reflection lingers. 0 disables it. The actual interval varies by \u00b125% from the seed."
+        },
+        "flicker": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "A 1-2 Hz flame breath in each lantern's core, a few percent. No strobe."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.75,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Strength of the additive lantern halos and the light pools on the trail. 0 still reads; the wall does not depend on the glow."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 2,
+          "min": 0,
+          "max": 40,
+          "step": 1,
+          "help": "Opacity of the 1-in-3 scanline seasoning. 0 is a clean image."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.40,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Darkening toward the corners. The lower-left mode-number corner is kept dark and clear."
+        }
+      }
+    },
+
+    "leviathan": {
+      "entrypoint": "modes.leviathan_mode:LeviathanMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "palette",
+        "seed",
+        "quality",
+        "hud",
+        "orientation",
+        "pod_size",
+        "crossing_seconds",
+        "mist",
+        "moon",
+        "moon_arc_seconds",
+        "scale_reference",
+        "show_reflections",
+        "show_spouts",
+        "eclipse_seconds",
+        "swell_speed",
+        "star_density",
+        "meteor",
+        "meteor_seconds",
+        "meteor_duration",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "LEVIATHAN PASSAGE",
+          "help": "The line in the top-left corner. The portrait preset splits the default into LEVIATHAN / PASSAGE; a custom title may use a newline."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "",
+          "help": "Optional second line under the title, shown by the full HUD only."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "dusk",
+          "choices": [
+            "dusk",
+            "bone",
+            "ember"
+          ],
+          "help": "dusk is the Moon & Moss dusk default; bone is cold moonlight; ember is a volcanic afterglow. A palette changes colour only."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a new pod, star field, meteor schedule and entry moment; set a value to reproduce them."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "auto starts at medium and follows frame time. Detail changes the body supersample, reflection slices, spout puffs, star glints and bloom; composition and timing never change."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "minimal",
+          "choices": [
+            "none",
+            "minimal",
+            "full"
+          ],
+          "help": "minimal is the title and one telemetry line; full adds the SLOW WORLDS eyebrow, a subtitle if set, and the pod/event line; none leaves the scene alone."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "ultrawide",
+            "landscape",
+            "portrait",
+            "square"
+          ],
+          "help": "auto picks from the screen aspect. Each preset re-composes the horizon, moon, boat and pod rather than stretching the strip."
+        },
+        "pod_size": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 3,
+          "min": 2,
+          "max": 5,
+          "step": 1,
+          "help": "How many leviathans are in the pod. Three is the lead adult, calf and second adult; larger pods add smaller animals behind them."
+        },
+        "crossing_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 120.0,
+          "min": 60.0,
+          "max": 300.0,
+          "step": 5.0,
+          "help": "Time for one animal to cross the screen width. The pod's spread makes the whole procession longer; the design's 120 s is about 10.7 px/s at 1280."
+        },
+        "mist": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Layered horizon mist and waterline spray."
+        },
+        "moon": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "The low moon, its reflection and the eclipse. Turning it off removes the moon path as well."
+        },
+        "moon_arc_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 600.0,
+          "min": 0.0,
+          "max": 1200.0,
+          "step": 30.0,
+          "help": "A very slow moon arc; 0 pins the moon. The eclipse alignment is computed from the live moon position."
+        },
+        "scale_reference": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "boat",
+          "choices": [
+            "boat",
+            "lighthouse",
+            "none"
+          ],
+          "help": "The small object that gives the pod its scale: a boat with a lantern, a distant lighthouse, or nothing."
+        },
+        "show_reflections": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Flipped, blurred and rippled copies of each hump under the waterline."
+        },
+        "show_spouts": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "The mist plumes rising from each head."
+        },
+        "eclipse_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 4.0,
+          "min": 0.0,
+          "max": 10.0,
+          "step": 0.5,
+          "help": "Approximate duration of the moon crossing / corona. 0 disables it. It only happens where the moon is actually behind the hump."
+        },
+        "swell_speed": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 4.0,
+          "step": 0.1,
+          "help": "Long swell drift in pixels per second at 1280 wide."
+        },
+        "star_density": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 2.0,
+          "step": 0.05,
+          "help": "Multiplier on the star field and its bright anchors. 0 is a dark, starless sky."
+        },
+        "meteor": {
+          "widget": "switch",
+          "group": "behaviour",
+          "default": true,
+          "help": "The occasional single meteor."
+        },
+        "meteor_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 90.0,
+          "min": 0.0,
+          "max": 300.0,
+          "step": 10.0,
+          "help": "Mean interval between meteors, varied by the seed. 0 disables them."
+        },
+        "meteor_duration": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 1.2,
+          "min": 0.4,
+          "max": 3.0,
+          "step": 0.1,
+          "help": "Seconds for one meteor pass."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.8,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Moon halo, glow and bloom strength. The scene still reads at 0."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 4,
+          "min": 0,
+          "max": 40,
+          "step": 1,
+          "help": "Opacity of the 1-in-2 scanline seasoning. 0 is a clean image."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.55,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Darkening toward the corners. The lower-left mode-number corner stays dark and clear."
+        }
+      }
+    },
+      "terraform": {
+        "entrypoint": "modes.terraform_mode:TerraformMode",
+        "required": [],
+        "optional": [
+          "title",
+          "subtitle",
+          "palette",
+          "seed",
+          "quality",
+          "hud",
+          "orientation",
+          "cycle_seconds",
+          "start_stage",
+          "show_timeline",
+          "show_city_lights",
+          "show_lighthouse",
+          "show_foreground",
+          "mist"
+        ],
+        "params": {
+          "title": {
+            "widget": "text",
+            "group": "appearance",
+            "default": "TERRAFORM",
+            "help": "The tracked title in the top-left corner. Keep it short; it does not wrap."
+          },
+          "subtitle": {
+            "widget": "text",
+            "group": "appearance",
+            "default": "A WORLD IN PROGRESS · SITE 07",
+            "help": "The line under the title. Shown when hud is full."
+          },
+          "palette": {
+            "widget": "choice",
+            "group": "appearance",
+            "default": "biosphere",
+            "choices": [
+              "biosphere",
+              "ice",
+              "desert"
+            ],
+            "help": "biosphere is the reviewed dawn valley; ice is a colder blue-green world; desert is warm ochre. The layout and stages do not change."
+          },
+          "seed": {
+            "widget": "number",
+            "group": "behaviour",
+            "min": 0,
+            "max": 2147483647,
+            "step": 1,
+            "help": "Leave unset for a new world on entry; set a value to reproduce the same field jitter, lights and bird paths."
+          },
+          "quality": {
+            "widget": "choice",
+            "group": "behaviour",
+            "default": "auto",
+            "choices": [
+              "auto",
+              "low",
+              "medium",
+              "high"
+            ],
+            "help": "auto starts at medium and adjusts overlay detail to the frame time. The cached stage keyframes keep the same composition at every setting."
+          },
+          "hud": {
+            "widget": "choice",
+            "group": "appearance",
+            "default": "full",
+            "choices": [
+              "full",
+              "minimal",
+              "off"
+            ],
+            "help": "full is the reviewed still: eyebrow, title, subtitle, four telemetry lines and the year bar. minimal drops the eyebrow and the two extra telemetry lines. off leaves the scene alone."
+          },
+          "orientation": {
+            "widget": "choice",
+            "group": "layout",
+            "default": "auto",
+            "choices": [
+              "auto",
+              "ultrawide",
+              "landscape",
+              "portrait",
+              "square"
+            ],
+            "help": "auto picks from the screen aspect: the 1280x400 strip, 16:9, the 1080x1920 portrait wall, or square. Each preset is composed natively, not stretched."
+          },
+          "cycle_seconds": {
+            "widget": "number",
+            "group": "behaviour",
+            "default": 180,
+            "min": 45,
+            "max": 900,
+            "step": 15,
+            "help": "Full transformation. The five stages share it evenly (36 s each at the default); palette/tree cover crossfades over the last 10 s of a stage."
+          },
+          "start_stage": {
+            "widget": "number",
+            "group": "behaviour",
+            "default": 0,
+            "min": 0,
+            "max": 4,
+            "step": 1,
+            "help": "0 ICE, 1 WATER, 2 ALGAE, 3 FOREST, 4 CITIES. Useful for previews and for entering on the city night; the cycle continues from there."
+          },
+          "show_timeline": {
+            "widget": "switch",
+            "group": "appearance",
+            "default": true,
+            "help": "The year bar and its five stage names. The lower-left 80x32 controller corner stays clear either way."
+          },
+          "show_city_lights": {
+            "widget": "switch",
+            "group": "appearance",
+            "default": true,
+            "help": "Warm windows, the delta constellation and their twinkle in the CITIES stage."
+          },
+          "show_lighthouse": {
+            "widget": "switch",
+            "group": "appearance",
+            "default": true,
+            "help": "The small harbour light on the delta spit. A scale reference and the only bright vertical in the city."
+          },
+          "show_foreground": {
+            "widget": "switch",
+            "group": "layout",
+            "default": true,
+            "help": "The summit shelf, path, cairn and three pines. Off leaves an unobstructed vista to the bottom of frame."
+          },
+          "mist": {
+            "widget": "switch",
+            "group": "appearance",
+            "default": true,
+            "help": "The low mist bands and aerial haze in the valley. Off gives a crisper, more diagrammatic view."
+          }
+        }
+      },
+    "dysonswarm": {
+      "entrypoint": "modes.dyson_swarm_mode:DysonSwarmMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "palette",
+        "seed",
+        "quality",
+        "hud",
+        "fill",
+        "orientation",
+        "collector_count",
+        "shells",
+        "orbit_seconds",
+        "transit_chance",
+        "camera_drift",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "DYSON SWARM",
+          "help": "The tracked title in the top-left corner. Keep it short; it does not wrap."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "SHELL 4 \u00b7 OUTER DRIFT",
+          "help": "The line under the title. Shown when hud is full."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "vector_blue",
+          "choices": [
+            "vector_blue",
+            "amber",
+            "ice"
+          ],
+          "help": "vector_blue is the reviewed still: a cold swarm around a warm star. amber makes the whole frame warm; ice is colder and paler. The star stays the one warm accent in all three, and the layout does not change."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a new swarm on entry; set a value to reproduce the same collectors, transits and starfield."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "The design card calls this `detail`. auto starts at medium and moves between tiers to hold the frame time; the trade is drawn sails and bloom resolution, never the camera path or the subject."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "minimal",
+          "choices": [
+            "full",
+            "minimal",
+            "off"
+          ],
+          "help": "minimal is the title, one telemetry block and the status line. full adds the subtitle and two more telemetry lines. off leaves the drawing alone \u2014 the scene still reads."
+        },
+        "fill": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "line",
+          "choices": [
+            "line",
+            "xray",
+            "panel"
+          ],
+          "help": "line is line-only, the reviewed look. xray gives the near sails a faint face; panel fills them a little more. No fill is ever a texture."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "ultrawide",
+            "landscape",
+            "portrait",
+            "square"
+          ],
+          "help": "auto picks from the screen aspect: the 1280x400 strip, 16:9, the 1080x1920 portrait wall, or square. Each preset re-composes the camera and the star's anchor; nothing is stretched or cropped."
+        },
+        "collector_count": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 900,
+          "min": 60,
+          "max": 5000,
+          "step": 10,
+          "help": "The catalogue count, and the table the swarm is drawn from. 900 is the card's number; the actual draw is capped by quality at 240/600/1000 sails. The HUD's catalogue figure is fiction derived from this value."
+        },
+        "shells": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 3,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "help": "Nested orbit families, spread evenly between the inner and outer radius. Each family has its own tilt, period multiplier and node rotation."
+        },
+        "orbit_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 180,
+          "min": 40,
+          "max": 900,
+          "step": 10,
+          "help": "Base orbital period for the inner shell; each outer shell is 55% slower. 180 s keeps the swarm moving without ever looking like a turntable."
+        },
+        "transit_chance": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.5,
+          "min": 0.0,
+          "max": 6.0,
+          "step": 0.1,
+          "help": "Transits per minute: a sail crosses the star over 15-30 s, the star dims, the near lines go dark and a shadow band travels outward. 0 disables the eclipse and leaves the swarm drifting."
+        },
+        "camera_drift": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.5,
+          "min": 0.0,
+          "max": 4.0,
+          "step": 0.1,
+          "help": "The camera's lateral drift in pixels per second, made periodic over five minutes so a wall left running for a week never drifts out of the swarm. 0 holds the camera still."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.55,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Strength of the additive bloom around the star and the near sails. 0 is the cheapest setting and must still leave a complete scene."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 4,
+          "min": 0,
+          "max": 40,
+          "step": 1,
+          "help": "Darkness of the CRT scanline rows, baked into the per-frame multiply map with the vignette. 0 disables them."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.22,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.02,
+          "help": "Corner darkening in the same multiply map. Keeps the HUD legible and the eye on the star; 0 leaves the frame flat."
+        }
+      }
+    },
+    "stellarengine": {
+      "entrypoint": "modes.stellar_engine_mode:StellarEngineMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "palette",
+        "seed",
+        "quality",
+        "hud",
+        "fill",
+        "glow_strength",
+        "scanline_alpha",
+        "mirror_span",
+        "precession_seconds",
+        "beam_width",
+        "show_star"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "STELLAR ENGINE",
+          "help": "The tracked title in the top-left corner. Keep it short; it does not wrap."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "MIRROR 01 \u00b7 THRUST 0.004 C",
+          "help": "The line under the title. Shown when hud is full."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "amber",
+          "choices": [
+            "amber",
+            "vector_blue",
+            "mono"
+          ],
+          "help": "amber is the reviewed still: a warm engine around a warm star. vector_blue makes the truss and mirror cold while the star and beam stay warm; mono is grayscale. The layout and the beam do not change."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a new engine on entry; set a value to reproduce the same mirror mesh, truss, starfield and dust."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "The design card calls this `detail`. auto starts at medium and moves between tiers to hold the frame time; the trade is mirror facet count, rim resolution, dust particles and bloom resolution \u2014 never the camera path or the subject."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "minimal",
+          "choices": [
+            "full",
+            "minimal",
+            "off"
+          ],
+          "help": "minimal is the title, one telemetry block and the status line. full adds the subtitle and two more telemetry lines. off leaves the drawing alone \u2014 the scene still reads."
+        },
+        "fill": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "line",
+          "choices": [
+            "line",
+            "xray",
+            "panel"
+          ],
+          "help": "line is line-only: the star is a bright ring and graticule, the reviewed look. xray and panel give the star a faint face. No fill is ever a texture."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.5,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Strength of the additive bloom around the beam and the mirror rim. 0 is the cheapest setting and must still leave a complete scene."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 4,
+          "min": 0,
+          "max": 40,
+          "step": 1,
+          "help": "Darkness of the CRT scanline rows, baked into the per-frame multiply map with the vignette. 0 disables them."
+        },
+        "mirror_span": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.7,
+          "min": 0.3,
+          "max": 1.4,
+          "step": 0.05,
+          "help": "Size of the mirror dish as a scale on its base radius \u2014 the card's 'fraction of the star's disc covered' knob. 0.7 is the reviewed size; it never changes the star or the camera."
+        },
+        "precession_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 300,
+          "min": 60,
+          "max": 900,
+          "step": 15,
+          "help": "Full precession cycle: the mirror and beam nod a few degrees around the star over this period, which is what sweeps the beam across the dust lane."
+        },
+        "beam_width": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.4,
+          "min": 0.0,
+          "max": 1.5,
+          "step": 0.05,
+          "help": "Width of the reflected beam's cone. 0 removes the beam and the dust lighting entirely, leaving just the mirror and truss."
+        },
+        "show_star": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "The star disc, graticule and convection-cell shimmer. Off leaves the mirror, truss and beam against the dark."
+        }
+      }
     }
   }
 }

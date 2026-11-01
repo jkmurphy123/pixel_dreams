@@ -194,6 +194,40 @@
       "station_detail": 3,
       "station_spin_rpm": 0.85,
       "earth_rotation_seconds": 300.0
+    },
+    "14": {
+      "type": "dysonswarm",
+      "name": "Dyson Swarm",
+      "palette": "amber",
+      "hud": "full",
+      "quality": "high",
+      "orientation": "landscape",
+      "collector_count": 900,
+      "shells": 3,
+      "orbit_seconds": 180,
+      "transit_chance": 0.5,
+      "camera_drift": 0.5,
+      "glow_strength": 0.55,
+      "scanline_alpha": 4,
+      "vignette_strength": 0.22,
+      "duration": 15
+    },
+    "15": {
+      "type": "stellarengine",
+      "name": "Stellar Engine",
+      "title": "STELLAR ENGINE",
+      "subtitle": "MIRROR 01 · THRUST 0.004 C",
+      "palette": "vector_blue",
+      "hud": "full",
+      "quality": "high",
+      "fill": "line",
+      "glow_strength": 0.5,
+      "scanline_alpha": 4,
+      "mirror_span": 0.7,
+      "precession_seconds": 300,
+      "beam_width": 0.4,
+      "show_star": true,
+      "duration": 150
     }
   }
 }
