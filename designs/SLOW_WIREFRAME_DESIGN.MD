@@ -1580,8 +1580,8 @@ reformat them: the job parses lines shaped `- [ ] N · key · ...` and appends `
 when it ticks a line. When all twenty are checked the job holds itself and waits for a new design
 document.
 
-- [ ] 1 · `dysonswarm` · Dyson Swarm · survey · M · wave 1 · `modes/dyson_swarm_mode.py` · `DysonSwarmMode`
-- [ ] 2 · `stellarengine` · Stellar Engine · orbit · M · wave 2 · `modes/stellar_engine_mode.py` · `StellarEngineMode`
+- [x] 1 · `dysonswarm` · Dyson Swarm · survey · M · wave 1 · `modes/dyson_swarm_mode.py` · `DysonSwarmMode` — done 2026-11-01
+- [x] 2 · `stellarengine` · Stellar Engine · orbit · M · wave 2 · `modes/stellar_engine_mode.py` · `StellarEngineMode` — done 2026-11-01
 - [ ] 3 · `orbitalmirrorarray` · Orbital Mirror Array · survey · L · wave 3 · `modes/orbital_mirror_array_mode.py` · `OrbitalMirrorArrayMode`
 - [ ] 4 · `planetcracker` · Planet Cracker · orbit · L · wave 3 · `modes/planet_cracker_mode.py` · `PlanetCrackerMode`
 - [ ] 5 · `solarobservatory` · Solar Observatory Ring · orbit / track · L · wave 3 · `modes/solar_observatory_mode.py` · `SolarObservatoryMode`
