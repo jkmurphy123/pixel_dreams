@@ -55,7 +55,9 @@ Core (shared by everything — edit here, not in copies):
 - `core/loader.py` — entrypoint import, config validation, mode instantiation
 - `core/manager.py` — ModeManager: scene lifecycle, fades, mode-number overlay
 - `core/playlist.py` — Playlist: sequential/shuffled rotation (no global state)
-- `core/hardware.py` — RotaryHardware: lazy gpiozero wrapper (Pi only)
+- `core/hardware.py` — RotaryHardware: lazy gpiozero wrapper (Pi only), configurable pins and
+  optional LEDs. Its callbacks run on GPIO threads and only report deltas/taps/holds; the render
+  loop applies them, so no callback touches the Playlist or ModeManager
 - `core/profiles.py` — profile (config file) discovery, active-profile resolution, mode summaries
 - `core/params.py` — the param schema/resolver: what a field is, its widget, and whether a value
   is acceptable for it (`validate_param_value`)
@@ -79,7 +81,8 @@ Config & data:
 - `modes_registry.json` — the ONLY registry (there is no "_new" variant)
 - `modes_config.json` — canonical instance config
 - `modes_config.local.json` — optional per-host override (gitignored)
-- `configs/` — alternate variant configs (windows, jetson, narrow, etc.)
+- `configs/` — alternate variant configs (windows, jetson, narrow, etc.). The 1280x400 Raspberry
+  Pi kiosk uses `configs/modes_config_narrow_horz.json`.
 - `secrets.json` — API keys (gitignored; see `secrets.example.json`)
 
 
@@ -94,8 +97,15 @@ python pixel_dreams.py --input rotary        # Pi rotary encoder (tap=quit, hold
 
 Common flags: --windowed --width W --height H --start N --max-modes N
               --config FILE --gc-seconds N
+Rotary flags: --rotary-pins A,B --rotary-button-pin N --rotary-led-pins P1,P2,...
+              --rotary-hold reboot|none
 Panel flags:  --panel-port N --panel-bind ADDR --panel-only --frames N
 ```
+
+The Pi kiosk (1280x400 landscape) pins `configs/modes_config_narrow_horz.json` with `--config`
+and starts with `--input rotary`; see `scripts/run_pi_kiosk.sh` and
+`deploy/pixel_dreams-pi.service`. The portrait kiosk keeps `configs/modes_config_vert.json`; the
+two profiles are separate files and must stay that way.
 
 Do not break existing flags. If a new flag is added, keep backward compatibility.
 

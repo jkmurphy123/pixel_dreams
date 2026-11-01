@@ -1,0 +1,46 @@
+[Unit]
+Description=pixel_dreams — Raspberry Pi 1280x400 kiosk (rotary encoder)
+# A user unit with linger starts at boot, which can be before the desktop is up.
+# Restart=always below keeps retrying until a display exists; if your session is
+# slow, the desktop's own autostart is the more deterministic option (see
+# deploy/README.md, "Raspberry Pi kiosk").
+After=graphical-session.target
+StartLimitIntervalSec=120
+StartLimitBurst=10
+
+[Service]
+Type=simple
+# The repo is expected at ~/pixel_dreams. Change both paths if yours is elsewhere.
+WorkingDirectory=%h/pixel_dreams
+Environment=PYTHONUNBUFFERED=1
+Environment=SDL_AUDIODRIVER=dummy
+# X11 session (Raspberry Pi OS Bullseye / LXDE). On Bookworm's Wayland session,
+# comment these two out and use the Wayland pair instead; labwc does not create
+# ~/.Xauthority.
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+# Environment=SDL_VIDEODRIVER=wayland
+# Environment=XDG_RUNTIME_DIR=/run/user/%U
+# If SDL cannot find the Wayland socket, import it into the user manager once:
+#   systemctl --user import-environment WAYLAND_DISPLAY
+#
+# --config PINS this kiosk to the narrow-horizontal 1280x400 profile (19 modes,
+# including Trench Run at slot 17 and Cyberspace Matrix at slot 18). The portrait
+# wall keeps configs/modes_config_vert.json; the two files never overlap, and the
+# panel cannot switch this wall to another profile by accident.
+# --input rotary turns the knob into Next/Prev; tap exits (systemd restarts it)
+# and a 2s hold reboots. Use --start 17 to boot straight into Trench Run.
+ExecStart=%h/pixel_dreams/.venv/bin/python %h/pixel_dreams/pixel_dreams.py \
+          --config configs/modes_config_narrow_horz.json --input rotary --start 0
+# A kiosk should not stay dark because someone tapped the encoder or pressed ESC.
+Restart=always
+RestartSec=5
+UMask=0077
+# Hold-to-reboot runs `sudo -n reboot`. NoNewPrivileges=true would block sudo, so
+# it is deliberately not set here. If you want the tighter sandbox, start with
+# --rotary-hold none and add NoNewPrivileges=true.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

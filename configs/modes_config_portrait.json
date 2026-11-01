@@ -415,6 +415,26 @@
             "books_file": "data/imaginary_library/books.json",
             "dwell_seconds": 180,
             "portrait_layout": true
+        },
+        "24": {
+            "type": "cyberspace",
+            "name": "Cyberspace Matrix",
+            "palette": "neuromancer",
+            "travel_speed": 15.0,
+            "blocks_per_leg": 5,
+            "quality": "auto",
+            "hud": "full"
+        },
+        "25": {
+            "type": "spacestation",
+            "name": "Space Station V",
+            "palette": "orbital_white",
+            "quality": "auto",
+            "hud": "full",
+            "orientation": "portrait",
+            "station_detail": 3,
+            "station_spin_rpm": 0.85,
+            "earth_rotation_seconds": 300.0
         }
     }
 }

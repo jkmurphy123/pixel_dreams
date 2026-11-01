@@ -11,6 +11,7 @@
 # Run standalone first when it fails (a page that raises can hang the whole suite):
 #   timeout 90 python -m pytest tests/test_panel_modes.py -q
 
+import inspect
 import json
 import os
 import sys
@@ -183,6 +184,57 @@ async def test_only_the_fields_that_must_be_locked_are_locked(tmp_path):
         assert editable, "no editable fields at all"
         for name in ("duration", "refresh_hz", "folder", "show_time", "palette", "devices"):
             assert name in editable, f"{name} should be editable"
+
+
+def _click_marked(p, marker: str):
+    """Fire the click handler on an element marked `marker` (NiceGUI 3.18 has no click API)."""
+    el = next((el for el in p.user.find().elements
+               if getattr(el, "_markers", None) and marker in el._markers), None)
+    assert el is not None, f"no element marked {marker!r} on the page"
+    entries = list((getattr(el, "_event_listeners", {}) or {}).values())
+    asserts = [e for e in entries if getattr(e, "type", "click") == "click"] or entries
+    assert asserts, f"{el} has no click handler to fire"
+    for entry in asserts:
+        handler = getattr(entry, "handler", None) or entry
+        try:
+            wants = len(inspect.signature(handler).parameters)
+        except (TypeError, ValueError):
+            wants = 0
+        if wants:
+            handler(SimpleNamespace(sender=el, value=getattr(el, "value", None)))
+        else:
+            handler()
+
+
+async def test_save_and_apply_refreshes_the_field_it_just_saved(tmp_path):
+    """
+    Regression: Save & Apply wrote the file and updated the wall, then the
+    rebuilt form showed the value the page was loaded with.  The field model
+    was resolved once at page load and never re-resolved from the editor's new
+    document, so `fields.refresh()` re-rendered stale ParamSpec values.
+    """
+    ctx = _ctx(tmp_path)
+    profile = os.path.join(ctx.base_dir, "modes_config.json")
+    async with _panel(ctx) as p:
+        await p.user.open("/mode/0")
+
+        def duration():
+            return next(el for el in p.user.find().elements
+                        if getattr(el, "_markers", None)
+                        and "param-widget-duration" in el._markers)
+
+        before = duration()
+        assert float(before.value) == 120
+        before.value = 42
+        before.update()
+
+        _click_marked(p, "save-apply")
+        await p.user.should_see("Applied")
+
+        after = duration()
+        assert float(after.value) == 42, "the form snapped back to its page-load value"
+
+    assert json.load(open(profile))["modes"]["0"]["duration"] == 42
 
 
 async def test_save_buttons_are_present(tmp_path):

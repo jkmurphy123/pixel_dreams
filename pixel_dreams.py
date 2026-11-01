@@ -19,7 +19,9 @@
 
 import argparse
 import os
+import subprocess
 import sys
+import threading
 import time
 
 import pygame
@@ -67,6 +69,39 @@ def _summary(frames: int, elapsed: float, panel_url: str | None) -> str:
             f"panel={panel_url or 'off'}")
 
 
+def _parse_pin_list(parser, value, option):
+    """Parse '17,27' into (17, 27); an empty string is an empty tuple."""
+    pins = []
+    for part in str(value).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            pin = int(part)
+        except ValueError:
+            parser.error(f"{option}: '{part}' is not a GPIO number")
+        if not 0 <= pin <= 27:
+            parser.error(f"{option}: GPIO {pin} is outside the Pi's 0..27 range")
+        pins.append(pin)
+    return tuple(pins)
+
+
+def _reboot_after_cleanup() -> None:
+    """
+    Reboot the Pi from the hold-to-reboot action, after pygame and the GPIO
+    devices have been closed. `sudo -n` never prompts: a kiosk service has no
+    terminal, and a prompt there would hang until the unit is killed.
+    """
+    print("[Controller] Encoder held 2s -> rebooting")
+    try:
+        result = subprocess.run(["sudo", "-n", "reboot"], check=False)
+        if result.returncode != 0:
+            print(f"[Controller] reboot failed (exit {result.returncode}). Grant NOPASSWD "
+                  f"for /sbin/reboot, or start with --rotary-hold none.")
+    except Exception as e:  # noqa: BLE001 - a failed reboot must not hide the exit
+        print(f"[Controller] reboot failed: {type(e).__name__}: {e}")
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(
         description="pixel_dreams — kiosk mode controller"
@@ -87,8 +122,21 @@ def parse_args(argv):
     parser.add_argument("--input", choices=["keyboard", "rotary", "none"],
                         default="keyboard",
                         help="Input source for mode switching (default: keyboard)")
+    parser.add_argument("--rotary-pins", default="17,27", metavar="A,B",
+                        help="GPIO pins for the rotary encoder's A and B contacts "
+                             "(default: 17,27)")
+    parser.add_argument("--rotary-button-pin", type=int, default=23, metavar="N",
+                        help="GPIO pin for the encoder's push button (default: 23)")
+    parser.add_argument("--rotary-led-pins", default="5,6,13,19,26,21,20,16",
+                        metavar="P1,P2,...",
+                        help="GPIO pins for the optional mode LEDs, comma separated. "
+                             "Use an empty string for a kiosk with no LEDs "
+                             "(default: 5,6,13,19,26,21,20,16)")
+    parser.add_argument("--rotary-hold", choices=["reboot", "none"], default="reboot",
+                        help="What a 2s encoder hold does (default: reboot)")
     parser.add_argument("--config", default=None, metavar="FILE",
-                        help="Override modes config file (default: from registry settings)")
+                        help="Override modes config file (default: from registry settings). "
+                             "A profile pinned here cannot be switched from the panel.")
 
     parser.add_argument("--windowed", action="store_true",
                         help="Run in a window instead of fullscreen")
@@ -133,6 +181,25 @@ def parse_args(argv):
         parser.error("--panel-only needs --panel-port N (there is nothing else to serve)")
     if args.frames is not None and args.frames < 1:
         parser.error("--frames must be >= 1")
+
+    # Rotary pins are validated even when --input keyboard: a typo in a launch
+    # script should be caught now, not the first time someone turns the knob.
+    args.rotary_pins = _parse_pin_list(parser, args.rotary_pins, "--rotary-pins")
+    if len(args.rotary_pins) != 2:
+        parser.error("--rotary-pins needs exactly two GPIO numbers, e.g. 17,27")
+    if args.rotary_pins[0] == args.rotary_pins[1]:
+        parser.error("--rotary-pins A and B must be different GPIOs")
+    if not 0 <= args.rotary_button_pin <= 27:
+        parser.error("--rotary-button-pin must be a GPIO in 0..27")
+    if args.rotary_button_pin in args.rotary_pins:
+        parser.error("--rotary-button-pin must differ from --rotary-pins")
+    args.rotary_led_pins = _parse_pin_list(parser, args.rotary_led_pins, "--rotary-led-pins")
+    if len(set(args.rotary_led_pins)) != len(args.rotary_led_pins):
+        parser.error("--rotary-led-pins contains duplicate GPIOs")
+    overlap = (set(args.rotary_pins) | {args.rotary_button_pin}) & set(args.rotary_led_pins)
+    if overlap:
+        parser.error(f"--rotary-led-pins overlaps the encoder/button GPIO(s) "
+                     f"{sorted(overlap)}")
 
     return args
 
@@ -266,23 +333,35 @@ def main(argv=None):
 
     hardware = None
     quit_requested = False
+    # The GPIO callbacks run on gpiozero's threads. They only leave state here;
+    # the render loop consumes it below, so no callback ever touches the
+    # Playlist or the ModeManager.
+    rotary_lock = threading.Lock()
+    rotary_steps = 0
+    rotary_quit = threading.Event()
+    rotary_reboot = threading.Event()
 
     if args.input == "rotary" and not single_mode_lock:
         def on_rotate(delta):
-            if manager.is_transitioning():
-                return
-            playlist.advance(delta)
-            manager.request_switch(playlist.current)
+            nonlocal rotary_steps
+            with rotary_lock:
+                rotary_steps += int(delta)
 
         def on_tap():
-            nonlocal quit_requested
-            quit_requested = True
+            rotary_quit.set()
 
         def on_hold():
-            print("[Controller] Encoder held 2s -> rebooting")
-            os.system("sudo reboot")
+            if args.rotary_hold == "reboot":
+                rotary_reboot.set()
+            else:
+                print("[Controller] Encoder held; hold action disabled (--rotary-hold none)")
 
-        hardware = RotaryHardware(on_rotate, on_tap, on_hold)
+        hardware = RotaryHardware(
+            on_rotate, on_tap, on_hold,
+            encoder_pins=args.rotary_pins,
+            button_pin=args.rotary_button_pin,
+            led_pins=args.rotary_led_pins,
+        )
         if hardware.setup():
             hardware.set_mode(manager.mode_index)
         else:
@@ -389,19 +468,50 @@ def main(argv=None):
         nonlocal pending_refresh
         pending_refresh = True
 
+    def _apply_step(delta: int, source: str = "panel") -> None:
+        """
+        Move `delta` slots in the rotation, from any input source.
+
+        The panel, the keyboard and the rotary encoder all land here, so the three cannot
+        disagree about what "next" means, a step during a fade is QUEUED rather than dropped,
+        and any manual step resets the --auto timer. `delta` may be larger than one (a fast
+        encoder spin arrives as one accumulated delta); the rotation wraps like any other step.
+
+        `source` only names the input in the log and the status line, so the kiosk can say
+        whether a change came from the knob or from the browser.
+        """
+        nonlocal queued_delta, elapsed_in_mode
+        if single_mode_lock or delta == 0:
+            return
+        delta = int(delta)
+        direction = "next" if delta > 0 else "prev"
+
+        if manager.is_transitioning():
+            queued_delta += delta
+            bus.update_status(last_step=f"queued {direction} (mid-fade, {source})",
+                              pending_steps=queued_delta)
+            print(f"[{source.title()}] step queued ({delta:+d}); {queued_delta} pending")
+            return
+
+        playlist.advance(delta)
+        manager.request_switch(playlist.current)
+        elapsed_in_mode = 0.0
+        bus.update_status(last_step=f"stepped {direction} ({source})",
+                          pending_steps=queued_delta)
+        print(f"[{source.title()}] step {direction} -> mode {playlist.current}")
+
     def _step_mode(cmd) -> None:
         """
         Next/Prev from the panel: exactly the path a LEFT/RIGHT key press takes.
 
         Reusing that path is the point — a step that arrives during a fade is QUEUED rather than
-        dropped (the keyboard already does this with `queued_delta`), so clicking Next twice quickly
+        dropped (the keyboard does this too, via `_apply_step`), so clicking Next twice quickly
         advances twice instead of losing the second click. A manual step also resets the auto-cycle
         timer, so with `--auto` running you get the mode you asked for and a full interval on it.
 
         Refused when `--play N` locked the app to a single mode: there is no rotation to step
         through, and the panel says so instead of offering buttons that do nothing.
         """
-        nonlocal queued_delta, elapsed_in_mode
         if single_mode_lock:
             bus.update_status(last_step="refused: this app was started with --play (single mode)")
             return
@@ -409,21 +519,7 @@ def main(argv=None):
             delta = int(cmd.get("delta", 1))
         except (TypeError, ValueError):
             delta = 1
-        delta = 1 if delta > 0 else -1
-
-        if manager.is_transitioning():
-            queued_delta += delta
-            bus.update_status(last_step=f"queued {'next' if delta > 0 else 'prev'} (mid-fade)",
-                              pending_steps=queued_delta)
-            print(f"[Panel] step queued ({delta:+d}); {queued_delta} pending")
-            return
-
-        playlist.advance(delta)
-        manager.request_switch(playlist.current)
-        elapsed_in_mode = 0.0
-        bus.update_status(last_step=f"stepped {'next' if delta > 0 else 'prev'}",
-                          pending_steps=queued_delta)
-        print(f"[Panel] step {'next' if delta > 0 else 'prev'} -> mode {playlist.current}")
+        _apply_step(1 if delta > 0 else -1, "panel")
 
     def _layout_key(name) -> str:
         """Compare a layout the way a person would: 'steampunk1' == 'assets/.../steampunk1.json'."""
@@ -501,12 +597,24 @@ def main(argv=None):
     import gc as _gc
 
     try:
-        while not quit_requested:
+        while not quit_requested and not rotary_quit.is_set():
             dt = clock.tick(60) / 1000.0
             elapsed_in_mode += dt
             frame += 1
 
             bus.dispatch(handlers)
+
+            if rotary_reboot.is_set():
+                print("[Controller] Encoder hold requested a reboot")
+                break
+
+            # Consume the knob on the render thread. The callbacks only count
+            # detents; this is the one place the Playlist is touched.
+            if hardware is not None:
+                with rotary_lock:
+                    step_delta, rotary_steps = rotary_steps, 0
+                if step_delta:
+                    _apply_step(step_delta, "rotary")
 
             # A refresh requested while a fade was in flight waits here instead of landing
             # mid-transition (and is never silently dropped).
@@ -530,20 +638,10 @@ def main(argv=None):
 
                     if not single_mode_lock and args.input == "keyboard":
                         if event.key == pygame.K_RIGHT:
-                            if manager.is_transitioning():
-                                queued_delta += 1
-                            else:
-                                playlist.advance(+1)
-                                manager.request_switch(playlist.current)
-                                elapsed_in_mode = 0.0
+                            _apply_step(+1, "keyboard")
                             continue
                         if event.key == pygame.K_LEFT:
-                            if manager.is_transitioning():
-                                queued_delta -= 1
-                            else:
-                                playlist.advance(-1)
-                                manager.request_switch(playlist.current)
-                                elapsed_in_mode = 0.0
+                            _apply_step(-1, "keyboard")
                             continue
 
                 manager.handle_event(event)
@@ -610,6 +708,8 @@ def main(argv=None):
             pass
 
     print("[Controller] Exited.")
+    if rotary_reboot.is_set():
+        _reboot_after_cleanup()
     if args.frames is not None:
         print(_summary(frame, time.time() - started, panel_url))
     return 0

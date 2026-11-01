@@ -5,11 +5,11 @@ fullscreen, plus a **web control panel for live tuning** — change a mode's par
 disable a mode, or switch profiles while the display keeps running, with no restart.
 
 Born as a fork of [pixel_drift](../pixel_drift) (revision `e0b0e16`): the mode interface
-contract, the registry/config format and all 53 modes are inherited unchanged. What
+contract, the registry/config format and its modes are inherited unchanged. What
 pixel_dreams adds is the panel and the plumbing the panel needs.
 
 - one controller (`pixel_dreams.py`), one registry (`modes_registry.json`), one config
-  per orientation (`modes_config.json` + `configs/*.json`), **53 visual modes**
+  per orientation (`modes_config.json` + `configs/*.json`), **58 visual mode types**
 - one pygame shell; modes never touch the display directly
 - an embedded NiceGUI panel, in the same process as the display
 
@@ -104,10 +104,91 @@ conflict refusal as the form: it is another view of one write path, not a second
 
 ### Running it as a service
 
-`deploy/` has two example user units (the kiosk with the embedded panel, and `--panel-only` for
-tuning with no display) plus install, log and token notes. Neither is installed or enabled — see
-`deploy/README.md`.
+`deploy/` has three example user units (the kiosk with the embedded panel, `--panel-only` for
+tuning with no display, and a Raspberry Pi kiosk with its own profile and the rotary encoder) plus
+install, log and token notes. None is installed or enabled — see `deploy/README.md`.
 
+### Raspberry Pi kiosk with a rotary encoder
+
+The controller already understands a rotary encoder. This kiosk is a **1280x400 landscape
+wall**, so it needs its own **profile**, **gpiozero**, and a **pin map**.
+
+**1. Its own profile.** The Pi runs `configs/modes_config_narrow_horz.json` — the narrow
+horizontal profile, now 21 modes. Trench Run is slot **17**, Cyberspace Matrix is slot **18**,
+Space Station V is slot **19** and Sunrise is slot **20**; the 3-D scenes are tuned for the
+1280x400 aspect (minimal HUD, a lower camera, a closer draw distance, and the Cyberspace landmark
+inset off because it would eat half the height). The profile's display-only
+`profile` block records `resolution: [1280, 400]`, so the panel labels it correctly.
+
+Start the Pi with `--config configs/modes_config_narrow_horz.json`. `--config` outranks
+`runtime/active_profile.json` and the registry, so a profile switch recorded on another wall cannot
+change this one; the panel also stops offering profile switches, because the command-line pin would
+win again at the next restart. The portrait wall keeps `configs/modes_config_vert.json`: the two
+kiosks use separate files, so tuning the Pi cannot reach the portrait wall. Host-only media paths
+belong in `modes_config.local.json` (gitignored).
+
+**2. gpiozero and GPIO permissions.** On Raspberry Pi OS, the encoder needs gpiozero plus the
+`lgpio` pin factory. The easy path is a venv that can see the distro's copies:
+
+```bash
+sudo apt install python3-gpiozero python3-lgpio
+python3 -m venv --system-site-packages .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+If your venv was created without `--system-site-packages`, either recreate it that way or install
+`lgpio` into it (the pip build needs `swig` and `liblgpio-dev`). The app must be able to open
+`/dev/gpiochip*`: run it as the `pi` user (member of `gpio`), or add `SupplementaryGroups=gpio`
+to a system unit. `--input rotary` never crashes without gpiozero: it prints a `[Hardware]` line
+and falls back to the keyboard.
+
+**3. Pins.** Defaults are **BCM GPIO numbers**, not header pin numbers:
+
+| Signal | Default BCM GPIO | Notes |
+| --- | --- | --- |
+| Encoder A | 17 | `--rotary-pins 17,27` |
+| Encoder B | 27 | |
+| Encoder button | 23 | to GND, internal pull-up; `--rotary-button-pin` |
+| Mode LEDs (optional) | 5, 6, 13, 19, 26, 21, 20, 16 | `--rotary-led-pins ""` for no LEDs |
+
+```bash
+./scripts/run_pi_kiosk.sh                              # defaults, no panel
+./scripts/run_pi_kiosk.sh --rotary-pins 5,6 --rotary-button-pin 12
+./scripts/run_pi_kiosk.sh --rotary-led-pins ""         # no LED ring
+./scripts/run_pi_kiosk.sh --panel-port 8090            # panel on 127.0.0.1 only
+./scripts/run_pi_kiosk.sh --windowed --width 1280 --height 400  # test on a desktop
+```
+
+Turning the knob steps Next/Prev through the profile's enabled rotation. A fast spin arrives as one
+accumulated delta, and a step that lands mid-fade is queued rather than dropped (the panel shows
+`stepped next (rotary)`). A short press exits, and a 2s hold reboots (`--rotary-hold none` disables
+that). The hold runs `sudo -n reboot`, so the run user needs passwordless sudo for `/sbin/reboot`;
+a systemd unit with `NoNewPrivileges=true` blocks it.
+
+**4. Start it at boot.** `deploy/pixel_dreams-pi.service` is a user unit that pins the Pi profile
+and passes `--input rotary`. Adjust its display block for X11 (Bullseye) or Wayland (Bookworm), then:
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp deploy/pixel_dreams-pi.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now pixel_dreams-pi.service
+journalctl --user-unit pixel_dreams-pi.service -f
+```
+
+The panel is off in that unit. Add `--panel-port 8090` (and, for the LAN,
+`--panel-bind 0.0.0.0 --panel-open`) to `ExecStart` if you want it. The Pi's profile file is what
+the panel edits, so tuning the Pi cannot reach the portrait wall.
+
+> The newest modes are `modes/cyberspace_mode.py`, `modes/trench_run_mode.py`,
+> `modes/space_station_mode.py`, `modes/sunrise_mode.py` and the
+> `cyberspace/` / `trench_run/` / `space_station/` / `sunrise/` packages (slots 17, 18, 19 and 20
+> in `configs/modes_config_narrow_horz.json`, and Sunrise slot 64 in the portrait
+> `configs/modes_config_vert.json`). Space Station V also needs
+> `data/earth_coastlines.json`; its design is in `designs/SPACE_STATION_DESIGN.md`. Sunrise is the
+> four-season forest day cycle; its art and notes are in `designs/sunrise_proto/`. A Pi cloned from
+> an older revision will not have them; make sure those files and their registry entries are on
+> the Pi before enabling those slots.
 
 ### Tuning a mode while the kiosk runs
 
@@ -225,7 +306,7 @@ the hostname discards will ask for the token again.
 - `modes_registry.json` — mode *types* (entrypoints + defaults + per-param UI metadata)
 - `modes_config.json` — mode *instances* (what actually plays)
 - `configs/*.json` — **profiles**: one per display orientation (portrait, landscape,
-  narrow_horz, narrow_vert, jetson, windows, basic)
+  narrow_horz 1280x400, narrow_vert, jetson, windows, basic)
 - `modes_config.local.json` — optional per-host overrides (gitignored)
 - `secrets.json` — API keys and the panel token (gitignored, see `secrets.example.json`) with
   chmod 600

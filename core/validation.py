@@ -147,7 +147,7 @@ def validate_instance(mode_key, cfg, registry: dict, *, base_dir: str | None = N
                             mode_key=mode_key, type_key=type_key, key="enabled"))
 
     if base_dir:
-        for key in ("file", "data_file", "quotes_file"):
+        for key in ("file", "data_file", "quotes_file", "landmarks_file"):
             value = cfg.get(key)
             if isinstance(value, str) and value and not os.path.isabs(value):
                 if not os.path.exists(os.path.join(base_dir, value)):

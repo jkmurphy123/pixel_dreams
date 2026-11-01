@@ -1,0 +1,663 @@
+{
+  "version": 1,
+  "landmarks": [
+    {
+      "name": "Eastern Seaboard Fission Authority",
+      "label": "EASTERN SEABOARD",
+      "sector": [
+        5,
+        0
+      ],
+      "altitude": 0,
+      "color": [
+        255,
+        64,
+        72
+      ],
+      "glow": 1.35,
+      "spin": 0.0,
+      "label_height": 180,
+      "parts": [
+        {
+          "shape": "stepped_pyramid",
+          "size": [
+            62,
+            62,
+            160
+          ],
+          "steps": 8,
+          "step_shrink": 0.84
+        },
+        {
+          "shape": "octahedron",
+          "offset": [
+            0,
+            0,
+            162
+          ],
+          "size": [
+            18,
+            18,
+            20
+          ],
+          "color": [
+            255,
+            180,
+            120
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            2
+          ],
+          "radius": 30,
+          "inner_radius": 20,
+          "segments": 24,
+          "spokes": 6,
+          "color": [
+            255,
+            150,
+            100
+          ]
+        }
+      ],
+      "clear_radius": 1
+    },
+    {
+      "name": "Mitsubishi Bank of America",
+      "label": "MITSUBISHI BANK",
+      "sector": [
+        6,
+        0
+      ],
+      "altitude": 120,
+      "color": [
+        40,
+        255,
+        150
+      ],
+      "glow": 1.4,
+      "spin": 0.0,
+      "label_height": 135,
+      "parts": [
+        {
+          "shape": "box",
+          "offset": [
+            -12,
+            0,
+            0
+          ],
+          "size": [
+            28,
+            28,
+            70
+          ]
+        },
+        {
+          "shape": "box",
+          "offset": [
+            12,
+            0,
+            8
+          ],
+          "size": [
+            28,
+            28,
+            70
+          ]
+        },
+        {
+          "shape": "box",
+          "offset": [
+            0,
+            0,
+            34
+          ],
+          "size": [
+            40,
+            40,
+            86
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            112
+          ],
+          "radius": 48,
+          "inner_radius": 34,
+          "segments": 32,
+          "spokes": 10,
+          "color": [
+            150,
+            255,
+            210
+          ]
+        }
+      ],
+      "clear_radius": 1
+    },
+    {
+      "name": "Sense/Net",
+      "label": "SENSE/NET",
+      "sector": [
+        3,
+        0
+      ],
+      "altitude": 0,
+      "color": [
+        0,
+        220,
+        255
+      ],
+      "glow": 1.3,
+      "spin": 0.0,
+      "label_height": 150,
+      "parts": [
+        {
+          "shape": "prism",
+          "size": [
+            54,
+            54,
+            80
+          ],
+          "sides": 8
+        },
+        {
+          "shape": "prism",
+          "offset": [
+            0,
+            0,
+            80
+          ],
+          "size": [
+            30,
+            30,
+            38
+          ],
+          "sides": 8
+        },
+        {
+          "shape": "octahedron",
+          "offset": [
+            0,
+            0,
+            118
+          ],
+          "size": [
+            18,
+            18,
+            18
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            42
+          ],
+          "radius": 27,
+          "inner_radius": 19,
+          "segments": 24,
+          "spokes": 6,
+          "color": [
+            120,
+            255,
+            255
+          ]
+        }
+      ],
+      "clear_radius": 1
+    },
+    {
+      "name": "Tessier-Ashpool",
+      "label": "TESSIER-ASHPOOL",
+      "sector": [
+        2,
+        -1
+      ],
+      "altitude": 40,
+      "color": [
+        205,
+        165,
+        255
+      ],
+      "glow": 1.3,
+      "spin": 0.0,
+      "label_height": 125,
+      "parts": [
+        {
+          "shape": "box",
+          "offset": [
+            -14,
+            0,
+            0
+          ],
+          "size": [
+            22,
+            22,
+            70
+          ]
+        },
+        {
+          "shape": "box",
+          "offset": [
+            14,
+            0,
+            0
+          ],
+          "size": [
+            22,
+            22,
+            52
+          ]
+        },
+        {
+          "shape": "box",
+          "offset": [
+            0,
+            0,
+            65
+          ],
+          "size": [
+            50,
+            10,
+            8
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            55
+          ],
+          "radius": 28,
+          "inner_radius": 20,
+          "segments": 24,
+          "spokes": 6,
+          "color": [
+            240,
+            210,
+            255
+          ]
+        }
+      ],
+      "clear_radius": 1
+    },
+    {
+      "name": "Villa Straylight",
+      "label": "STRAYLIGHT",
+      "sector": [
+        5,
+        1
+      ],
+      "altitude": 90,
+      "color": [
+        255,
+        180,
+        64
+      ],
+      "glow": 1.25,
+      "spin": 0.0,
+      "label_height": 55,
+      "parts": [
+        {
+          "shape": "stepped_pyramid",
+          "size": [
+            50,
+            50,
+            80
+          ],
+          "steps": 5,
+          "step_shrink": 0.78
+        },
+        {
+          "shape": "box",
+          "offset": [
+            0,
+            0,
+            80
+          ],
+          "size": [
+            10,
+            10,
+            25
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            40
+          ],
+          "radius": 26,
+          "inner_radius": 18,
+          "segments": 20,
+          "spokes": 5,
+          "color": [
+            255,
+            225,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wintermute",
+      "label": "WINTERMUTE",
+      "sector": [
+        4,
+        -2
+      ],
+      "altitude": 70,
+      "color": [
+        220,
+        240,
+        255
+      ],
+      "glow": 1.35,
+      "spin": 6.0,
+      "label_height": 105,
+      "parts": [
+        {
+          "shape": "octahedron",
+          "size": [
+            52,
+            52,
+            90
+          ]
+        },
+        {
+          "shape": "cage",
+          "offset": [
+            0,
+            0,
+            90
+          ],
+          "size": [
+            12,
+            12,
+            15
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            45
+          ],
+          "radius": 28,
+          "inner_radius": 20,
+          "segments": 24,
+          "spokes": 6,
+          "color": [
+            180,
+            230,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Neuromancer",
+      "label": "NEUROMANCER",
+      "sector": [
+        7,
+        1
+      ],
+      "altitude": 240,
+      "color": [
+        255,
+        210,
+        90
+      ],
+      "glow": 1.4,
+      "spin": -3.0,
+      "label_height": 75,
+      "parts": [
+        {
+          "shape": "ring",
+          "radius": 72,
+          "inner_radius": 52,
+          "segments": 36,
+          "spokes": 12
+        },
+        {
+          "shape": "octahedron",
+          "offset": [
+            0,
+            0,
+            8
+          ],
+          "size": [
+            30,
+            30,
+            50
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            50
+          ],
+          "radius": 40,
+          "inner_radius": 30,
+          "segments": 24,
+          "spokes": 8,
+          "color": [
+            255,
+            245,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Zion",
+      "label": "ZION",
+      "sector": [
+        1,
+        0
+      ],
+      "altitude": 10,
+      "color": [
+        80,
+        255,
+        180
+      ],
+      "glow": 1.2,
+      "spin": 0.0,
+      "label_height": 85,
+      "parts": [
+        {
+          "shape": "box",
+          "offset": [
+            -14,
+            8,
+            0
+          ],
+          "size": [
+            22,
+            22,
+            40
+          ]
+        },
+        {
+          "shape": "box",
+          "offset": [
+            14,
+            -8,
+            15
+          ],
+          "size": [
+            22,
+            22,
+            40
+          ]
+        },
+        {
+          "shape": "box",
+          "offset": [
+            0,
+            0,
+            25
+          ],
+          "size": [
+            22,
+            22,
+            28
+          ]
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            55
+          ],
+          "radius": 26,
+          "inner_radius": 18,
+          "segments": 18,
+          "spokes": 5,
+          "color": [
+            180,
+            255,
+            220
+          ]
+        }
+      ],
+      "clear_radius": 1
+    },
+    {
+      "name": "Maas Biolabs",
+      "label": "MAAS BIOLABS",
+      "sector": [
+        6,
+        -2
+      ],
+      "altitude": 100,
+      "color": [
+        255,
+        90,
+        220
+      ],
+      "glow": 1.3,
+      "spin": 0.0,
+      "label_height": 90,
+      "parts": [
+        {
+          "shape": "prism",
+          "size": [
+            48,
+            48,
+            100
+          ],
+          "sides": 6
+        },
+        {
+          "shape": "prism",
+          "offset": [
+            0,
+            0,
+            100
+          ],
+          "size": [
+            24,
+            24,
+            40
+          ],
+          "sides": 6
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            55
+          ],
+          "radius": 26,
+          "inner_radius": 18,
+          "segments": 20,
+          "spokes": 6,
+          "color": [
+            255,
+            170,
+            245
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Freeside",
+      "label": "FREESIDE",
+      "sector": [
+        7,
+        5
+      ],
+      "altitude": 300,
+      "color": [
+        255,
+        230,
+        190
+      ],
+      "glow": 1.35,
+      "spin": -2.0,
+      "label_height": 55,
+      "parts": [
+        {
+          "shape": "ring",
+          "radius": 120,
+          "inner_radius": 92,
+          "segments": 48,
+          "spokes": 16
+        },
+        {
+          "shape": "ring",
+          "offset": [
+            0,
+            0,
+            35
+          ],
+          "radius": 60,
+          "inner_radius": 48,
+          "segments": 28,
+          "spokes": 8,
+          "color": [
+            255,
+            250,
+            230
+          ]
+        },
+        {
+          "shape": "box",
+          "offset": [
+            0,
+            0,
+            -10
+          ],
+          "size": [
+            18,
+            18,
+            20
+          ],
+          "color": [
+            255,
+            255,
+            240
+          ]
+        }
+      ]
+    }
+  ]
+}

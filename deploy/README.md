@@ -1,8 +1,9 @@
 # Running pixel_dreams as a user service
 
-Two example units, matching the style of the other user services on this host
-(`daedalus.service`): ordering-only dependencies, `RequiresMountsFor=/mnt/ssd`, journal
-logging, `Restart=on-failure`.
+Three example units, matching the style of the other user services on this host
+(`daedalus.service`): ordering-only dependencies, journal logging, and a restart policy.
+The two Jetson units add `RequiresMountsFor=/mnt/ssd`; the Pi unit does not (the project lives
+under the home directory there).
 
 **Nothing here is installed or enabled.** These are files to copy when you want it; the
 commands below are yours to run.
@@ -11,6 +12,7 @@ commands below are yours to run.
 | --- | --- | --- |
 | `pixel_dreams.service` | the app **with the display** plus the embedded panel on `0.0.0.0:8090` | a kiosk that boots straight into the wall |
 | `pixel_dreams-panel.service` | `--panel-only` — the panel, no pygame, no display | tuning from a laptop while something else drives the wall, or with the wall off |
+| `pixel_dreams-pi.service` | the Pi kiosk: `--config configs/modes_config_narrow_horz.json --input rotary` | a Raspberry Pi 1280x400 wall with a rotary encoder |
 
 Only one may bind port 8090 at a time. They are separate files because they solve separate
 problems — the app needs a graphical session, the panel-only one deliberately does not.
@@ -69,6 +71,46 @@ kiosk from a terminal instead of a service:
 ./scripts/run_kiosk.sh                 # display :0, LAN panel ungated on :8090
 ./scripts/run_kiosk.sh --auto 60       # extra flags are appended (last one wins)
 ```
+
+### Raspberry Pi 1280x400 kiosk
+
+`deploy/pixel_dreams-pi.service` is the Pi variant. It is a **user** unit (a Pi kiosk normally runs
+in the `pi` user's graphical session) and it pins two things that must not drift:
+
+- `--config configs/modes_config_narrow_horz.json` — the narrow-horizontal 1280x400 profile
+  (20 modes, including Trench Run at slot 17, Cyberspace Matrix at slot 18 and Space Station V at
+  slot 19). It outranks `runtime/active_profile.json` and the registry, so another wall's recorded
+  switch cannot move this wall, and the panel will not offer a profile switch. The portrait wall keeps
+  `configs/modes_config_vert.json`; the two files never overlap.
+- `--input rotary` — the encoder. Defaults are A=GPIO17, B=GPIO27, button=GPIO23 and eight
+  optional LEDs on 5,6,13,19,26,21,20,16; override with `--rotary-pins`,
+  `--rotary-button-pin`, `--rotary-led-pins` in `ExecStart` (BCM numbers, not header pins).
+
+Install it like the other user units, but first edit the display block near the top of the file:
+
+- **X11** (Bullseye/LXDE): keep the shipped `DISPLAY=:0` + `XAUTHORITY=%h/.Xauthority`.
+- **Wayland** (Bookworm/labwc): comment those out and uncomment
+  `SDL_VIDEODRIVER=wayland` / `XDG_RUNTIME_DIR=/run/user/%U`. If SDL cannot find the socket, run
+  `systemctl --user import-environment WAYLAND_DISPLAY` once in the graphical session.
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp deploy/pixel_dreams-pi.service ~/.config/systemd/user/
+# edit ~/.config/systemd/user/pixel_dreams-pi.service for your path, display and flags
+systemctl --user daemon-reload
+systemctl --user enable --now pixel_dreams-pi.service
+journalctl --user-unit pixel_dreams-pi.service -f
+```
+
+The unit uses `Restart=always`: a short encoder press exits the app (the documented tap action) and
+the kiosk comes back, rather than leaving the wall dark. `systemctl --user stop` is how you stop it
+for real. The panel is off; add `--panel-port 8090` (and for the LAN
+`--panel-bind 0.0.0.0 --panel-open`) to `ExecStart` if you want it. Do not add
+`NoNewPrivileges=true` while `--rotary-hold reboot` is in effect: that blocks the `sudo -n reboot`
+the hold runs.
+
+See the README's "Raspberry Pi kiosk with a rotary encoder" for the gpiozero/lgpio install and the
+pin table.
 
 ## Operating it
 

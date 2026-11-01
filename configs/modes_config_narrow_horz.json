@@ -1,4 +1,9 @@
 {
+	"profile": {
+		"label": "Narrow horizontal 1280x400",
+		"resolution": [1280, 400],
+		"notes": "Wide, short wall. Trench Run, Cyberspace Matrix and Space Station V are tuned for this aspect: minimal HUD, a lower camera angle, and a closer draw distance."
+	},
 	"modes": {
 		"0": {
 			"type": "SystemInformation",
@@ -341,6 +346,95 @@
 					"role": "retro host"
 				}
 			]
+		},
+		"17": {
+			"type": "trenchrun",
+			"name": "Trench Run",
+			"orientation": "landscape",
+			"hud": "minimal",
+			"quality": "auto",
+			"palette": "vector_blue",
+			"fill_mode": "panel",
+			"glow_strength": 0.7,
+			"phosphor_trail": 0.08,
+			"scanline_alpha": 0,
+			"vignette_strength": 0.28,
+			"depth_fade": 0.8,
+			"show_stars": true,
+			"terrain_density": 0.55,
+			"action_level": 1,
+			"camera_follow": 0.3,
+			"weave_amount": 0.6,
+			"ship_scale": 1.2,
+			"trench_width": 30,
+			"trench_depth": 11,
+			"view_yaw_deg": 28,
+			"view_pitch_deg": 22,
+			"view_roll_deg": 0,
+			"perspective_strength": 0.75,
+			"zoom": 1.0,
+			"ship_anchor_x": 0.47,
+			"ship_anchor_y": 0.78,
+			"scroll_speed": 32,
+			"sector_length": 384
+		},
+		"18": {
+			"type": "cyberspace",
+			"name": "Cyberspace Matrix",
+			"palette": "neuromancer",
+			"travel_speed": 15,
+			"blocks_per_leg": 5,
+			"street_spacing": 80,
+			"city_density": 0.9,
+			"building_height": 1.0,
+			"geometric_detail": 2,
+			"construct_density": 0.45,
+			"draw_distance": 520,
+			"fov": 82,
+			"glow_strength": 0.8,
+			"scanline_alpha": 8,
+			"vignette_strength": 0.28,
+			"hud": "minimal",
+			"quality": "auto",
+			"show_labels": true,
+			"show_traffic": true,
+			"show_reticle": false,
+			"crisp_lines": true,
+			"show_landmarks": true,
+			"landmarks_file": "data/cyberspace_landmarks.json",
+			"landmark_overlay": false,
+			"event_rate_per_min": 4.0
+		},
+		"19": {
+			"type": "spacestation",
+			"name": "Space Station V",
+			"palette": "orbital_white",
+			"quality": "auto",
+			"hud": "minimal",
+			"orientation": "ultrawide",
+			"station_detail": 3,
+			"station_spin_rpm": 0.75,
+			"earth_rotation_seconds": 420.0,
+			"earth_scale": 0.98,
+			"glow_strength": 0.66,
+			"scanline_alpha": 0,
+			"vignette_strength": 0.24
+		},
+		"20": {
+			"type": "sunrise",
+			"name": "Sunrise",
+			"season": "auto",
+			"speed": 10,
+			"latitude": 40.7,
+			"longitude": -74.0,
+			"show_clock": true,
+			"clock_24h": true,
+			"show_speed": true,
+			"weather_enabled": true,
+			"weather_units": "imperial",
+			"weather_location": "",
+			"weather_text": "",
+			"refresh_sec": 10
 		}
 	}
 }

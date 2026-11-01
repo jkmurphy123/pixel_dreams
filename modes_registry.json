@@ -231,6 +231,7 @@
         "burst_strength",
         "columns",
         "frame_rgb",
+        "label_font_row_fill",
         "label_font_scale",
         "label_rgb",
         "led_color",
@@ -242,6 +243,7 @@
         "registers_per_column",
         "row_group_size",
         "status_labels",
+        "status_font_scale",
         "status_probability_per_sec",
         "subtitle",
         "ticker_text",
@@ -276,7 +278,12 @@
           "default": 0.02
         },
         "columns": {
-          "default": 2
+          "widget": "number",
+          "default": 2,
+          "min": 1,
+          "max": 16,
+          "step": 1,
+          "help": "How many register columns to draw. The grid is columns x registers_per_column; the label list only names the registers."
         },
         "computer_name": {
           "default": "UNKNOWN SYSTEM"
@@ -288,8 +295,21 @@
             198
           ]
         },
+        "label_font_row_fill": {
+          "widget": "number",
+          "default": 1.2,
+          "min": 0.2,
+          "max": 2.0,
+          "step": 0.05,
+          "help": "Ceiling on the label font as a fraction of its row's height. 1.2 fills a row edge to edge; 1.0 leaves a gap. Keeps a large label_font_scale from drawing over the register above."
+        },
         "label_font_scale": {
-          "default": 0.045
+          "widget": "number",
+          "default": 0.045,
+          "min": 0.004,
+          "max": 0.2,
+          "step": 0.001,
+          "help": "Register label size as a fraction of the screen's shorter side (0.045 on a 1080-wide panel is ~49 px). Capped by the row height - see label_font_row_fill."
         },
         "label_rgb": {
           "default": [
@@ -302,7 +322,8 @@
           "default": "Red"
         },
         "led_radius_scale": {
-          "default": 0.018
+          "default": 0.018,
+          "help": "Lamp dot size as a fraction of the screen's shorter side. Dots shrink automatically (and their spacing tightens) when a large label leaves too little room for the bit row."
         },
         "panel_fill_rgb": {
           "default": [
@@ -318,17 +339,31 @@
           "default": 0.6
         },
         "register_labels": {
-          "default": []
+          "default": [],
+          "help": "One name per register, column-major (the first registers_per_column names fill the first column). Registers beyond the list are tagged R12, R13, ... so a short list never leaves a column empty."
         },
         "registers_per_column": {
           "widget": "number",
-          "default": 6
+          "default": 6,
+          "min": 1,
+          "max": 32,
+          "step": 1,
+          "help": "How many registers (8-bit lamp rows) each column holds. The panel draws columns x this many registers, whatever the label list length."
         },
         "row_group_size": {
           "default": 0
         },
         "status_labels": {
-          "default": []
+          "default": [],
+          "help": "The captions on the status lamps along the top, one per lamp (RUN, MEM, I/O, ...). Their size is status_font_scale."
+        },
+        "status_font_scale": {
+          "widget": "number",
+          "default": 0.015,
+          "min": 0.005,
+          "max": 0.06,
+          "step": 0.001,
+          "help": "Size of the status lamp captions (RUN, MEM, I/O, ...) as a fraction of the screen's shorter side — 0.045 is ~49 px on a 1080-wide panel. Separate from label_font_scale; capped by the lamp it sits in, and shrunk if the longest caption would not fit."
         },
         "status_probability_per_sec": {
           "default": 0.65
@@ -3862,6 +3897,957 @@
           "min": 0.005,
           "max": 0.12,
           "help": "How far in from the edge the ruled border sits. The sheet is drawn a little larger than the screen, so the border is the map's own edge, not the panel's. Not drawn yet - this control becomes live in phase 7 of the design."
+        }
+      }
+    },
+    "trenchrun": {
+      "entrypoint": "modes.trench_run_mode:TrenchRunMode",
+      "required": [],
+      "optional": [
+        "action_level",
+        "camera_follow",
+        "depth_fade",
+        "diagonal_flip",
+        "fill_mode",
+        "glow_strength",
+        "hud",
+        "orientation",
+        "palette",
+        "perspective_strength",
+        "phosphor_trail",
+        "quality",
+        "scanline_alpha",
+        "scroll_speed",
+        "sector_length",
+        "seed",
+        "ship_anchor_x",
+        "ship_anchor_y",
+        "ship_scale",
+        "show_stars",
+        "terrain_density",
+        "trench_depth",
+        "trench_width",
+        "view_pitch_deg",
+        "view_roll_deg",
+        "view_yaw_deg",
+        "vignette_strength",
+        "weave_amount",
+        "zoom"
+      ],
+      "params": {
+        "action_level": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 1,
+          "min": 0,
+          "max": 2,
+          "step": 1,
+          "help": "How much action the simulation runs: 0 = fly-through only, 1 = turrets and TIE flybys, 2 = denser fire. Decorative - the X-wing cannot be hit."
+        },
+        "camera_follow": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.3,
+          "min": 0.0,
+          "max": 0.8,
+          "step": 0.05,
+          "help": "How closely the camera tracks the ship's weave. 0 keeps the rig fixed (you see the full weave), 0.8 follows most of it."
+        },
+        "depth_fade": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.75,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "How quickly line colour fades toward the horizon. 0 keeps near and far lines the same colour."
+        },
+        "diagonal_flip": {
+          "widget": "switch",
+          "group": "layout",
+          "default": false,
+          "help": "Mirror the trench diagonal by flipping the camera yaw. Useful when the artwork should lean the other way."
+        },
+        "fill_mode": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "panel",
+          "choices": [
+            "panel",
+            "solid",
+            "xray"
+          ],
+          "help": "How surfaces are filled: xray = edges only (cheapest), panel = dark opaque plates between the edges, solid = filled surfaces."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.75,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Strength of the additive bloom pass. 0 disables the glow surfaces entirely, which is the cheapest setting."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "minimal",
+          "choices": [
+            "minimal",
+            "off"
+          ],
+          "help": "Vector HUD overlays: sector, targeting brackets and altitude ladder. off leaves only the controller's mode-number watermark."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "landscape",
+            "portrait",
+            "square"
+          ],
+          "help": "Camera preset. auto picks landscape, portrait or square from the screen's aspect ratio."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "vector_blue",
+          "choices": [
+            "vector_blue",
+            "phosphor_green",
+            "arcade",
+            "amber",
+            "mono"
+          ],
+          "help": "Colour set for the wireframe, HUD and glow."
+        },
+        "perspective_strength": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.8,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Blend from parallel axonometric projection (0) to a pinhole chase camera (1). Straight edges stay straight at every value."
+        },
+        "phosphor_trail": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.1,
+          "min": 0.0,
+          "max": 0.5,
+          "step": 0.01,
+          "help": "How much of the previous glow frame persists, for a phosphor trail. 0 is off."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "Edge budget and glow resolution. auto starts at medium and steps down when frames are slow, then back up when they are not."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0,
+          "min": 0,
+          "max": 80,
+          "step": 1,
+          "help": "Alpha of the CRT scanline overlay. 0 is off."
+        },
+        "scroll_speed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 30.0,
+          "min": 4.0,
+          "max": 120.0,
+          "step": 1.0,
+          "help": "Forward speed along the trench in world units per second."
+        },
+        "sector_length": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 384.0,
+          "min": 192.0,
+          "max": 768.0,
+          "step": 48.0,
+          "help": "Length of one themed sector in world units. Rounded to a multiple of 48."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a fresh random trench on every entry; set a value (0..2147483647) to reproduce one exactly. The value in use is logged on entry."
+        },
+        "ship_anchor_x": {
+          "widget": "number",
+          "group": "layout",
+          "min": 0.15,
+          "max": 0.85,
+          "step": 0.01,
+          "help": "Where the ship sits horizontally in the frame: 0.5 is centre. An explicit value overrides the orientation preset."
+        },
+        "ship_anchor_y": {
+          "widget": "number",
+          "group": "layout",
+          "min": 0.15,
+          "max": 0.85,
+          "step": 0.01,
+          "help": "Where the ship sits vertically in the frame: 0.5 is centre. An explicit value overrides the orientation preset."
+        },
+        "ship_scale": {
+          "widget": "number",
+          "group": "layout",
+          "default": 1.2,
+          "min": 0.5,
+          "max": 2.0,
+          "step": 0.05,
+          "help": "Size of the X-wing model. A wider ship also raises the minimum usable trench_width."
+        },
+        "show_stars": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the star field above the horizon."
+        },
+        "terrain_density": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.6,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "How many surface props (towers, domes, bunkers, craters) each sector tries to place."
+        },
+        "trench_depth": {
+          "widget": "number",
+          "group": "layout",
+          "default": 10.0,
+          "min": 4.0,
+          "max": 22.0,
+          "step": 0.5,
+          "help": "Depth of the trench from floor to rim."
+        },
+        "trench_width": {
+          "widget": "number",
+          "group": "layout",
+          "default": 28.0,
+          "min": 18.0,
+          "max": 48.0,
+          "step": 1.0,
+          "help": "Width of the trench floor. Raised automatically when it is too narrow for the X-wing at the current ship_scale."
+        },
+        "view_pitch_deg": {
+          "widget": "number",
+          "group": "layout",
+          "min": 8.0,
+          "max": 70.0,
+          "step": 1.0,
+          "help": "Camera pitch in degrees. The orientation presets use 24; an explicit value overrides them."
+        },
+        "view_roll_deg": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.0,
+          "min": -30.0,
+          "max": 30.0,
+          "step": 1.0,
+          "help": "Camera roll in degrees. 0 keeps the horizon level."
+        },
+        "view_yaw_deg": {
+          "widget": "number",
+          "group": "layout",
+          "min": -70.0,
+          "max": 70.0,
+          "step": 1.0,
+          "help": "Camera yaw in degrees. The orientation presets use 21 for portrait and 27 otherwise; an explicit value overrides them."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.3,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Darkening toward the corners. 0 is off."
+        },
+        "weave_amount": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.65,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "How far the autopilot weaves across the trench. 0 flies straight down the middle."
+        },
+        "zoom": {
+          "widget": "number",
+          "group": "layout",
+          "min": 0.35,
+          "max": 2.5,
+          "step": 0.01,
+          "help": "Camera zoom. The orientation presets use 0.72 portrait, 0.85 landscape and 0.95 square; an explicit value overrides them."
+        }
+      }
+    },
+    "cyberspace": {
+      "entrypoint": "modes.cyberspace_mode:CyberspaceMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "seed",
+        "palette",
+        "travel_speed",
+        "blocks_per_leg",
+        "street_spacing",
+        "city_density",
+        "building_height",
+        "geometric_detail",
+        "construct_density",
+        "draw_distance",
+        "fov",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength",
+        "hud",
+        "quality",
+        "show_labels",
+        "show_traffic",
+        "show_reticle",
+        "crisp_lines",
+        "show_landmarks",
+        "landmarks_file",
+        "landmark_overlay",
+        "event_rate_per_min"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "data",
+          "default": "CYBERSPACE MATRIX",
+          "help": "The console title in the top-left corner."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "data",
+          "default": "ICEBREAKER DECK // PASSIVE SCAN",
+          "help": "The second line under the title. Keep it short; it does not wrap."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for a fresh city and flight on every entry; set a value (0..2147483647) to reproduce one exactly. The seed in use is logged on entry."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "choices": [
+            "neuromancer",
+            "phosphor",
+            "magenta",
+            "ice",
+            "amber"
+          ],
+          "default": "neuromancer",
+          "help": "Colour set. neuromancer is cyan streets with magenta and violet megastructures; phosphor and amber are monochrome terminals; ice is cold blue with red ICE; magenta is hot pink."
+        },
+        "travel_speed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 16.0,
+          "min": 3.0,
+          "max": 60.0,
+          "step": 1.0,
+          "help": "World units per second along the current axis. The flight never changes speed mid-leg; a leg lasts longer the slower this is."
+        },
+        "blocks_per_leg": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 5,
+          "min": 2,
+          "max": 12,
+          "step": 1,
+          "help": "Approximate street blocks per leg. Actual legs vary by one block. A leg is always a whole number of blocks, so every turn happens exactly on an intersection."
+        },
+        "street_spacing": {
+          "widget": "number",
+          "group": "layout",
+          "default": 80.0,
+          "min": 48.0,
+          "max": 160.0,
+          "step": 4.0,
+          "help": "Distance between street lines; it is also the block size. Smaller means a denser, closer city and more edges on screen."
+        },
+        "city_density": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.85,
+          "min": 0.1,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Fraction of ground cells that hold a tower. Empty cells become plazas with a neon ring."
+        },
+        "building_height": {
+          "widget": "number",
+          "group": "layout",
+          "default": 1.0,
+          "min": 0.3,
+          "max": 2.5,
+          "step": 0.05,
+          "help": "Multiplies every tower height, including the rare arcology-scale ones."
+        },
+        "geometric_detail": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 2,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "help": "Volume-lattice detail for box towers: 1 is the basic wireframe, 2-4 split each tower volume into N x N x N cells. Landmarks always use one level higher, so they stay special."
+        },
+        "construct_density": {
+          "widget": "number",
+          "group": "layout",
+          "default": 0.55,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "How many floating geometric constructs (octahedra, gyroscopes, data gates) hover between the tower tops. 0 leaves only the city."
+        },
+        "draw_distance": {
+          "widget": "number",
+          "group": "layout",
+          "default": 620.0,
+          "min": 180.0,
+          "max": 900.0,
+          "step": 20.0,
+          "help": "How far into the fog the matrix is drawn. The quality setting scales this and caps the edge count; a long draw distance can cost frame time."
+        },
+        "fov": {
+          "widget": "number",
+          "group": "layout",
+          "default": 74.0,
+          "min": 50.0,
+          "max": 110.0,
+          "step": 1.0,
+          "help": "Diagonal field of view in degrees. Wider feels more immersive and shows more of the lattice; narrower feels like a telephoto."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.9,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Strength of the additive neon bloom. 0 is the cheapest setting and leaves crisp wireframe only."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 12,
+          "min": 0,
+          "max": 80,
+          "step": 1,
+          "help": "Darkness of the CRT scanline rows, 0..80. The rows are baked into the per-frame multiply map, not blitted separately."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.35,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Darkening toward the edges, baked into the same multiply map as the scanlines and the HUD bands."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "choices": [
+            "full",
+            "minimal",
+            "off"
+          ],
+          "default": "full",
+          "help": "full adds the feed, altitude ladder, signal bars and reticle; minimal keeps the title, coordinates and axis; off leaves the world alone."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "auto",
+          "help": "auto starts at medium on every screen and only drops to low below about 24 fps; it can rise to high above about 58 fps. low/medium/high pin the edge ceiling, glow resolution and level of detail."
+        },
+        "show_labels": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Name the nearest tall towers and floating constructs in the frame."
+        },
+        "show_traffic": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the bright packets running along the streets and the vertical trunk."
+        },
+        "show_reticle": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the centre reticle and roll tick."
+        },
+        "crisp_lines": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the wireframe edges with anti-aliased 1 px lines over the bloom. On, the neon has a crisp core; off, edges are thicker and slightly faster to draw."
+        },
+        "show_landmarks": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the fixed landmarks from landmarks_file. Off leaves only the procedural city."
+        },
+        "landmarks_file": {
+          "widget": "path",
+          "group": "data",
+          "default": "data/cyberspace_landmarks.json",
+          "help": "JSON file of named, fixed-position landmarks. Relative paths are from the project root. See designs/CYBERSPACE_LANDMARKS.md for the schema; new landmarks need only an edit here."
+        },
+        "landmark_overlay": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Show a bottom-right inset of the nearest landmark when one is within range, with its geometry slowly rotating, its label, sector and range. Off removes the inset; the NAV list and world labels stay."
+        },
+        "event_rate_per_min": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 7.0,
+          "min": 0.0,
+          "max": 20.0,
+          "step": 0.5,
+          "help": "How often a new line of technobabble appears in the feed. 0 leaves only the axis-change announcements."
+        }
+      }
+    },
+    "spacestation": {
+      "entrypoint": "modes.space_station_mode:SpaceStationMode",
+      "required": [],
+      "optional": [
+        "title",
+        "subtitle",
+        "palette",
+        "seed",
+        "quality",
+        "hud",
+        "orientation",
+        "station_detail",
+        "station_spin_rpm",
+        "earth_rotation_seconds",
+        "earth_tilt_deg",
+        "earth_spin_offset_deg",
+        "station_tilt_deg",
+        "station_yaw_deg",
+        "perspective_strength",
+        "station_scale",
+        "earth_scale",
+        "station_anchor_x",
+        "station_anchor_y",
+        "earth_anchor_x",
+        "earth_anchor_y",
+        "show_stars",
+        "show_graticule",
+        "show_continents",
+        "coastlines_file",
+        "glow_strength",
+        "scanline_alpha",
+        "vignette_strength"
+      ],
+      "params": {
+        "title": {
+          "widget": "text",
+          "group": "data",
+          "default": "SPACE STATION V",
+          "help": "The name in the top-left corner. Kept short: it does not wrap."
+        },
+        "subtitle": {
+          "widget": "text",
+          "group": "data",
+          "default": "EARTH ORBIT // DOCKING APPROACH",
+          "help": "The second line under the title. Uppercase, one line."
+        },
+        "palette": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "orbital_white",
+          "choices": [
+            "orbital_white",
+            "vector_blue",
+            "phosphor_green",
+            "amber",
+            "mono"
+          ],
+          "help": "Colour set. orbital_white is the film look: white hull, pale blue structure, amber windows, blue Earth. vector_blue is the trench-run palette; phosphor_green and amber are monochrome consoles; mono is a silver print."
+        },
+        "seed": {
+          "widget": "number",
+          "group": "behaviour",
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "help": "Leave unset for fresh star placement and initial wheel angle on every entry; set 0..2147483647 to reproduce them exactly. The seed in use is logged on entry."
+        },
+        "quality": {
+          "widget": "choice",
+          "group": "behaviour",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "help": "auto starts at medium on every screen, keeps that detail down to about 16 fps, and rises to high above about 30 fps. low/medium/high pin the edge ceiling, glow resolution and station detail."
+        },
+        "hud": {
+          "widget": "choice",
+          "group": "appearance",
+          "default": "full",
+          "choices": [
+            "full",
+            "minimal",
+            "off"
+          ],
+          "help": "full adds the orbital telemetry, attitude dial, mission clock and docking status; minimal keeps the title and two telemetry lines; off leaves the drawing alone."
+        },
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "landscape",
+            "ultrawide",
+            "portrait",
+            "square"
+          ],
+          "help": "Framing preset. auto picks ultrawide (2.2:1 or wider), landscape, portrait or square from the screen aspect. The preset supplies both anchors and both radii unless they are set explicitly."
+        },
+        "station_detail": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 3,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "help": "Station geometry detail, 1-4. 1 is a clean structural wheel, 4 adds the dense rim windows, railing, service pods, fins and antenna array. auto quality drops this level on the low tier and raises it on high, so the geometry follows the frame budget."
+        },
+        "station_spin_rpm": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.85,
+          "min": 0.0,
+          "max": 3.0,
+          "step": 0.05,
+          "help": "Habitat-ring spin in revolutions per minute. 0 leaves the station fixed; 0.85 is a slow, readable rotation (about 70 seconds per revolution)."
+        },
+        "earth_rotation_seconds": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 300.0,
+          "min": 30.0,
+          "max": 3600.0,
+          "step": 30.0,
+          "help": "Seconds for one full Earth rotation. The continents move visibly at 300 s; 60 is a fast globe, 1800 is imperceptible over a short visit."
+        },
+        "earth_tilt_deg": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 23.4,
+          "min": 0.0,
+          "max": 45.0,
+          "step": 1.0,
+          "help": "Axial tilt of the Earth toward the viewer, in degrees. 0 shows the equator and poles edge-on; 23.4 is the real tilt; 45 tips the north pole toward the station."
+        },
+        "earth_spin_offset_deg": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 0.0,
+          "min": -180.0,
+          "max": 180.0,
+          "step": 5.0,
+          "help": "Starting longitude facing the viewer. 0 puts the Atlantic and Africa at centre; -60 shows the Americas; 60 shows Asia and Australia."
+        },
+        "station_tilt_deg": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 62.0,
+          "min": 15.0,
+          "max": 80.0,
+          "step": 1.0,
+          "help": "Viewing angle above the station plane. Low values show round wheels and overlap them; 62 separates the two rings and still reads as a wheel."
+        },
+        "station_yaw_deg": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 26.0,
+          "min": -60.0,
+          "max": 60.0,
+          "step": 1.0,
+          "help": "Turn of the station around the vertical axis. It offsets the two rings horizontally and keeps the docking spine from hiding the hub."
+        },
+        "perspective_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.72,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "0 is a parallel drawing with no size falloff; 1 is a stronger camera. It changes depth, not the station size on screen."
+        },
+        "station_scale": {
+          "widget": "number",
+          "group": "layout",
+          "default": 1.0,
+          "min": 0.35,
+          "max": 1.8,
+          "step": 0.05,
+          "help": "Multiplies the preset station radius. Useful on a wall the preset does not fit; the HUD does not scale with it."
+        },
+        "earth_scale": {
+          "widget": "number",
+          "group": "layout",
+          "default": 1.0,
+          "min": 0.35,
+          "max": 1.8,
+          "step": 0.05,
+          "help": "Multiplies the preset Earth radius. The planet is normally larger than the frame, so this mostly moves the limb."
+        },
+        "station_anchor_x": {
+          "widget": "number",
+          "group": "layout",
+          "min": 0.05,
+          "max": 0.95,
+          "step": 0.01,
+          "help": "Horizontal station centre as a fraction of the screen width. Leave unset to use the orientation preset."
+        },
+        "station_anchor_y": {
+          "widget": "number",
+          "group": "layout",
+          "min": 0.05,
+          "max": 0.95,
+          "step": 0.01,
+          "help": "Vertical station centre as a fraction of the screen height. Leave unset to use the orientation preset."
+        },
+        "earth_anchor_x": {
+          "widget": "number",
+          "group": "layout",
+          "min": 0.05,
+          "max": 0.95,
+          "step": 0.01,
+          "help": "Horizontal Earth centre as a fraction of the screen width. Leave unset to use the orientation preset."
+        },
+        "earth_anchor_y": {
+          "widget": "number",
+          "group": "layout",
+          "min": 0.05,
+          "max": 0.95,
+          "step": 0.01,
+          "help": "Vertical Earth centre as a fraction of the screen height. Leave unset to use the orientation preset."
+        },
+        "show_stars": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the seeded starfield behind the Earth and station."
+        },
+        "show_graticule": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the latitude/longitude ocean grid. Off leaves the coastlines on a dark disc; it is cheaper and quieter."
+        },
+        "show_continents": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the coastline wireframe from coastlines_file. Off still draws the graticule and the planet disc."
+        },
+        "coastlines_file": {
+          "widget": "path",
+          "group": "data",
+          "default": "data/earth_coastlines.json",
+          "help": "JSON file of closed lon/lat rings, built by scripts/build_earth_coastlines.py from Natural Earth 1:110m land. Relative paths are from the project root."
+        },
+        "glow_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.72,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Additive bloom strength. 0 draws crisp lines only; above about 0.85 the rim windows start to merge."
+        },
+        "scanline_alpha": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 8,
+          "min": 0.0,
+          "max": 80.0,
+          "step": 1.0,
+          "help": "Strength of the 3-pixel CRT scanlines, 0-80. 0 leaves the frame clean."
+        },
+        "vignette_strength": {
+          "widget": "number",
+          "group": "appearance",
+          "default": 0.3,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05,
+          "help": "Corner darkening, 0-1. It is applied to the world before the HUD, so the type stays bright."
+        }
+      }
+    },
+    "sunrise": {
+      "entrypoint": "modes.sunrise_mode:SunriseMode",
+      "required": [],
+      "optional": [
+        "orientation",
+        "season",
+        "speed",
+        "latitude",
+        "longitude",
+        "show_clock",
+        "clock_24h",
+        "show_speed",
+        "weather_enabled",
+        "weather_units",
+        "weather_location",
+        "weather_text",
+        "refresh_sec"
+      ],
+      "params": {
+        "orientation": {
+          "widget": "choice",
+          "group": "layout",
+          "choices": [
+            "auto",
+            "landscape",
+            "portrait"
+          ],
+          "default": "auto",
+          "help": "Auto picks portrait when the screen is taller than it is wide. Portrait keeps the forest as a band at the bottom and grows a tall sky above it, instead of cropping the landscape frame."
+        },
+        "season": {
+          "widget": "choice",
+          "group": "behaviour",
+          "choices": [
+            "auto",
+            "spring",
+            "summer",
+            "autumn",
+            "winter"
+          ],
+          "default": "auto",
+          "help": "Auto follows the calendar month; an explicit season pins the palette. The solar altitude always follows the real date, so a pinned season is an art overdrive, not a time machine."
+        },
+        "speed": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 1.0,
+          "min": 1.0,
+          "max": 10.0,
+          "step": 0.5,
+          "help": "1 = wall clock, 10 = a full day in 2.4 hours. The clock and sun share the same simulated time."
+        },
+        "latitude": {
+          "widget": "number",
+          "group": "data",
+          "default": 40.7,
+          "min": -90.0,
+          "max": 90.0,
+          "step": 0.1,
+          "help": "Solar altitude and daylight length come from this and the date. Also the default weather location."
+        },
+        "longitude": {
+          "widget": "number",
+          "group": "data",
+          "default": -74.0,
+          "min": -180.0,
+          "max": 180.0,
+          "step": 0.1,
+          "help": "East positive. Used for solar time and the weather fetch."
+        },
+        "show_clock": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Draw the time/date top strip and weather bottom strip."
+        },
+        "clock_24h": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true
+        },
+        "show_speed": {
+          "widget": "switch",
+          "group": "appearance",
+          "default": true,
+          "help": "Show the 1x-10x badge in the top-right corner."
+        },
+        "weather_enabled": {
+          "widget": "switch",
+          "group": "data",
+          "default": true,
+          "help": "Fetch current conditions from Open-Meteo in a background thread. Off shows weather_text instead."
+        },
+        "weather_units": {
+          "widget": "choice",
+          "group": "data",
+          "choices": [
+            "metric",
+            "imperial"
+          ],
+          "default": "metric"
+        },
+        "weather_location": {
+          "widget": "text",
+          "group": "appearance",
+          "default": "",
+          "help": "Optional place label for the bottom-left corner, e.g. BROOKLYN."
+        },
+        "weather_text": {
+          "widget": "text",
+          "group": "data",
+          "default": "",
+          "help": "Fallback weather line when the feed is disabled or unreachable."
+        },
+        "refresh_sec": {
+          "widget": "number",
+          "group": "behaviour",
+          "default": 6.0,
+          "min": 2.0,
+          "max": 30.0,
+          "step": 1.0,
+          "help": "Seconds between full scene re-renders at 10x. The interval stretches automatically at slower speeds, because the sun barely moves."
         }
       }
     }

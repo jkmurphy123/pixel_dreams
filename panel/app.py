@@ -38,6 +38,7 @@ from nicegui import app, context, ui
 from core import profiles as profiles_mod
 from core.bus import APP_NAME, APP_VERSION, ControlBus, is_loopback
 from core.config import (
+    NON_PARAM_KEYS,
     config_digest,
     enabled_mode_indices,
     infer_max_modes_from_config,
@@ -2453,12 +2454,43 @@ class _ModeEditor:
             return str(e)
         return ""
 
+    def refresh_params(self) -> None:
+        """Re-resolve the field model from the file the editor now holds.
+
+        The form's ParamSpecs are built once when the page loads.  After a save
+        the editor's document is the new truth, but without this the rebuilt
+        fields would read their old ``p.value`` and the page would snap back to
+        the pre-save value even though the file and the wall are correct.
+        Local overrides are re-read too, so a save cannot leave a shadowed
+        value's provenance badge stale.
+        """
+        number = str(self.entry.number)
+        file_cfg = self.editor.mode_config(self.entry.number)
+        local = profiles_mod.load_local_overrides(self.ctx.base_dir)
+        override = local.get(number, {}) if isinstance(local, dict) else {}
+        if not isinstance(override, dict):
+            override = {}
+
+        merged = dict(file_cfg)
+        merged.update(override)
+        params_cfg = {k: v for k, v in merged.items() if k not in NON_PARAM_KEYS}
+        self.entry.params = params_cfg
+        self.entry.override_keys = tuple(sorted(override))
+        self.entry.enabled = file_cfg.get("enabled") is not False
+        # Keep the write guard in step with the provenance the page now shows.
+        self.editor.overridden[number] = self.entry.override_keys
+        self.params, self.warnings = resolve_params(
+            params_cfg, self.registry.get(self.entry.type_key, {}),
+            self.entry.override_keys)
+
     def revert(self) -> None:
         self.editor.revert_all()
+        self.refresh_params()
         self.say("Changes dropped — nothing was written.", "info")
 
     def reload_from_disk(self) -> None:
         self.editor.reload()
+        self.refresh_params()
         self.say("Re-read from disk; staged changes dropped.", "info")
 
     def say(self, headline: str, kind: str = "info", details=()) -> None:
@@ -2478,6 +2510,10 @@ class _ModeEditor:
 
         self.last_backup = result.backup
         self.last_sha = result.sha256
+        # The editor's document is now the saved one.  Rebuild the ParamSpecs
+        # before the caller refreshes the fields, or the form keeps the values
+        # it was built with (the old value reappearing after Save & Apply).
+        self.refresh_params()
         wrote = result.reason
         extra = []
         if result.warnings:

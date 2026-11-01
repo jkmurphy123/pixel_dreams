@@ -1,4 +1,9 @@
 {
+  "profile": {
+    "label": "Portrait 1080x1920",
+    "resolution": [1080, 1920],
+    "notes": "Vertical wall. The portrait sunrise keeps the forest strip at the bottom and grows a tall sky above it."
+  },
   "modes": {
     "0": {
       "type": "animatedscene",
@@ -42,15 +47,21 @@
       "scroll_px_per_sec": 160,
       "cursor_blink_hz": 2.0,
       "accent_probability": 0.35,
-      "blank_lines_between_loops": 5
+      "blank_lines_between_loops": 5,
+      "enabled": false
     },
     "4": {
       "type": "blinkenlights",
       "computer_name": "CYBERDYNE MARK III",
-      "label_font_scale": 0.03,
+      "label_font_scale": 0.04,
       "title_font_scale": 0.05,
-      "registers_per_column": 12.0,
-      "led_radius_scale": 0.012
+      "registers_per_column": 16,
+      "led_radius_scale": 0.014,
+      "columns": 2,
+      "label_font_row_fill": 1.0,
+      "status_font_scale": 0.045,
+      "burst_probability_per_sec": 0.8,
+      "pulse_speed": 0.8
     },
     "5": {
       "type": "reminderhtml",
@@ -58,13 +69,16 @@
       "enabled": false
     },
     "6": {
-      "type": "quotegenerator"
+      "type": "quotegenerator",
+      "enabled": false
     },
     "7": {
-      "type": "galacticnavigation"
+      "type": "galacticnavigation",
+      "enabled": false
     },
     "8": {
-      "type": "deepspacesignaldecoder"
+      "type": "deepspacesignaldecoder",
+      "enabled": false
     },
     "9": {
       "type": "retrocrthackerterminal"
@@ -76,16 +90,19 @@
       "type": "autonomousdronefleettracker"
     },
     "12": {
-      "type": "cosmiclibraryindex"
+      "type": "cosmiclibraryindex",
+      "enabled": false
     },
     "13": {
-      "type": "alienbiometricscanner"
+      "type": "alienbiometricscanner",
+      "enabled": false
     },
     "14": {
       "type": "vintagespaceprobetelemetry"
     },
     "15": {
-      "type": "forgottenspacestationdirectory"
+      "type": "forgottenspacestationdirectory",
+      "enabled": false
     },
     "16": {
       "type": "retrocomputermemoryvisualizer"
@@ -138,7 +155,8 @@
       "noise_alpha": 0,
       "vignette_strength": 0.0,
       "portrait_layout": false,
-      "seed": 19640315
+      "seed": 19640315,
+      "enabled": false
     },
     "20": {
       "type": "basicprompt",
@@ -150,7 +168,8 @@
       "cursor_blink_hz": 2.0,
       "lines_on_screen": 26,
       "max_chars_per_line": 34,
-      "seed": 19830211
+      "seed": 19830211,
+      "enabled": false
     },
     "21": {
       "type": "rbmkreactorsimulation",
@@ -166,46 +185,58 @@
       "cols": 12,
       "loop_duration_sec": 38.0,
       "portrait_layout": true,
-      "seed": 19860426
+      "seed": 19860426,
+      "enabled": false
     },
     "22": {
-      "type": "machinedreamscape"
+      "type": "machinedreamscape",
+      "enabled": false
     },
     "23": {
-      "type": "spaceelevatortrafficcontrol"
+      "type": "spaceelevatortrafficcontrol",
+      "enabled": false
     },
     "24": {
-      "type": "alienlanguagerosettaconsole"
+      "type": "alienlanguagerosettaconsole",
+      "enabled": false
     },
     "25": {
-      "type": "dnasequencevisualizer"
+      "type": "dnasequencevisualizer",
+      "enabled": false
     },
     "26": {
       "type": "binarywaterfall"
     },
     "27": {
-      "type": "globalthreatmap"
+      "type": "globalthreatmap",
+      "enabled": false
     },
     "28": {
-      "type": "seventiescomputerdashboard"
+      "type": "seventiescomputerdashboard",
+      "enabled": false
     },
     "29": {
       "type": "fantasynews",
       "stories_folder": "",
-      "duration": 30
+      "duration": 30,
+      "enabled": false
     },
     "30": {
-      "type": "alienstarmapcartographer"
+      "type": "alienstarmapcartographer",
+      "enabled": false
     },
     "31": {
-      "type": "retroaithoughtstream"
+      "type": "retroaithoughtstream",
+      "enabled": false
     },
     "32": {
-      "type": "aiethicscompliancedashboard"
+      "type": "aiethicscompliancedashboard",
+      "enabled": false
     },
     "33": {
       "type": "hackerbbsfeed",
-      "font_size": 28.0
+      "font_size": 28.0,
+      "enabled": false
     },
     "34": {
       "type": "conwaylife",
@@ -329,7 +360,8 @@
       ],
       "quote_font_scale": 0.07,
       "quote_max_width_frac": 0.7,
-      "quote_line_spacing": 1.4
+      "quote_line_spacing": 1.4,
+      "enabled": false
     },
     "42": {
       "type": "satellitetracker",
@@ -342,7 +374,8 @@
         204,
         132
       ],
-      "scanline_alpha": 0
+      "scanline_alpha": 0,
+      "enabled": false
     },
     "43": {
       "type": "wargames",
@@ -354,7 +387,8 @@
         204,
         132
       ],
-      "scanline_alpha": 0
+      "scanline_alpha": 0,
+      "enabled": false
     },
     "44": {
       "type": "llmpricingwall",
@@ -372,7 +406,8 @@
       "scanline_alpha": 0,
       "noise_alpha": 0,
       "vignette_strength": 0.15,
-      "seed": 20260817
+      "seed": 20260817,
+      "enabled": false
     },
     "45": {
       "type": "controlpanel",
@@ -591,6 +626,59 @@
         240,
         235
       ]
+    },
+    "61": {
+      "type": "trenchrun",
+      "name": "Trench Run",
+      "orientation": "portrait",
+      "camera_follow": 0.2,
+      "action_level": 1,
+      "quality": "auto",
+      "scroll_speed": 40.0
+    },
+    "62": {
+      "type": "cyberspace",
+      "name": "Cyberspace Matrix",
+      "palette": "neuromancer",
+      "travel_speed": 30.0,
+      "blocks_per_leg": 5,
+      "quality": "auto",
+      "hud": "full",
+      "glow_strength": 0.3,
+      "construct_density": 0.0,
+      "geometric_detail": 4.0,
+      "draw_distance": 800.0
+    },
+    "63": {
+      "type": "spacestation",
+      "name": "Space Station V",
+      "palette": "orbital_white",
+      "quality": "auto",
+      "hud": "full",
+      "orientation": "portrait",
+      "station_detail": 3,
+      "station_spin_rpm": 0.85,
+      "earth_rotation_seconds": 300.0,
+      "glow_strength": 0.55,
+      "scanline_alpha": 0,
+      "vignette_strength": 0.26
+    },
+    "64": {
+      "type": "sunrise",
+      "name": "Sunrise",
+      "orientation": "portrait",
+      "season": "auto",
+      "speed": 10,
+      "latitude": 40.7,
+      "longitude": -74.0,
+      "show_clock": true,
+      "clock_24h": true,
+      "show_speed": true,
+      "weather_enabled": true,
+      "weather_units": "imperial",
+      "weather_location": "",
+      "weather_text": "",
+      "refresh_sec": 10
     }
   }
 }

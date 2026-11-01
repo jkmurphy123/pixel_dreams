@@ -616,6 +616,26 @@
       "type": "imaginarylibrary",
       "image_folder": "assets/imaginary_library",
       "dwell_seconds": 180
+    },
+    "34": {
+      "type": "cyberspace",
+      "name": "Cyberspace Matrix",
+      "palette": "neuromancer",
+      "travel_speed": 15.0,
+      "blocks_per_leg": 5,
+      "quality": "auto",
+      "hud": "full"
+    },
+    "35": {
+      "type": "spacestation",
+      "name": "Space Station V",
+      "palette": "orbital_white",
+      "quality": "auto",
+      "hud": "full",
+      "orientation": "auto",
+      "station_detail": 3,
+      "station_spin_rpm": 0.85,
+      "earth_rotation_seconds": 300.0
     }
   }
 }
