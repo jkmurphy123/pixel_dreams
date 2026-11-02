@@ -226,7 +226,7 @@ def test_finish_ticks_only_its_own_line_and_advances_the_queue(env):
     assert state["runs"][-1]["outcome"] == "done"
     assert state["runs"][-1]["mode"] == 1
 
-    second = open_run(env)
+    second = open_run(env, at=NOW + timedelta(hours=3))
     assert second["entry"].number == 2
     assert second["remaining"] == 19
 
@@ -305,14 +305,14 @@ def test_a_double_finish_is_refused(env):
 # --------------------------------------------------------------------------------------
 
 def test_five_runs_in_a_day_skip_and_touch_nothing(env):
-    seed_runs(env, [1, 4, 7, 10, 13])
+    seed_runs(env, [3, 6, 9, 12, 15])
     before = env.doc.read_bytes()
 
     report = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW)
 
     assert report["verdict"] == job.SKIP_CAP
     assert report["runs_in_window"] == 5
-    assert report["next_slot_at"] == job._iso(NOW - timedelta(hours=13) + job.RUN_WINDOW)
+    assert report["next_slot_at"] == job._iso(NOW - timedelta(hours=15) + job.RUN_WINDOW)
     assert env.state["current"] is None, "a skip must not open a run"
     assert env.doc.read_bytes() == before
 
@@ -334,7 +334,7 @@ def test_a_run_that_started_exactly_24h_ago_has_left_the_window(env):
 
 
 def test_aborted_and_failed_runs_count_against_the_budget(env):
-    seed_runs(env, [1, 2, 3, 4, 5], outcome="aborted")
+    seed_runs(env, [3, 6, 9, 12, 15], outcome="aborted")
     assert job.start(state_dir=env.state_dir, doc=env.doc, now=NOW)["verdict"] == job.SKIP_CAP
 
 
@@ -529,7 +529,7 @@ def test_reconcile_imports_a_finished_foreign_run(env):
     assert [run["mode"] for run in state["runs"]] == [1, 2]
     assert len(state["failures"]) == 0
 
-    started = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW)
+    started = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW + timedelta(hours=7))
     assert started["verdict"] == job.PROCEED
     assert started["entry"].number == 3
 
@@ -546,7 +546,7 @@ def test_reconcile_records_an_unfinished_foreign_run_as_a_failure(env):
     assert state["failures"]["stellarengine"]["count"] == 1
     assert state["current"] is None
 
-    started = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW)
+    started = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW + timedelta(hours=7))
     assert started["verdict"] == job.PROCEED
     assert started["entry"].number == 2
 
@@ -595,6 +595,51 @@ def test_reconcile_leaves_a_review_hold_in_place_unless_asked(env):
     assert cleared["cleared_hold"] is True
     assert env.state["hold"] is None
     assert env.state["current"] is None
+
+
+# --------------------------------------------------------------------------------------
+# repeated deliveries of the same slot
+# --------------------------------------------------------------------------------------
+
+def test_a_stale_delivery_cannot_open_a_second_run(env):
+    """The reminder can arrive late and still name a slot a run already served."""
+    first = open_run(env)
+    close_run(env, first, at=NOW + timedelta(minutes=13))
+
+    stale = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW + timedelta(minutes=14))
+
+    assert stale["verdict"] == job.SKIP_RECENT
+    assert stale["last_started_at"] == job._iso(NOW)
+    assert stale["next_eligible_at"] == job._iso(NOW + job.MIN_RUN_GAP)
+    assert env.state["current"] is None, "a duplicate delivery must not open a run"
+    assert env.ticked_numbers() == [1]
+
+
+def test_the_gap_expires_and_a_manual_force_skips_it(env):
+    first = open_run(env)
+    close_run(env, first, at=NOW + timedelta(minutes=5))
+
+    early = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW + timedelta(minutes=80))
+    assert early["verdict"] == job.SKIP_RECENT
+
+    later = job.start(state_dir=env.state_dir, doc=env.doc,
+                      now=NOW + job.MIN_RUN_GAP + timedelta(seconds=1))
+    assert later["verdict"] == job.PROCEED
+    assert later["entry"].number == 2
+
+    close_run(env, later, at=NOW + job.MIN_RUN_GAP + timedelta(minutes=10))
+    forced = job.start(state_dir=env.state_dir, doc=env.doc,
+                       now=NOW + job.MIN_RUN_GAP + timedelta(minutes=30), force=True)
+    assert forced["verdict"] == job.PROCEED
+
+
+def test_a_failed_run_is_retried_at_the_next_tick_not_sooner(env):
+    first = open_run(env)
+    job.fail(state_dir=env.state_dir, doc=env.doc, run_id=first["run"]["run_id"],
+             reason="tests red", now=NOW + timedelta(minutes=20))
+    again = job.start(state_dir=env.state_dir, doc=env.doc, now=NOW + timedelta(hours=3))
+    assert again["verdict"] == job.PROCEED
+    assert again["entry"].number == 1
 
 
 # --------------------------------------------------------------------------------------

@@ -85,6 +85,7 @@ BRIEF_TEMPLATE = ROOT / "scripts" / "slow_wireframe_brief.md"
 MAX_RUNS_PER_WINDOW = 5                     # "not more than five times in one 24 hour period"
 RUN_WINDOW = timedelta(hours=24)
 RUN_SLOT = timedelta(hours=3)               # the schedule's period; older than this = overran
+MIN_RUN_GAP = timedelta(minutes=150)        # a stale delivery must not open a second run
 MAX_FAILURES = 3                            # per mode, then the job holds for a human
 MAX_RUN_HISTORY = 200
 
@@ -94,6 +95,7 @@ SCHEDULE_INTERVAL_SECONDS = 3 * 60 * 60
 # Verdicts. `start` prints exactly one of these; everything else in the output is detail.
 PROCEED = "PROCEED"
 SKIP_CAP = "SKIP_CAP"
+SKIP_RECENT = "SKIP_RECENT"
 HOLD = "HOLD"
 DONE = "DONE"
 STUCK_HOLD = "STUCK_HOLD"
@@ -567,8 +569,20 @@ def render_brief(template_path: Path, *, entry: TrackerEntry, run_id: str, doc: 
 # start / finish / fail
 # --------------------------------------------------------------------------------------
 
+def last_run_start(state: dict) -> datetime | None:
+    """The most recent run's start, whatever it was called and however it ended."""
+    starts = []
+    for run in state.get("runs", []):
+        try:
+            starts.append(_parse_iso(run.get("started_at", "")))
+        except JobError:
+            continue
+    return max(starts) if starts else None
+
+
 def start(*, state_dir: Path | str = DEFAULT_STATE_DIR, doc: Path = DEFAULT_DOC,
-          now: datetime | None = None, brief_template: Path = BRIEF_TEMPLATE) -> dict:
+          now: datetime | None = None, brief_template: Path = BRIEF_TEMPLATE,
+          force: bool = False) -> dict:
     """
     Decide this tick. Returns a report whose `verdict` is the only thing a caller must act
     on: PROCEED (one run opened, brief in `report["brief"]`), SKIP_CAP, HOLD, DONE or
@@ -622,6 +636,16 @@ def start(*, state_dir: Path | str = DEFAULT_STATE_DIR, doc: Path = DEFAULT_DOC,
             save_state(state_dir, state)
             log_event(state_dir, "stuck_hold", aborted=aborted)
             return {**report, "verdict": STUCK_HOLD, "aborted": aborted, "hold": hold}
+
+        # A reminder can be delivered late (after downtime) and still name a slot
+        # that a run already served, and a backlog is delivered as a burst.  The
+        # gap sits just under the 3-hour period: a genuine tick passes, a duplicate
+        # or a burst cannot open a second run in the same slot.
+        last = last_run_start(state)
+        if last is not None and not force and (now - last) < MIN_RUN_GAP:
+            log_event(state_dir, "skipped_recent", last_started_at=_iso(last))
+            return {**report, "verdict": SKIP_RECENT, "last_started_at": _iso(last),
+                    "next_eligible_at": _iso(last + MIN_RUN_GAP)}
 
         window = runs_in_window(state, now)
         if len(window) >= MAX_RUNS_PER_WINDOW:
@@ -1118,6 +1142,12 @@ def _print_start(report: dict) -> None:
         print("--- begin brief ---")
         print(report["brief"].rstrip())
         print("--- end brief ---")
+    elif verdict == SKIP_RECENT:
+        print(f"  the last run started {report['last_started_at']}; the job opens at most one "
+              f"run per {MIN_RUN_GAP.total_seconds() / 60:.0f} minutes")
+        print(f"  next eligible {report['next_eligible_at']} — this delivery is stale, "
+              "not a new slot")
+        print("  nothing was started and nothing was changed.")
     elif verdict == SKIP_CAP:
         print(f"  five runs already started in the last 24 hours; next slot {report['next_slot_at']}")
         print("  nothing was started and nothing was changed.")
@@ -1207,7 +1237,10 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="ISO timestamp to treat as now (testing and replays)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("start", help="decide this tick: PROCEED, SKIP_CAP, HOLD, DONE or STUCK_HOLD")
+    start_cmd = sub.add_parser(
+        "start", help="decide this tick: PROCEED, SKIP_RECENT, SKIP_CAP, HOLD, DONE, STUCK_HOLD")
+    start_cmd.add_argument("--force", action="store_true",
+                           help="ignore the 90-minute minimum gap (a manual restart)")
     sub.add_parser("status", help="the ledger, in plain text")
     sub.add_parser("rearm", help="the schedule spec and the prompt to re-create it with")
 
@@ -1245,7 +1278,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         now = _parse_iso(args.now) if args.now else None
         if args.command == "start":
-            report = start(state_dir=args.state_dir, doc=args.doc, now=now)
+            report = start(state_dir=args.state_dir, doc=args.doc, now=now,
+                           force=args.force)
             _print_start(report)
         elif args.command == "status":
             print(status(state_dir=args.state_dir, doc=args.doc, now=now))
