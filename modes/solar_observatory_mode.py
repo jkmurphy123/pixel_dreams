@@ -136,7 +136,7 @@ def _bezier(p0, p1, p2, t):
             u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1])
 
 
-class SolarObservatoryRingMode:
+class SolarObservatoryMode:
     def __init__(self, config: dict):
         self.config = dict(config or {})
         self.manager = None

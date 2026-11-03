@@ -41,7 +41,7 @@ from core.loader import build_merged_config                                # noq
 from core.params import resolve_params                                     # noqa: E402
 from core.validation import validate_instance                              # noqa: E402
 from modes.solar_observatory_mode import (                                 # noqa: E402
-    SolarObservatoryRingMode,
+    SolarObservatoryMode,
     QUALITY,
     aspect_preset,
 )
@@ -67,7 +67,7 @@ def make_mode(size=(640, 360), config=None, frames=1):
     config = dict(config if config is not None else {"seed": 5151})
     config.setdefault("quality", "low")
     screen = pygame.Surface(size)
-    mode = SolarObservatoryRingMode(config)
+    mode = SolarObservatoryMode(config)
     mode.enter(FakeManager(screen))
     for _ in range(frames):
         mode.update(1.0 / 60.0)
@@ -85,7 +85,7 @@ def profile_mode(profile, slot, size):
     merged["quality"] = "low"
     merged["seed"] = 5151
     screen = pygame.Surface(size)
-    mode = SolarObservatoryRingMode(merged)
+    mode = SolarObservatoryMode(merged)
     mode.enter(FakeManager(screen))
     mode.render(screen)
     return mode, screen, merged
@@ -382,7 +382,7 @@ def test_a_repeated_entry_does_not_leak_builds():
 
 def test_the_registry_entry_resolves_and_the_schema_is_complete():
     spec = registry()["solarobservatory"]
-    assert spec["entrypoint"] == "modes.solar_observatory_mode:SolarObservatoryRingMode"
+    assert spec["entrypoint"] == "modes.solar_observatory_mode:SolarObservatoryMode"
     assert spec["required"] == []
     for key in ("palette", "quality", "hud", "fill", "orientation", "seed",
                 "satellite_count", "ring_radius", "orbit_seconds", "loops",

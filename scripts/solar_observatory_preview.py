@@ -29,7 +29,7 @@ sys.path.insert(0, BASE_DIR)
 from core.cache import ResourceCache                                       # noqa: E402
 from core.config import load_json                                          # noqa: E402
 from core.loader import build_merged_config                                # noqa: E402
-from modes.solar_observatory_mode import SolarObservatoryRingMode         # noqa: E402
+from modes.solar_observatory_mode import SolarObservatoryMode         # noqa: E402
 
 OUT = os.path.join(BASE_DIR, "screenshots", "slow_wireframe", "solar_observatory")
 SEED = 5151
@@ -55,7 +55,7 @@ def merged(profile, slot, extra=None):
 
 def still(profile, slot, size, extra=None, at_time=0.0):
     screen = pygame.Surface(size)
-    mode = SolarObservatoryRingMode(merged(profile, slot, extra))
+    mode = SolarObservatoryMode(merged(profile, slot, extra))
     mode.enter(FakeManager(screen))
     if mode.error:
         raise SystemExit(f"mode refused its config: {mode.error}")
@@ -68,7 +68,7 @@ def still(profile, slot, size, extra=None, at_time=0.0):
 
 def loop_pass_time(profile, slot):
     screen = pygame.Surface((1280, 400))
-    mode = SolarObservatoryRingMode(merged(profile, slot))
+    mode = SolarObservatoryMode(merged(profile, slot))
     mode.enter(FakeManager(screen))
     if mode.error:
         raise SystemExit(f"mode refused its config: {mode.error}")
