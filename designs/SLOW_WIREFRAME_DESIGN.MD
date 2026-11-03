@@ -1583,7 +1583,7 @@ document.
 - [x] 1 · `dysonswarm` · Dyson Swarm · survey · M · wave 1 · `modes/dyson_swarm_mode.py` · `DysonSwarmMode` — done 2026-11-01
 - [x] 2 · `stellarengine` · Stellar Engine · orbit · M · wave 2 · `modes/stellar_engine_mode.py` · `StellarEngineMode` — done 2026-11-01
 - [x] 3 · `orbitalmirrorarray` · Orbital Mirror Array · survey · L · wave 3 · `modes/orbital_mirror_array_mode.py` · `OrbitalMirrorArrayMode` — done 2026-11-02
-- [ ] 4 · `planetcracker` · Planet Cracker · orbit · L · wave 3 · `modes/planet_cracker_mode.py` · `PlanetCrackerMode`
+- [x] 4 · `planetcracker` · Planet Cracker · orbit · L · wave 3 · `modes/planet_cracker_mode.py` · `PlanetCrackerMode` — done 2026-11-02
 - [ ] 5 · `solarobservatory` · Solar Observatory Ring · orbit / track · L · wave 3 · `modes/solar_observatory_mode.py` · `SolarObservatoryMode`
 - [ ] 6 · `spaceelevator` · Space Elevator · track / climb · M · wave 1 · `modes/space_elevator_mode.py` · `SpaceElevatorMode`
 - [ ] 7 · `orbitalshipyard` · Orbital Shipyard · track / crane · M · wave 2 · `modes/orbital_shipyard_mode.py` · `OrbitalShipyardMode`
