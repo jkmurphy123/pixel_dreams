@@ -1587,7 +1587,7 @@ document.
 - [x] 5 · `solarobservatory` · Solar Observatory Ring · orbit / track · L · wave 3 · `modes/solar_observatory_mode.py` · `SolarObservatoryMode` — done 2026-11-03
 - [x] 6 · `spaceelevator` · Space Elevator · track / climb · M · wave 1 · `modes/space_elevator_mode.py` · `SpaceElevatorMode` — done 2026-11-03
 - [x] 7 · `orbitalshipyard` · Orbital Shipyard · track / crane · M · wave 2 · `modes/orbital_shipyard_mode.py` · `OrbitalShipyardMode` — done 2026-11-03
-- [ ] 8 · `asteroidfoundry` · Asteroid Foundry · ride · M · wave 2 · `modes/asteroid_foundry_mode.py` · `AsteroidFoundryMode`
+- [x] 8 · `asteroidfoundry` · Asteroid Foundry · ride · M · wave 2 · `modes/asteroid_foundry_mode.py` · `AsteroidFoundryMode` — done 2026-11-03
 - [ ] 9 · `acceleratorring` · Accelerator Ring · orbit · L · wave 3 · `modes/accelerator_ring_mode.py` · `AcceleratorRingMode`
 - [ ] 10 · `generationship` · Generation Ship · track · L · wave 3 · `modes/generation_ship_mode.py` · `GenerationShipMode`
 - [ ] 11 · `derelict` · Derelict · orbit · M · wave 1 · `modes/derelict_mode.py` · `DerelictMode`
