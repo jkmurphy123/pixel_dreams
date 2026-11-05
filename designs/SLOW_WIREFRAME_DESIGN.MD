@@ -1590,7 +1590,7 @@ document.
 - [x] 8 · `asteroidfoundry` · Asteroid Foundry · ride · M · wave 2 · `modes/asteroid_foundry_mode.py` · `AsteroidFoundryMode` — done 2026-11-03
 - [x] 9 · `acceleratorring` · Accelerator Ring · orbit · L · wave 3 · `modes/accelerator_ring_mode.py` · `AcceleratorRingMode` — done 2026-11-04
 - [x] 10 · `generationship` · Generation Ship · track · L · wave 3 · `modes/generation_ship_mode.py` · `GenerationShipMode` — done 2026-11-04
-- [ ] 11 · `derelict` · Derelict · orbit · M · wave 1 · `modes/derelict_mode.py` · `DerelictMode`
+- [x] 11 · `derelict` · Derelict · orbit · M · wave 1 · `modes/derelict_mode.py` · `DerelictMode` — done 2026-11-05
 - [ ] 12 · `ramjet` · Ramjet · follow · M · wave 2 · `modes/ramjet_mode.py` · `RamjetMode`
 - [ ] 13 · `vonneumannswarm` · Von Neumann Swarm · survey · L · wave 3 · `modes/von_neumann_swarm_mode.py` · `VonNeumannSwarmMode`
 - [ ] 14 · `aerostat` · Aerostat · survey / drift · M · wave 2 · `modes/aerostat_mode.py` · `AerostatMode`
